@@ -101,16 +101,6 @@ def between_co(data, lower_bound, upper_bound):
     return (data >= lower_bound) & (data < upper_bound)
 
 
-# TODO: To be removed.
-#       Unnecessary as the Python 2.6 compatibility has been dropped.
-def get_total_seconds(td_obj):
-    """ Get `datetime.timedelta` as total number of seconds. """
-    try:
-        return td_obj.total_seconds()
-    except AttributeError:
-        return td_obj.microseconds*1e-6 + td_obj.seconds + td_obj.days*86400
-
-
 def float_array_slice(start, stop, first, last, step, tolerance):
     """
         Get array index range for given sub-setting interval
