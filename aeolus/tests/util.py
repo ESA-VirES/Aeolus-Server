@@ -31,7 +31,7 @@
 import unittest
 from datetime import timedelta, datetime
 from numpy import array
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import Colormap
 from aeolus.tests import ArrayMixIn
 from aeolus.util import (
     between, between_co, float_array_slice, datetime_array_slice,
@@ -40,15 +40,19 @@ from aeolus.util import (
 
 class TestUtil(ArrayMixIn, unittest.TestCase):
     COLOR_MAPS = [
-        "blackwhite", "coolwarm", "rainbow", "custom2", "custom1",
-        "prism",
+        # VirES colormaps
+        "blackwhite", "coolwarm", "rainbow", "diverging_2", "yignbu", "greens",
+        "yiorrd", "bluered", "earth", "electric", "portland", "blackbody",
+        "diverging_1",
+        # contrib colormaps
+        "viridis", "magma", "inferno", "plasma",
     ]
 
     def test_color_scale(self):
         for cm_id in self.COLOR_MAPS:
             try:
                 self.assertTrue(
-                    isinstance(get_color_scale(cm_id), LinearSegmentedColormap)
+                    isinstance(get_color_scale(cm_id), Colormap)
                 )
             except:
                 print "Test failed for colormap %r!" % cm_id

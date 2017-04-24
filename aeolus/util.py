@@ -34,8 +34,8 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.cm import get_cmap
 from itertools import ifilter, ifilterfalse
 
-from .colormaps import COLORMAPS
-from .contrib import colormaps as contrib_colormaps
+from .colormaps import COLORMAPS as VIRES_COLORMAPS
+from .contrib.colormaps import cmaps as CONTRIB_COLORMAPS
 
 try:
     from numpy import full
@@ -146,10 +146,9 @@ def datetime_array_slice(start, stop, first, last, step, tolerance):
 
 def get_color_scale(name):
     """ Get named colormap. """
-    if name in COLORMAPS:
-        return COLORMAPS[name]
-    elif name in ("viridis", "magma", "inferno", "plasma"):
-        return getattr(contrib_colormaps, name)
-    else:
-        # get standard colormap
+    if name in VIRES_COLORMAPS:
+        return VIRES_COLORMAPS[name]
+    elif name in CONTRIB_COLORMAPS:
+        return CONTRIB_COLORMAPS[name]
+    else: # standard colormap
         return get_cmap(name)
