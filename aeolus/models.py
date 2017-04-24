@@ -45,7 +45,6 @@ from django.contrib.auth.models import User
 from eoxserver.resources.coverages.models import (
     collect_eo_metadata, Collection, Coverage, EO_OBJECT_TYPE_REGISTRY
 )
-from aoelus.util import get_total_seconds
 
 
 class Job(Model):

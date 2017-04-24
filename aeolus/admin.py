@@ -35,7 +35,7 @@ from eoxserver.resources.coverages.admin import (
     CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
     DataItemInline
 )
-from aeolus.models import Product, ProductCollection, ForwardModel, Job
+from aeolus.models import Product, ProductCollection, Job
 
 
 class JobAdmin(admin.ModelAdmin):
