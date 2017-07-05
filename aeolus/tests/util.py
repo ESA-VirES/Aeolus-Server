@@ -31,24 +31,28 @@
 import unittest
 from datetime import timedelta, datetime
 from numpy import array
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import Colormap
 from aeolus.tests import ArrayMixIn
 from aeolus.util import (
     between, between_co, float_array_slice, datetime_array_slice,
-    get_total_seconds, get_color_scale,
+    get_color_scale,
 )
 
 class TestUtil(ArrayMixIn, unittest.TestCase):
     COLOR_MAPS = [
-        "blackwhite", "coolwarm", "rainbow", "custom2", "custom1",
-        "prism",
+        # VirES colormaps
+        "blackwhite", "coolwarm", "rainbow", "diverging_2", "yignbu", "greens",
+        "yiorrd", "bluered", "earth", "electric", "portland", "blackbody",
+        "diverging_1",
+        # contrib colormaps
+        "viridis", "magma", "inferno", "plasma",
     ]
 
     def test_color_scale(self):
         for cm_id in self.COLOR_MAPS:
             try:
                 self.assertTrue(
-                    isinstance(get_color_scale(cm_id), LinearSegmentedColormap)
+                    isinstance(get_color_scale(cm_id), Colormap)
                 )
             except:
                 print "Test failed for colormap %r!" % cm_id
@@ -71,15 +75,15 @@ class TestUtil(ArrayMixIn, unittest.TestCase):
 
     def test_total_seconds(self):
         self.assertAlmostEqual(
-            get_total_seconds(
+            (
                 datetime(2016, 3, 30, 1, 1, 1, 1001) - datetime(2016, 3, 29)
-            ), 90061.001001, delta=1e-7
+            ).total_seconds(), 90061.001001, delta=1e-7
         )
         self.assertAlmostEqual(
-            get_total_seconds(
+            (
                 datetime(2016, 3, 27, 22, 58, 58, 998999) -
                 datetime(2016, 3, 29)
-            ), -90061.001001, delta=1e-7
+            ).total_seconds(), -90061.001001, delta=1e-7
         )
 
     def test_float_array_slice(self):
