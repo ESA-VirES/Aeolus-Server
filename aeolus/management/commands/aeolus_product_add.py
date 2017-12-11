@@ -45,7 +45,8 @@ from aeolus.models import Product, ProductCollection
 from aeolus.management.commands.aeolus_dataset_register import (
     VirESMetadataReader
 )
-from aeolus.cdf_util import cdf_open
+
+from aeolus.registration import register_dbl
 
 
 class Command(CommandOutputMixIn, BaseCommand):
@@ -66,10 +67,10 @@ class Command(CommandOutputMixIn, BaseCommand):
             )
         ),
         make_option(
-            "-r", "--range-type", dest="range_type_name", default="SWARM_MAG",
+            "-r", "--range-type", dest="range_type_name", default="AEOLUS",
             help=(
                 "Optional name of the model range type. "
-                "Defaults to 'SWARM_MAG'."
+                "Defaults to 'AEOLUS'."
             )
         ),
         make_option(
@@ -153,14 +154,14 @@ class Command(CommandOutputMixIn, BaseCommand):
 
             if is_registered and kwargs["conflict"] == "IGNORE":
                 self.print_wrn(
-                    "The product '%s' is already installed. The registration "
+                    "The product '%s' is already registered. The registration "
                     " of product '%s' is skipped!" % (identifier, product)
                 )
                 ignored_count += 1
                 continue
             elif is_registered and kwargs["conflict"] == "REPLACE":
                 self.print_wrn(
-                    "The product '%s' is already installed. The product will "
+                    "The product '%s' is already registered. The product will "
                     "be replaced." % identifier
                 )
                 try:
@@ -230,10 +231,12 @@ def collection_create(identifier, range_type):
     collection.save()
     return collection
 
+
 @nested_commit_on_success
 def collection_link_product(collection, product):
     """ Link product to a collection """
     collection.insert(product)
+
 
 def product_is_registered(identifier):
     """ Return True if the product is already registered. """
@@ -244,32 +247,8 @@ def product_is_registered(identifier):
 def product_register(identifier, range_type, data_file, metadata_file=None,
                      collections=None):
     """ Register product. """
-    semantic = ["bands[1:%d]" % len(range_type)]
-    with cdf_open(data_file) as dataset:
-        metadata = VirESMetadataReader.read(dataset)
-        data_format = metadata.pop("format", None)
 
-    product = Product()
-    product.identifier = identifier
-    product.visible = False
-    product.range_type = range_type
-    product.srid = 4326
-    product.extent = (-180, -90, 180, 90)
-    for key, value in metadata.iteritems():
-        setattr(product, key, value)
-
-    product.full_clean()
-    product.save()
-
-    storage, package, format_, location = _get_location_chain([data_file])
-    format_ = data_format
-    data_item = DataItem(
-        location=location, format=format_ or "", semantic=semantic,
-        storage=storage, package=package,
-    )
-    data_item.dataset = product
-    data_item.full_clean()
-    data_item.save()
+    product = register_dbl(data_file, overrides={'identifier': identifier})
 
     # link with collection(s)
     for collection in collections:
