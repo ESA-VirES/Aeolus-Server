@@ -83,6 +83,7 @@ class ProductAdmin(CoverageAdmin):
             'description': 'Geospatial metadata'
         }),
     )
+    inlines = (DataItemInline, CollectionInline)
 
 admin.site.register(Product, ProductAdmin)
 
