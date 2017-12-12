@@ -128,7 +128,7 @@ class Level1BExctract(Component):
 
         data_filters = dict(
             time={'min': begin_time, 'max': end_time},
-            **filters
+            **(filters or {})
         )
 
         output = {}
