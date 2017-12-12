@@ -189,6 +189,17 @@ def _combine_mask(mask_a, mask_b=None):
     return np.logical_and(mask_a, mask_b)
 
 
+def _array_to_list(data):
+    if isinstance(data, np.ndarray):
+        isobject = data.dtype == np.object
+        data = data.tolist()
+        if isobject:
+            data = [
+                _array_to_list(obj) for obj in data
+            ]
+    return data
+
+
 def extract_data(filenames, filters, observation_fields, measurement_fields,
                  simple_observation_filters=False, convert_arrays=False):
     """ Extract the data from the given filename(s) and apply the given filters.
@@ -231,8 +242,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
                 # convert to simple list instead of numpy array if requested
                 if convert_arrays and isinstance(data, np.ndarray):
-                    data = data.tolist()
-
+                    data = _array_to_list(data)
                 out_observation_data[field_name].append(data)
 
             # if we filter the measurements by observation ID, then use the
@@ -275,7 +285,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
                     # convert to simple list instead of numpy array if requested
                     if convert_arrays and isinstance(data, np.ndarray):
-                        data = data.tolist()
+                        data = _array_to_list(data)
 
                     out_measurement_data[field_name].append(
                         data[filtered_measurement_ids]
@@ -306,7 +316,7 @@ def main():
             'mie_range', 'longitude_of_DEM_intersection'
         ], [
             #'rayleigh_channel_A_SNR'
-        ], True)
+        ], True, convert_arrays=True)
     )
 
 
@@ -340,4 +350,4 @@ def main():
 
 
 
-# main()
+main()
