@@ -95,8 +95,8 @@ class Level1BExctract(Component):
         )),
     ]
 
-    def execute(self, collection_ids, begin_time, end_time, bbox, output,
-                **kwargs):
+    def execute(self, collection_ids, begin_time, end_time, bbox, filters,
+                output, **kwargs):
         # input parsing
         if kwargs['observation_fields']:
             observation_fields = kwargs['observation_fields'].split(',')
@@ -126,9 +126,10 @@ class Level1BExctract(Component):
 
             db_filters['ground_path__intersects'] = box
 
-        data_filters = {
-            'time': {'min': begin_time, 'max': end_time}
-        }
+        data_filters = dict(
+            time={'min': begin_time, 'max': end_time},
+            **filters
+        )
 
         output = {}
         for collection in collections:

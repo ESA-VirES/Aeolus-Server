@@ -223,8 +223,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
             # fetch the requested observation fields, filter accordingly and
             # write to the output dict
-            for field in observation_fields:
-                assert field in OBSERVATION_LOCATIONS
+            for field_name in observation_fields:
+                assert field_name in OBSERVATION_LOCATIONS
                 data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
                 if filtered_observation_ids is not None:
                     data = data[filtered_observation_ids]
@@ -233,7 +233,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                 if convert_arrays and isinstance(data, np.ndarray):
                     data = data.tolist()
 
-                out_observation_data[field].append(data)
+                out_observation_data[field_name].append(data)
 
             # if we filter the measurements by observation ID, then use the
             # filtered observation IDs as mask for the measurements.
@@ -269,15 +269,15 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                     measurement_mask = _combine_mask(new_mask, measurement_mask)
 
                 filtered_measurement_ids = np.nonzero(measurement_mask)
-                for field in measurement_fields:
-                    path = MEASUREMENT_LOCATIONS[field]
+                for field_name in measurement_fields:
+                    path = MEASUREMENT_LOCATIONS[field_name]
                     data = cf.fetch(path[0], int(observation_id), *path[2:])
 
                     # convert to simple list instead of numpy array if requested
                     if convert_arrays and isinstance(data, np.ndarray):
                         data = data.tolist()
 
-                    out_measurement_data[field].append(
+                    out_measurement_data[field_name].append(
                         data[filtered_measurement_ids]
                     )
 
@@ -293,21 +293,21 @@ test_file = '/mnt/data/AE_OPER_ALD_U_N_1B_20151001T104454059_005379000_046330_00
 
 def main():
     pass
-    # from pprint import pprint
-    # pprint(
-    #     extract_data(test_file, {
-    #         'time': {
-    #             'min': datetime(2015, 10, 01, 10, 44, 54),
-    #             'max': datetime(2015, 10, 01, 10, 45, 0),
-    #             # datetime(2015, 10, 01, 10, 50, 54)
-    #         },
-    #         'mie_longitude': {'min': 100, 'max': 120},
-    #     }, [
-    #         'rayleigh_range'
-    #     ], [
-    #         'rayleigh_channel_A_SNR'
-    #     ], True)
-    # )
+    from pprint import pprint
+    pprint(
+        extract_data(test_file, {
+            'time': {
+                'min': datetime(2015, 10, 01, 10, 44, 54),
+                'max': datetime(2015, 10, 01, 10, 45, 0),
+                # datetime(2015, 10, 01, 10, 50, 54)
+            },
+            'mie_longitude': {'min': 100, 'max': 120},
+        }, [
+            'mie_range', 'longitude_of_DEM_intersection'
+        ], [
+            #'rayleigh_channel_A_SNR'
+        ], True)
+    )
 
 
 
@@ -340,4 +340,4 @@ def main():
 
 
 
-main()
+# main()
