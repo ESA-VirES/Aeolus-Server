@@ -61,7 +61,6 @@ OBSERVATION_LOCATIONS = {
     'rayleigh_signal_channel_A_intensity': ('/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'),
     'rayleigh_signal_channel_B_intensity': ('/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'),
     # 'rayleigh_signal_intensity: '),
-    # 'rayleigh_signal_intensity: '),
     'mie_ground_velocity': ('/ground_wind_detection', -1, 'mie_ground_correction_velocity'),
     'rayleigh_ground_velocity': ('/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'),
     'mie_HBE_ground_velocity': ('/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'),
@@ -72,7 +71,6 @@ OBSERVATION_LOCATIONS = {
     'mie_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'),
     'rayleigh_channel_A_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'),
     'rayleigh_channel_B_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'),
-    # 'rayleigh_SNR: '),
     # 'rayleigh_SNR: '),
     'mie_error_quantifier': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_mie'),
     'rayleigh_error_quantifier': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_rayleigh'),
@@ -282,14 +280,12 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                 for field_name in measurement_fields:
                     path = MEASUREMENT_LOCATIONS[field_name]
                     data = cf.fetch(path[0], int(observation_id), *path[2:])
-
+                    data = data[filtered_measurement_ids]
                     # convert to simple list instead of numpy array if requested
                     if convert_arrays and isinstance(data, np.ndarray):
                         data = _array_to_list(data)
 
-                    out_measurement_data[field_name].append(
-                        data[filtered_measurement_ids]
-                    )
+                    out_measurement_data[field_name].append(data)
 
     return out_observation_data, out_measurement_data
 
@@ -347,7 +343,3 @@ def main():
     #     if name not in ARRAY_FIELDS:
     #         print name, data
     #     else: print name, data
-
-
-
-main()
