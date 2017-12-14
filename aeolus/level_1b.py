@@ -241,7 +241,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                 # convert to simple list instead of numpy array if requested
                 if convert_arrays and isinstance(data, np.ndarray):
                     data = _array_to_list(data)
-                out_observation_data[field_name].append(data)
+                out_observation_data[field_name].extend(data)
 
             # if we filter the measurements by observation ID, then use the
             # filtered observation IDs as mask for the measurements.
