@@ -67,6 +67,14 @@ class CODAFile(object):
         """
         return coda.get_size(self._handle, *path)
 
+    @property
+    def product_type(self):
+        return coda.get_product_type(self._handle)
+
+    @property
+    def product_class(self):
+        return coda.get_product_class(self._handle)
+
     def close(self):
         """ Closes the :class:`CODAFile` object, if it was not already closed.
         """
