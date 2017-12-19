@@ -33,7 +33,7 @@
 from django.contrib.gis import admin
 from eoxserver.resources.coverages.admin import (
     CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
-    DataItemInline
+    DataItemInline,
 )
 from aeolus.models import Product, ProductCollection, Job
 
@@ -95,7 +95,11 @@ class ProductCollectionAdmin(CollectionAdmin):
             'fields': ('identifier',)
         }),
         ('Metadata', {
-            'fields': (('begin_time', 'end_time'), 'footprint', "ground_path")
+            'fields': (
+                'range_type',
+                ('begin_time', 'end_time'),
+                'footprint', "ground_path"
+            )
         }),
     )
     inlines = (EOObjectInline, CollectionInline)
