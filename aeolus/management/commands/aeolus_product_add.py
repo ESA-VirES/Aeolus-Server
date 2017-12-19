@@ -46,7 +46,7 @@ from aeolus.management.commands.aeolus_dataset_register import (
     VirESMetadataReader
 )
 
-from aeolus.registration import register_dbl
+from aeolus.registration import register_product
 
 
 class Command(CommandOutputMixIn, BaseCommand):
@@ -66,13 +66,13 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "file from standard input."
             )
         ),
-        make_option(
-            "-r", "--range-type", dest="range_type_name", default="AEOLUS",
-            help=(
-                "Optional name of the model range type. "
-                "Defaults to 'AEOLUS'."
-            )
-        ),
+        # make_option(
+        #     "-r", "--range-type", dest="range_type_name", default="AEOLUS",
+        #     help=(
+        #         "Optional name of the model range type. "
+        #         "Defaults to 'AEOLUS'."
+        #     )
+        # ),
         make_option(
             "-c", "--collection", dest="collection_id", default=None,
             help="Optional collection the product should be linked to."
@@ -87,75 +87,82 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "In case of the REPLACE the collection links are NOT preserved."
             )
         ),
+
+        make_option(
+            "--no-insert", dest="insert_into_collection",
+            action="store_false", default=True
+        ),
         # conflict resolving option
     )
 
     def handle(self, *args, **kwargs):
         def filer_lines(lines):
             for line in lines:
-                line = line.partition("#")[0] # strip comments
-                line = line.strip() # strip white-space padding
-                if line: # empty lines ignored
+                line = line.partition("#")[0]  # strip comments
+                line = line.strip()  # strip white-space padding
+                if line:  # empty lines ignored
                     yield line
 
-        range_type_name = kwargs["range_type_name"]
-        try:
-            range_type = RangeType.objects.get(name=range_type_name)
-        except RangeType.DoesNotExist:
-            raise CommandError(
-                "Invalid range type name '%s'!" % range_type_name
-            )
+        # range_type_name = kwargs["range_type_name"]
+        # try:
+        #     range_type = RangeType.objects.get(name=range_type_name)
+        # except RangeType.DoesNotExist:
+        #     raise CommandError(
+        #         "Invalid range type name '%s'!" % range_type_name
+        #     )
 
-        collection_ids = (
-            [kwargs["collection_id"]] if kwargs["collection_id"] else []
-        )
+        # collection_ids = (
+        #     [kwargs["collection_id"]] if kwargs["collection_id"] else []
+        # )
 
-        collections = []
-        for collection_id in collection_ids:
-            try:
-                collection = ProductCollection.objects.get(
-                    identifier=collection_id
-                )
-            except ProductCollection.DoesNotExist:
-                self.print_wrn(
-                    "The collection '%s' does not exist! A new collection "
-                    "will be created ..." % collection_id
-                )
-                collection = collection_create(collection_id, range_type)
-            collections.append(collection)
+        # collections = []
+        # for collection_id in collection_ids:
+        #     try:
+        #         collection = ProductCollection.objects.get(
+        #             identifier=collection_id
+        #         )
+        #     except ProductCollection.DoesNotExist:
+        #         self.print_wrn(
+        #             "The collection '%s' does not exist! A new collection "
+        #             "will be created ..." % collection_id
+        #         )
+        #         collection = collection_create(collection_id, range_type)
+        #     collections.append(collection)
 
         # check collection
         # product generator
         if kwargs["input_file"] is None:
             # command line input
-            products = args
+            product_filenames = args
         elif kwargs["input_file"] == "-":
-            products = filer_lines(filename for filename in sys.stdin)
+            product_filenames = filer_lines(filename for filename in sys.stdin)
         else:
             def file_reader(file_name):
                 with open(file_name) as fin:
                     for line in fin:
                         yield line.strip()
-            products = filer_lines(file_reader(kwargs["input_file"]))
+            product_filenames = filer_lines(file_reader(kwargs["input_file"]))
 
         count = 0
         success_count = 0  # success counter - counts finished registrations
         ignored_count = 0  # ignore counter - counts skipped registrations
-        for product in products:
+        for product_filename in product_filenames:
             count += 1
-            identifier = get_identifier(product)
-            data_file = product
-            metadata_file = None
+            identifier = get_identifier(product_filename)
             self.print_msg(
-                "Registering product %s [%s] ... " % (identifier, product)
+                "Registering product %s [%s] ... " % (
+                    identifier, product_filename
+                )
             )
 
             is_registered = product_is_registered(identifier)
 
+            product = None
+
             if is_registered and kwargs["conflict"] == "IGNORE":
                 self.print_wrn(
                     "The product '%s' is already registered. The registration "
-                    " of product '%s' is skipped!" % (identifier, product)
+                    "of product '%s' is skipped!" % (identifier, product)
                 )
                 ignored_count += 1
                 continue
@@ -165,10 +172,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                     "be replaced." % identifier
                 )
                 try:
-                    product_update(
-                        identifier, range_type, data_file, metadata_file,
-                        collections
-                    )
+                    product = product_update(identifier, product_filename)
                 except Exception as exc:
                     self.print_traceback(exc, kwargs)
                     self.print_err(
@@ -177,12 +181,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                         )
                     )
                     continue
-            else: # not registered
+            else:  # not registered
                 try:
-                    product_register(
-                        identifier, range_type, data_file, metadata_file,
-                        collections
-                    )
+                    product = product_register(identifier, product_filename)
                 except Exception as exc:
                     self.print_traceback(exc, kwargs)
                     self.print_err(
@@ -191,6 +192,19 @@ class Command(CommandOutputMixIn, BaseCommand):
                         )
                     )
                     continue
+
+            if product and kwargs['insert_into_collection']:
+                try:
+                    collection = ProductCollection.objects.get(
+                        range_type=product.range_type
+                    )
+                    collection_link_product(collection, product)
+                except ProductCollection.DoesNotExist:
+                    self.print_err(
+                        'Could not find collection for product %s'
+                        % identifier
+                    )
+
             success_count += 1
 
         error_count = count - success_count - ignored_count
@@ -214,22 +228,22 @@ def collection_exists(identifier):
     return ProductCollection.objects.filter(identifier=identifier).exists()
 
 
-@nested_commit_on_success
-def collection_create(identifier, range_type):
-    """ Create a new product collection. """
-    collection = ProductCollection()
-    collection.identifier = identifier
-    collection.range_type = range_type
-    collection.srid = 4326
-    collection.min_x = -180
-    collection.min_y = -90
-    collection.max_x = 180
-    collection.max_y = 90
-    collection.size_x = 0
-    collection.size_y = 1
-    collection.full_clean()
-    collection.save()
-    return collection
+# @nested_commit_on_success
+# def collection_create(identifier, range_type):
+#     """ Create a new product collection. """
+#     collection = ProductCollection()
+#     collection.identifier = identifier
+#     collection.range_type = range_type
+#     collection.srid = 4326
+#     collection.min_x = -180
+#     collection.min_y = -90
+#     collection.max_x = 180
+#     collection.max_y = 90
+#     collection.size_x = 0
+#     collection.size_y = 1
+#     collection.full_clean()
+#     collection.save()
+#     return collection
 
 
 @nested_commit_on_success
@@ -244,16 +258,10 @@ def product_is_registered(identifier):
 
 
 @nested_commit_on_success
-def product_register(identifier, range_type, data_file, metadata_file=None,
-                     collections=None):
+def product_register(identifier, data_file):
     """ Register product. """
 
-    product = register_dbl(data_file, overrides={'identifier': identifier})
-
-    # link with collection(s)
-    for collection in collections:
-        collection_link_product(collection, product)
-
+    product = register_product(data_file, overrides={'identifier': identifier})
     return product
 
 
@@ -268,7 +276,7 @@ def product_deregister(identifier):
 def product_update(identifier, *args, **kwargs):
     """ Update existing product. """
     product_deregister(identifier)
-    product_register(identifier, *args, **kwargs)
+    return product_register(identifier, *args, **kwargs)
 
 
 def get_identifier(data_file, metadata_file=None):
