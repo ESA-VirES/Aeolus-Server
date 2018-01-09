@@ -139,7 +139,7 @@ class Level1BExctract(Component):
                 for product in models.Product.objects.filter(
                     collections=collection,
                     **db_filters
-                )
+                ).order_by('begin_time')
             ]
             output[collection.identifier] = extract_data(
                 dbl_files, data_filters,
