@@ -388,7 +388,6 @@ AUX_ZWC_LOCATIONS = {
 
 AUX_ZWC_CALIBRATION_FIELDS = set([
 
-
 ])
 
 AUX_ZWC_SCALAR_FIELDS = set([
@@ -516,15 +515,6 @@ def extract_data(filenames, filters, fields, aux_type):
         if field not in calibration_fields
     ]
 
-    from pprint import pprint
-    pprint(dict(
-        calibration_filters=calibration_filters,
-        frequency_filters=frequency_filters,
-        requested_calibration_fields=requested_calibration_fields,
-        requested_frequency_fields=requested_frequency_fields,
-
-    ))
-
     for filename in filenames:
         with CODAFile(filename) as cf:
             # make a mask of all calibrations to be included, by only looking at
@@ -539,22 +529,26 @@ def extract_data(filenames, filters, fields, aux_type):
                 )
                 calibration_mask = combine_mask(new_mask, calibration_mask)
 
-
-            pprint(calibration_mask)
             # when the mask is done, create an array of indices for calibrations
             # to be included
+            calibration_nonzero_ids = None
             if calibration_mask is not None:
-                calibration_ids = np.nonzero(calibration_mask)
+                calibration_nonzero_ids = np.nonzero(calibration_mask)
+                calibration_ids = calibration_nonzero_ids[0]
             else:
-                calibration_ids = []  # TODO: all calibrations
+                num_calibrations = cf.get_size(
+                    '/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_%s/'
+                    'List_of_Data_Set_Records/Data_Set_Record' % aux_type
+                )[0]
+                calibration_ids = range(num_calibrations)
 
             # load all desired values for the requested calibrations
             for field_name in requested_calibration_fields:
                 path = locations[field_name]
                 field_data = cf.fetch(*path)
 
-                if calibration_mask is not None:
-                    field_data = field_data[calibration_ids]
+                if calibration_nonzero_ids is not None:
+                    field_data = field_data[calibration_nonzero_ids]
 
                 # write out data
                 data[field_name].extend(_array_to_list(field_data))
@@ -566,10 +560,8 @@ def extract_data(filenames, filters, fields, aux_type):
                 for field_name, filter_value in frequency_filters.items():
                     path = locations[field_name]
 
-                    print path[0], calibration_id[0], path[2:]
-
                     new_mask = make_mask(
-                        cf.fetch(path[0], calibration_id[0], *path[2:]),
+                        cf.fetch(path[0], calibration_id, *path[2:]),
                         filter_value.get('min'), filter_value.get('max'),
                         field_name in array_fields
                     )
@@ -584,7 +576,7 @@ def extract_data(filenames, filters, fields, aux_type):
                 # possibly subset data to the output
                 for field_name in requested_frequency_fields:
                     path = locations[field_name]
-                    field_data = cf.fetch(path[0], calibration_id[0], *path[2:])
+                    field_data = cf.fetch(path[0], calibration_id, *path[2:])
 
                     if frequency_ids is not None:
                         field_data = field_data[frequency_ids]
@@ -594,8 +586,8 @@ def extract_data(filenames, filters, fields, aux_type):
     return data
 
 
-test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF'
-# test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF'
+# test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF'
+test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF'
 # test_file = '/mnt/data/AE_OPER_AUX_RRC_1B_20071031T021229_20071031T022829_0002.EEF'
 # test_file = '/mnt/data/AE_OPER_AUX_ZWC_1B_20071101T202641_20071102T000841_0001.EEF'
 
@@ -603,20 +595,37 @@ test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.E
 def main():
     from pprint import pprint
 
-    data = extract_data(test_file, {
-        'freq_mie_USR_closest_to_rayleigh_filter_centre': {
-            'max': 1,
-        },
-        'mie_response': {
-            'min': 10,
-            'max': 12,
-        }
-    }, [
-        'mie_response',
-        'freq_mie_USR_closest_to_rayleigh_filter_centre',
-    ], 'ISR')
+    # data = extract_data('/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF', {
+    #     'freq_mie_USR_closest_to_rayleigh_filter_centre': {
+    #         'max': 1,
+    #     },
+    #     'mie_response': {
+    #         'min': 10,
+    #         'max': 12,
+    #     }
+    # }, [
+    #     'mie_response',
+    #     'freq_mie_USR_closest_to_rayleigh_filter_centre',
+    # ], 'ISR')
 
-    pprint(data)
+    data = extract_data(
+        '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF',
+        {
+            'lat_of_DEM_intersection': {
+                'max': 0,
+            },
+            'altitude': {
+                'min': 25000,
+                # 'max': 12,
+            }
+        }, [
+            'measurement_mean_sensitivity',
+            'lat_of_DEM_intersection',
+            'altitude',
+        ], 'MRC'
+    )
+
+    pprint(dict(data))
 
     # from pprint import pprint
     # import contextlib
