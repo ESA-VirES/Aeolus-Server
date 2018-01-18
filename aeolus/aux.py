@@ -484,6 +484,7 @@ def _array_to_list(data):
 def extract_data(filenames, filters, fields, aux_type):
     """
     """
+    aux_type = str(aux_type)  # to convert unicode to str
     filenames = [filenames] if isinstance(filenames, basestring) else filenames
     data = defaultdict(list)
 
