@@ -38,7 +38,7 @@ from aeolus.filtering import make_mask, combine_mask
 
 AUX_ISR_LOCATIONS = {
     'freq_mie_USR_closest_to_rayleigh_filter_centre':       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Mie_USR_Closest_to_Rayleigh_Filter_Centre'],
-    'frequency_Rayleigh_filter_centre':                     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Rayleigh_Filter_Centre'],
+    'frequency_rayleigh_filter_centre':                     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Rayleigh_Filter_Centre'],
     'num_of_valid_mie_results':                             ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_ISR_Results/ISR_Result', -1, 'Data_Stat/Num_Mie_Used'],
     'num_of_valid_rayleigh_results':                        ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_ISR_Results/ISR_Result', -1, 'Data_Stat/Num_Rayleigh_Used'],
     'laser_frequency_offset':                               ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_ISR_Results/ISR_Result', -1, 'Laser_Freq_Offset'],
@@ -74,7 +74,7 @@ AUX_ISR_LOCATIONS = {
 
 AUX_ISR_CALIBRATION_FIELDS = set([
     'freq_mie_USR_closest_to_rayleigh_filter_centre',
-    'frequency_Rayleigh_filter_centre',
+    'frequency_rayleigh_filter_centre',
 ])
 
 AUX_ISR_SCALAR_FIELDS = set([
