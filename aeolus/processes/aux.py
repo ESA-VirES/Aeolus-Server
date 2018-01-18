@@ -121,10 +121,7 @@ class Level1BAUXExctract(Component):
 
             db_filters['ground_path__intersects'] = box
 
-        data_filters = dict(
-            time={'min': begin_time, 'max': end_time},
-            **(filters or {})
-        )
+        data_filters = filters or {}
 
         output = {}
         for collection in collections:
@@ -134,7 +131,7 @@ class Level1BAUXExctract(Component):
                 for product in models.Product.objects.filter(
                     collections=collection,
                     **db_filters
-                )
+                ).order_by('begin_time')
             ]
             output[collection.identifier] = extract_data(
                 dbl_files, data_filters, fields, aux_type
