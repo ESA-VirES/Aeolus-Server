@@ -387,34 +387,77 @@ AUX_ZWC_LOCATIONS = {
 
 
 AUX_ZWC_CALIBRATION_FIELDS = set([
+    'lat_of_DEM_intersection',
+    'lon_of_DEM_intersection',
+    'roll_angle',
+    'pitch_angle',
+    'yaw_angle',
+    'ZWC_result_type',
+    'mie_ground_correction_velocity',
+    'rayleigh_ground_correction_velocity',
+    'num_of_mie_ground_bins',
+    'mie_avg_ground_echo_bin_thickness',
+    'rayleigh_avg_ground_echo_bin_thickness',
+    'mie_avg_ground_echo_bin_thickness_above_DEM',
+    'rayleigh_avg_ground_echo_bin_thickness_above_DEM',
+    'mie_top_ground_bin_obs',
+    'rayleigh_top_ground_bin_obs',
+    'mie_bottom_ground_bin_obs',
+    'rayleigh_bottom_ground_bin_obs',
+])
 
+AUX_ZWC_CALIBRATION_ARRAY_FIELDS = set([
+    'mie_range',
+    'rayleigh_range',
+    'DEM_height',
 ])
 
 AUX_ZWC_SCALAR_FIELDS = set([
-
-
+    'mie_measurements_used',
+    'mie_top_ground_bin_meas',
+    'mie_bottom_ground_bin_meas',
+    'mie_DEM_ground_bin',
+    'mie_height_difference_top_to_DEM_ground_bin',
+    'mie_ground_bin_SNR_meas',
+    'rayleigh_measurements_used',
+    'rayleigh_top_ground_bin_meas',
+    'rayleigh_bottom_ground_bin_meas',
+    'rayleigh_DEM_ground_bin',
+    'rayleigh_height_difference_top_to_DEM_ground_bin',
+    'rayleigh_channel_A_ground_SNR_meas',
+    'rayleigh_channel_B_ground_SNR_meas',
 ])
 
-AUX_ZWC_ARRAY_FIELDS = set([
+AUX_ZWC_ARRAY_FIELDS = set([])
 
-
-])
 
 TYPE_TO_FIELDS = {
     'ISR': (
-        AUX_ISR_LOCATIONS, AUX_ISR_CALIBRATION_FIELDS, AUX_ISR_SCALAR_FIELDS,
+        AUX_ISR_LOCATIONS,
+        AUX_ISR_CALIBRATION_FIELDS,
+        set([]),
+        AUX_ISR_SCALAR_FIELDS,
         AUX_ISR_ARRAY_FIELDS
     ),
     'MRC': (
-        AUX_MRC_LOCATIONS, AUX_MRC_CALIBRATION_FIELDS, AUX_MRC_SCALAR_FIELDS,
+        AUX_MRC_LOCATIONS,
+        AUX_MRC_CALIBRATION_FIELDS,
+        set([]),
+        AUX_MRC_SCALAR_FIELDS,
         AUX_MRC_ARRAY_FIELDS
     ),
     'RRC': (
-        AUX_RRC_LOCATIONS, AUX_RRC_CALIBRATION_FIELDS, AUX_RRC_SCALAR_FIELDS,
+        AUX_RRC_LOCATIONS,
+        AUX_RRC_CALIBRATION_FIELDS,
+        set([]),
+        AUX_RRC_SCALAR_FIELDS,
         AUX_RRC_ARRAY_FIELDS
     ),
     'ZWC': (
-        AUX_ZWC_LOCATIONS, AUX_ZWC_CALIBRATION_FIELDS, AUX_ZWC_SCALAR_FIELDS,
+        AUX_ZWC_LOCATIONS,
+        AUX_ZWC_CALIBRATION_FIELDS,
+        AUX_ZWC_CALIBRATION_ARRAY_FIELDS,
+        AUX_ZWC_SCALAR_FIELDS,
         AUX_ZWC_ARRAY_FIELDS
     ),
 }
@@ -488,32 +531,32 @@ def extract_data(filenames, filters, fields, aux_type):
     filenames = [filenames] if isinstance(filenames, basestring) else filenames
     data = defaultdict(list)
 
-    locations, calibration_fields, scalar_fields, array_fields = TYPE_TO_FIELDS[
+    locations, calibration_fields, calibration_array_fields, scalar_fields, array_fields = TYPE_TO_FIELDS[
         aux_type
     ]
 
     calibration_filters = {
         name: filter_value
         for name, filter_value in filters.items()
-        if name in calibration_fields
+        if name in calibration_fields or name in calibration_array_fields
     }
 
     frequency_filters = {
         name: filter_value
         for name, filter_value in filters.items()
-        if name not in calibration_fields
+        if calibration_filters
     }
 
     requested_calibration_fields = [
         field
         for field in fields
-        if field in calibration_fields
+        if field in calibration_fields or field in calibration_array_fields
     ]
 
     requested_frequency_fields = [
         field
         for field in fields
-        if field not in calibration_fields
+        if field not in requested_calibration_fields
     ]
 
     for filename in filenames:
@@ -526,7 +569,7 @@ def extract_data(filenames, filters, fields, aux_type):
                 new_mask = make_mask(
                     cf.fetch(*path),
                     filter_value.get('min'), filter_value.get('max'),
-                    # TODO: calibration array fields??
+                    field in calibration_array_fields
                 )
                 calibration_mask = combine_mask(new_mask, calibration_mask)
 
