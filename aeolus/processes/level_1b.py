@@ -119,17 +119,24 @@ class Level1BExctract(Component):
             end_time__gte=begin_time,
         )
 
-        if bbox:
-            box = Polygon.from_bbox(
-                (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
-            )
-
-            db_filters['ground_path__intersects'] = box
-
         data_filters = dict(
             time={'min': begin_time, 'max': end_time},
             **(filters or {})
         )
+
+        if bbox:
+            tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
+            box = Polygon.from_bbox(tpl_box)
+
+            db_filters['ground_path__intersects'] = box
+            data_filters['longitude_of_DEM_intersection'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2]
+            }
+            data_filters['latitude_of_DEM_intersection'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3]
+            }
 
         output = {}
         for collection in collections:
