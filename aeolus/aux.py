@@ -36,6 +36,10 @@ from aeolus.coda_utils import CODAFile
 from aeolus.filtering import make_mask, combine_mask
 
 
+# ------------------------------------------------------------------------------
+# AUX ISR
+# ------------------------------------------------------------------------------
+
 AUX_ISR_LOCATIONS = {
     'freq_mie_USR_closest_to_rayleigh_filter_centre':       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Mie_USR_Closest_to_Rayleigh_Filter_Centre'],
     'frequency_rayleigh_filter_centre':                     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Rayleigh_Filter_Centre'],
@@ -111,7 +115,96 @@ AUX_ISR_SCALAR_FIELDS = set([
     'rayleigh_optical_baseplate_avg_temperature',
 ])
 
-AUX_ISR_ARRAY_FIELDS = set([])
+
+# ------------------------------------------------------------------------------
+# AUX MET
+# ------------------------------------------------------------------------------
+
+AUX_MET_LOCATIONS = {
+    'time_off_nadir':                               ['/geo_off_nadir', -1, 'amd_datetime'],
+    'time_nadir':                                   ['/geo_nadir', -1, 'amd_datetime'],
+    'latitude_off_nadir':                           ['/geo_off_nadir', -1, 'amd_latitude'],
+    'latitude_nadir':                               ['/geo_nadir', -1, 'amd_latitude'],
+    'longitude_off_nadir':                          ['/geo_off_nadir', -1, 'amd_longitude'],
+    'longitude_nadir':                              ['/geo_nadir', -1, 'amd_longitude'],
+    'surface_wind_component_u_off_nadir':           ['/met_off_nadir', -1, 'amd_us'],
+    'surface_wind_component_u_nadir':               ['/met_nadir', -1, 'amd_us'],
+    'surface_wind_component_v_off_nadir':           ['/met_off_nadir', -1, 'amd_vs'],
+    'surface_wind_component_v_nadir':               ['/met_nadir', -1, 'amd_vs'],
+    'surface_pressure_off_nadir':                   ['/met_off_nadir', -1, 'amd_ps'],
+    'surface_pressure_nadir':                       ['/met_nadir', -1, 'amd_ps'],
+    'surface_altitude_off_nadir':                   ['/met_off_nadir', -1, 'amd_zs'],
+    'surface_altitude_nadir':                       ['/met_nadir', -1, 'amd_zs'],
+    'layer_validity_flag_off_nadir':                ['/met_off_nadir', -1, 'profile_data', -1, 'amd_validity_flag'],
+    'layer_validity_flag_nadir':                    ['/met_nadir', -1, 'profile_data', -1, 'amd_validity_flag'],
+    'layer_pressure_off_nadir':                     ['/met_off_nadir', -1, 'profile_data', -1, 'amd_pnom'],
+    'layer_pressure_nadir':                         ['/met_nadir', -1, 'profile_data', -1, 'amd_pnom'],
+    'layer_altitude_off_nadir':                     ['/met_off_nadir', -1, 'profile_data', -1, 'amd_znom'],
+    'layer_altitude_nadir':                         ['/met_nadir', -1, 'profile_data', -1, 'amd_znom'],
+    'layer_temperature_off_nadir':                  ['/met_off_nadir', -1, 'profile_data', -1, 'amd_t'],
+    'layer_temperature_nadir':                      ['/met_nadir', -1, 'profile_data', -1, 'amd_t'],
+    'layer_wind_component_u_off_nadir':             ['/met_off_nadir', -1, 'profile_data', -1, 'amd_u'],
+    'layer_wind_component_u_nadir':                 ['/met_nadir', -1, 'profile_data', -1, 'amd_u'],
+    'layer_wind_component_v_off_nadir':             ['/met_off_nadir', -1, 'profile_data', -1, 'amd_v'],
+    'layer_wind_component_v_nadir':                 ['/met_nadir', -1, 'profile_data', -1, 'amd_v'],
+    'layer_rel_humidity_off_nadir':                 ['/met_off_nadir', -1, 'profile_data', -1, 'amd_rh'],
+    'layer_rel_humidity_nadir':                     ['/met_nadir', -1, 'profile_data', -1, 'amd_rh'],
+    'layer_spec_humidity_off_nadir':                ['/met_off_nadir', -1, 'profile_data', -1, 'amd_q'],
+    'layer_spec_humidity_nadir':                    ['/met_nadir', -1, 'profile_data', -1, 'amd_q'],
+    'layer_cloud_cover_off_nadir':                  ['/met_off_nadir', -1, 'profile_data', -1, 'amd_cc'],
+    'layer_cloud_cover_nadir':                      ['/met_nadir', -1, 'profile_data', -1, 'amd_cc'],
+    'layer_cloud_liquid_water_content_off_nadir':   ['/met_off_nadir', -1, 'profile_data', -1, 'amd_clwc'],
+    'layer_cloud_liquid_water_content_nadir':       ['/met_nadir', -1, 'profile_data', -1, 'amd_clwc'],
+    'layer_cloud_ice_water_content_off_nadir':      ['/met_off_nadir', -1, 'profile_data', -1, 'amd_ciwc'],
+    'layer_cloud_ice_water_content_nadir':          ['/met_nadir', -1, 'profile_data', -1, 'amd_ciwc'],
+}
+
+AUX_MET_CALIBRATION_FIELDS = set([
+    'time_off_nadir',
+    'time_nadir',
+    'latitude_off_nadir',
+    'latitude_nadir',
+    'longitude_off_nadir',
+    'longitude_nadir',
+    'surface_wind_component_u_off_nadir',
+    'surface_wind_component_u_nadir',
+    'surface_wind_component_v_off_nadir',
+    'surface_wind_component_v_nadir',
+    'surface_pressure_off_nadir',
+    'surface_pressure_nadir',
+    'surface_altitude_off_nadir',
+    'surface_altitude_nadir',
+])
+
+AUX_MET_CALIBRATION_ARRAY_FIELDS = set([
+    'layer_validity_flag_off_nadir',
+    'layer_validity_flag_nadir',
+    'layer_pressure_off_nadir',
+    'layer_pressure_nadir',
+    'layer_altitude_off_nadir',
+    'layer_altitude_nadir',
+    'layer_temperature_off_nadir',
+    'layer_temperature_nadir',
+    'layer_wind_component_u_off_nadir',
+    'layer_wind_component_u_nadir',
+    'layer_wind_component_v_off_nadir',
+    'layer_wind_component_v_nadir',
+    'layer_rel_humidity_off_nadir',
+    'layer_rel_humidity_nadir',
+    'layer_spec_humidity_off_nadir',
+    'layer_spec_humidity_nadir',
+    'layer_cloud_cover_off_nadir',
+    'layer_cloud_cover_nadir',
+    'layer_cloud_liquid_water_content_off_nadir',
+    'layer_cloud_liquid_water_content_nadir',
+    'layer_cloud_ice_water_content_off_nadir',
+    'layer_cloud_ice_water_content_nadir',
+])
+
+
+# ------------------------------------------------------------------------------
+# AUX MET
+# ------------------------------------------------------------------------------
 
 AUX_MRC_LOCATIONS = {
     'lat_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Geolocations/Frequency_Step_Geolocation', -1, 'Latitude_of_DEM_Intersection'],
@@ -209,6 +302,11 @@ AUX_MRC_ARRAY_FIELDS = set([
     'normalised_useful_signal',
     'mie_scattering_ratio',
 ])
+
+
+# ------------------------------------------------------------------------------
+# AUX RRC
+# ------------------------------------------------------------------------------
 
 AUX_RRC_LOCATIONS = {
     'lat_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_RRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Geolocations/Frequency_Step_Geolocation', -1, 'Latitude_of_DEM_Intersection'],
@@ -349,6 +447,11 @@ AUX_RRC_ARRAY_FIELDS = set([
     'normalised_useful_signal',
 ])
 
+
+# ------------------------------------------------------------------------------
+# AUX ZWC
+# ------------------------------------------------------------------------------
+
 AUX_ZWC_LOCATIONS = {
     'lat_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Observation_Info/Latitude_of_DEM_Intersection'],
     'lon_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Observation_Info/Longitude_of_DEM_Intersection'],
@@ -428,8 +531,6 @@ AUX_ZWC_SCALAR_FIELDS = set([
     'rayleigh_channel_B_ground_SNR_meas',
 ])
 
-AUX_ZWC_ARRAY_FIELDS = set([])
-
 
 TYPE_TO_FIELDS = {
     'ISR': (
@@ -437,7 +538,14 @@ TYPE_TO_FIELDS = {
         AUX_ISR_CALIBRATION_FIELDS,
         set([]),
         AUX_ISR_SCALAR_FIELDS,
-        AUX_ISR_ARRAY_FIELDS
+        set([])
+    ),
+    'MET': (
+        AUX_MET_LOCATIONS,
+        AUX_MET_CALIBRATION_FIELDS,
+        AUX_MET_CALIBRATION_ARRAY_FIELDS,
+        set([]),
+        set([])
     ),
     'MRC': (
         AUX_MRC_LOCATIONS,
@@ -458,7 +566,7 @@ TYPE_TO_FIELDS = {
         AUX_ZWC_CALIBRATION_FIELDS,
         AUX_ZWC_CALIBRATION_ARRAY_FIELDS,
         AUX_ZWC_SCALAR_FIELDS,
-        AUX_ZWC_ARRAY_FIELDS
+        set([])
     ),
 }
 
@@ -468,11 +576,15 @@ AUX_FILE_TYPE_PATH = (
 
 
 def fetch_ground_points(codafile, product_type=None):
-    product_type = product_type or codafile.fetch(AUX_FILE_TYPE_PATH)[:7]
+    product_type = product_type or codafile.product_type[:7]
 
-    assert product_type in ('AUX_ISR', 'AUX_MRC', 'AUX_RRC', 'AUX_ZWC')
+    assert product_type in (
+        'AUX_ISR', 'AUX_MRC', 'AUX_RRC', 'AUX_ZWC', 'AUX_MET'
+    )
     if product_type == 'AUX_ISR':
         return None
+    elif product_type == 'AUX_MET':
+        locations = AUX_MET_LOCATIONS
     elif product_type == 'AUX_MRC':
         locations = AUX_MRC_LOCATIONS
     elif product_type == 'AUX_RRC':
@@ -491,6 +603,27 @@ def fetch_ground_points(codafile, product_type=None):
                     codafile.fetch(*locations['lat_of_DEM_intersection'])
                 )
             )
+        ]
+
+    elif product_type == 'AUX_MET':
+        items = sorted(zip(
+            # np.concatenate(
+                list(codafile.fetch(*locations['time_off_nadir'])) +
+                list(codafile.fetch(*locations['time_nadir'])),
+            # ),
+            # np.concatenate(
+                list(codafile.fetch(*locations['latitude_off_nadir'])) +
+                list(codafile.fetch(*locations['latitude_nadir'])),
+            # ),
+            # np.concatenate(
+                list(codafile.fetch(*locations['latitude_off_nadir'])) +
+                list(codafile.fetch(*locations['latitude_nadir'])),
+            # ),
+        ), key=lambda i: i[0])
+
+        return [
+            (lon if lon < 180 else lon - 360, lat)
+            for _, lon, lat in items
         ]
 
     else:
@@ -639,35 +772,35 @@ test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.E
 def main():
     from pprint import pprint
 
-    # data = extract_data('/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF', {
-    #     'freq_mie_USR_closest_to_rayleigh_filter_centre': {
-    #         'max': 1,
-    #     },
-    #     'mie_response': {
-    #         'min': 10,
-    #         'max': 12,
-    #     }
-    # }, [
-    #     'mie_response',
-    #     'freq_mie_USR_closest_to_rayleigh_filter_centre',
-    # ], 'ISR')
+    data = extract_data('/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF', {
+        # 'freq_mie_USR_closest_to_rayleigh_filter_centre': {
+        #     'max': 1,
+        # },
+        # 'mie_response': {
+        #     'min': 10,
+        #     'max': 12,
+        # }
+    }, [
+        'mie_valid',
+        # 'freq_mie_USR_closest_to_rayleigh_filter_centre',
+    ], 'ISR')
 
-    data = extract_data(
-        '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF',
-        {
-            'lat_of_DEM_intersection': {
-                'max': 0,
-            },
-            'altitude': {
-                'min': 25000,
-                # 'max': 12,
-            }
-        }, [
-            'measurement_mean_sensitivity',
-            'lat_of_DEM_intersection',
-            'altitude',
-        ], 'MRC'
-    )
+    # data = extract_data(
+    #     '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF',
+    #     {
+    #         'lat_of_DEM_intersection': {
+    #             'max': 0,
+    #         },
+    #         'altitude': {
+    #             'min': 25000,
+    #             # 'max': 12,
+    #         }
+    #     }, [
+    #         'measurement_mean_sensitivity',
+    #         'lat_of_DEM_intersection',
+    #         'altitude',
+    #     ], 'MRC'
+    # )
 
     pprint(dict(data))
 

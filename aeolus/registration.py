@@ -144,28 +144,39 @@ def get_eef_metadata(codafile):
             Polygon.from_bbox([-180, -90, 180, 90])
         )
 
-    return {
-        "identifier": codafile.fetch(
-            '/Earth_Explorer_File/Earth_Explorer_Header/Variable_Header'
-            '/Main_Product_Header/Product'
-        ),
-        "begin_time": codafile.fetch_date(
-            '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
-            '/Validity_Period/Validity_Start'
-        ),
-        "end_time": codafile.fetch_date(
-            '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
-            '/Validity_Period/Validity_Stop'
-        ),
-        "footprint": footprint,
-        "ground_path": ground_path,
+    if codafile.product_type[:7] == 'AUX_MET':
+        metadata = {
+            "identifier": codafile.fetch('/mph/product'),
+            "begin_time": codafile.fetch_date('/mph/sensing_start'),
+            "end_time": codafile.fetch_date('/mph/sensing_stop'),
+        }
+    else:
+        metadata = {
+            "identifier": codafile.fetch(
+                '/Earth_Explorer_File/Earth_Explorer_Header/Variable_Header'
+                '/Main_Product_Header/Product'
+            ),
+            "begin_time": codafile.fetch_date(
+                '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
+                '/Validity_Period/Validity_Start'
+            ),
+            "end_time": codafile.fetch_date(
+                '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
+                '/Validity_Period/Validity_Stop'
+            ),
+        }
 
-        "format": "EEF",
-        "size_x": 1,
-        "size_y": 1,
+    return dict(
+        footprint=footprint,
+        ground_path=ground_path,
 
-        "range_type_name": codafile.product_type,
-    }
+        format="EEF",
+        size_x=1,
+        size_y=1,
+
+        range_type_name=codafile.product_type,
+        **metadata
+    )
 
 
 def register_product(filename, overrides):
