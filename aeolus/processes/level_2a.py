@@ -86,6 +86,11 @@ class Level2AExctract(Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
+        ("group_fields", LiteralData(
+            'group_fields', str, optional=True, default=None,
+            title="Data variables",
+            abstract="Comma-separated list of the extracted data variables."
+        )),
     ]
 
     outputs = [
@@ -107,6 +112,11 @@ class Level2AExctract(Component):
             measurement_fields = kwargs['measurement_fields'].split(',')
         else:
             measurement_fields = []
+
+        if kwargs['group_fields']:
+            group_fields = kwargs['group_fields'].split(',')
+        else:
+            group_fields = []
 
         # TODO: optimize this to make this in a single query
         collections = [
@@ -152,7 +162,7 @@ class Level2AExctract(Component):
             ]
             output[collection.identifier] = extract_data(
                 dbl_files, data_filters,
-                observation_fields, measurement_fields,
+                observation_fields, measurement_fields, group_fields,
                 simple_observation_filters=True,
                 convert_arrays=True
             )
