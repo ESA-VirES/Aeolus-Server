@@ -236,32 +236,6 @@ ARRAY_FIELDS = set([
 ])
 
 
-# def extract_data(filenames, observation_fields, measurement_fields,
-#                  group_fields):
-#     filenames = [filenames] if isinstance(filenames, basestring) else filenames
-
-#     out_observation_data = defaultdict(list)
-#     out_measurement_data = defaultdict(list)
-#     out_group_data = defaultdict(list)
-
-#     for cf in [CODAFile(filename) for filename in filenames]:
-#         with cf:
-#             for observation_field in observation_fields:
-#                 path = OBSERVATION_LOCATIONS[observation_field]
-#                 print cf.fetch(*path).shape, cf.fetch(*path).dtype
-
-#             for measurement_field in measurement_fields:
-#                 path = MEASUREMENT_LOCATIONS[measurement_field]
-#                 print cf.fetch(*path).shape, cf.fetch(*path).dtype
-
-#             for group_field in group_fields:
-#                 path = GROUP_LOCATIONS[group_field]
-
-#                 print cf.fetch('/scene_classification')
-
-#                 # cf.fetch(*path)
-
-
 def _array_to_list(data):
     if isinstance(data, np.ndarray):
         isobject = data.dtype == np.object
@@ -274,24 +248,46 @@ def _array_to_list(data):
 
 
 def extract_data(filenames, filters, observation_fields, measurement_fields,
-                 simple_observation_filters=False, convert_arrays=False):
+                 group_fields, simple_observation_filters=False,
+                 convert_arrays=False):
     """ Extract the data from the given filename(s) and apply the given filters.
     """
     filenames = [filenames] if isinstance(filenames, basestring) else filenames
 
     out_observation_data = defaultdict(list)
     out_measurement_data = defaultdict(list)
+    out_group_data = defaultdict(list)
+
+    for field_name, filter_value in filters.items():
+        assert (
+            field_name in OBSERVATION_LOCATIONS or
+            field_name in MEASUREMENT_LOCATIONS or
+            field_name in GROUP_LOCATIONS
+        )
+
+    observation_filters = {
+        name: value
+        for name, value in filters.items()
+        if name in OBSERVATION_LOCATIONS
+    }
+
+    measurement_filters = {
+        name: value
+        for name, value in filters.items()
+        if name in MEASUREMENT_LOCATIONS
+    }
+
+    group_filters = {
+        name: value
+        for name, value in filters.items()
+        if name in GROUP_LOCATIONS
+    }
 
     for cf in [CODAFile(filename) for filename in filenames]:
         with cf:
             # create a mask for observation data
             observation_mask = None
-            for field_name, filter_value in filters.items():
-                assert (
-                    field_name in OBSERVATION_LOCATIONS or
-                    field_name in MEASUREMENT_LOCATIONS
-                )
-
+            for field_name, filter_value in observation_filters.items():
                 data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
                 new_mask = make_mask(
                     data, filter_value.get('min'), filter_value.get('max'),
@@ -331,12 +327,43 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
             out_measurement_data.update(
                 _read_measurements(
-                    cf, measurement_fields, filters, observation_iterator,
+                    cf, measurement_fields, measurement_filters,
+                    observation_iterator,
                     convert_arrays
                 )
             )
 
-    return out_observation_data, out_measurement_data
+            # Handle "groups", by building a group mask for all filters related
+            # to groups
+            group_mask = None
+            for field_name, filter_value in group_filters.items():
+                data = cf.fetch(*GROUP_LOCATIONS[field_name])
+                new_mask = make_mask(
+                    data, filter_value.get('min'), filter_value.get('max'),
+                    field_name in ARRAY_FIELDS
+                )
+
+                group_mask = combine_mask(new_mask, group_mask)
+
+            if group_mask is not None:
+                filtered_group_ids = np.nonzero(group_mask)
+            else:
+                filtered_group_ids = None
+
+            # fetch the requested observation fields, filter accordingly and
+            # write to the output dict
+            for field_name in group_fields:
+                assert field_name in GROUP_LOCATIONS
+                data = cf.fetch(*GROUP_LOCATIONS[field_name])
+                if filtered_group_ids is not None:
+                    data = data[filtered_group_ids]
+
+                # convert to simple list instead of numpy array if requested
+                if convert_arrays and isinstance(data, np.ndarray):
+                    data = _array_to_list(data)
+                out_group_data[field_name].extend(data)
+
+    return out_observation_data, out_measurement_data, out_group_data
 
 
 def _read_measurements(cf, measurement_fields, filters, observation_ids,
@@ -388,15 +415,32 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
 
 
 
-test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
+# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
 
+
+# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
+
+test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_001188000_017071_0001.DBL'
 
 def main():
+    #print
     extract_data(
         test_file,
-        ['L1B_start_time_obs'],
-        ['longitude_of_DEM_intersection_meas'],
-        ['group_LOD_variance'],
+        filters={
+            'group_LOD_variance': {
+                'min': 0.0,
+                'max':  0.3
+            }
+        },
+        observation_fields=[
+            # 'L1B_start_time_obs'
+        ],
+        measurement_fields=[
+            # 'longitude_of_DEM_intersection_meas'
+        ],
+        group_fields=[
+            'group_LOD_variance'
+        ],
     )
 
 if __name__ == '__main__':
