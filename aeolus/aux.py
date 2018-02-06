@@ -203,7 +203,7 @@ AUX_MET_CALIBRATION_ARRAY_FIELDS = set([
 
 
 # ------------------------------------------------------------------------------
-# AUX MET
+# AUX MRC
 # ------------------------------------------------------------------------------
 
 AUX_MRC_LOCATIONS = {
@@ -712,6 +712,9 @@ def extract_data(filenames, filters, fields, aux_type):
             if calibration_mask is not None:
                 calibration_nonzero_ids = np.nonzero(calibration_mask)
                 calibration_ids = calibration_nonzero_ids[0]
+
+            elif aux_type == 'MET':
+                num_calibrations = cf.get_size('/geo_nadir')[0]
             else:
                 num_calibrations = cf.get_size(
                     '/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_%s/'
