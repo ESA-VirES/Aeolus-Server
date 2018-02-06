@@ -715,6 +715,7 @@ def extract_data(filenames, filters, fields, aux_type):
 
             elif aux_type == 'MET':
                 num_calibrations = cf.get_size('/geo_nadir')[0]
+                calibration_ids = range(num_calibrations)
             else:
                 num_calibrations = cf.get_size(
                     '/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_%s/'
