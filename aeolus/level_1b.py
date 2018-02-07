@@ -207,15 +207,16 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
     out_observation_data = defaultdict(list)
     out_measurement_data = defaultdict(list)
 
+    for filter_name in filters:
+        if filter_name not in OBSERVATION_LOCATIONS  \
+                and filter_name not in MEASUREMENT_LOCATIONS:
+            raise KeyError("No such field '%s'" % filter_name)
+
     for cf in [CODAFile(filename) for filename in filenames]:
         with cf:
             # create a mask for observation data
             observation_mask = None
             for field_name, filter_value in filters.items():
-                assert (
-                    field_name in OBSERVATION_LOCATIONS or
-                    field_name in MEASUREMENT_LOCATIONS
-                )
 
                 data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
                 new_mask = _make_mask(
@@ -254,41 +255,62 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                     cf.get_size('/geolocation')[0]
                 )
 
-            # iterate all (or selected) observations
-            for observation_id in observation_iterator:
-                # build a measurement bitmask:
-                # loop over all filter fields, fetch the filter field data and
-                # perform the filter.
-                measurement_mask = None
-                for field_name, filter_value in filters.items():
-                    # only apply filters for measurement fields
-                    if field_name not in MEASUREMENT_LOCATIONS:
-                        continue
-
-                    path = MEASUREMENT_LOCATIONS[field_name]
-                    data = cf.fetch(path[0], int(observation_id), *path[2:])
-
-                    new_mask = _make_mask(
-                        data, filter_value.get('min'), filter_value.get('max'),
-                        field_name in ARRAY_FIELDS
-                    )
-
-                    # combine the masks
-                    measurement_mask = _combine_mask(new_mask, measurement_mask)
-
-                filtered_measurement_ids = np.nonzero(measurement_mask)
-                for field_name in measurement_fields:
-                    path = MEASUREMENT_LOCATIONS[field_name]
-                    data = cf.fetch(path[0], int(observation_id), *path[2:])
-                    data = data[filtered_measurement_ids]
-                    # convert to simple list instead of numpy array if requested
-                    if convert_arrays and isinstance(data, np.ndarray):
-                        data = _array_to_list(data)
-
-                    out_measurement_data[field_name].append(data)
+            out_measurement_data.update(
+                _read_measurements(
+                    cf, measurement_fields, filters, observation_iterator,
+                    convert_arrays
+                )
+            )
 
     return out_observation_data, out_measurement_data
 
+
+def _read_measurements(cf, measurement_fields, filters, observation_ids,
+                       convert_arrays):
+
+    out_measurement_data = defaultdict(list)
+
+    # iterate all (or selected) observations
+    for observation_id in observation_ids:
+        # build a measurement bitmask:
+        # loop over all filter fields, fetch the filter field data and
+        # perform the filter.
+        measurement_mask = None
+        for field_name, filter_value in filters.items():
+            # only apply filters for measurement fields
+            if field_name not in MEASUREMENT_LOCATIONS:
+                continue
+
+            path = MEASUREMENT_LOCATIONS[field_name]
+            data = cf.fetch(path[0], int(observation_id), *path[2:])
+
+            new_mask = _make_mask(
+                data, filter_value.get('min'), filter_value.get('max'),
+                field_name in ARRAY_FIELDS
+            )
+
+            # combine the masks
+            measurement_mask = _combine_mask(new_mask, measurement_mask)
+
+        filtered_measurement_ids = None
+        if measurement_mask is not None:
+            filtered_measurement_ids = np.nonzero(measurement_mask)
+            if measurement_mask.shape == filtered_measurement_ids[0].shape:
+                filtered_measurement_ids = None
+
+        for field_name in measurement_fields:
+            path = MEASUREMENT_LOCATIONS[field_name]
+            data = cf.fetch(path[0], int(observation_id), *path[2:])
+
+            if filtered_measurement_ids:
+                data = data[filtered_measurement_ids]
+            # convert to simple list instead of numpy array if requested
+            if convert_arrays and isinstance(data, np.ndarray):
+                data = _array_to_list(data)
+
+            out_measurement_data[field_name].append(data)
+
+    return out_measurement_data
 
 
 
@@ -298,23 +320,72 @@ test_file = '/mnt/data/AE_OPER_ALD_U_N_1B_20151001T104454059_005379000_046330_00
 
 
 def main():
-    pass
     from pprint import pprint
-    pprint(
-        extract_data(test_file, {
-            'time': {
-                'min': datetime(2015, 10, 01, 10, 44, 54),
-                'max': datetime(2015, 10, 01, 10, 45, 0),
-                # datetime(2015, 10, 01, 10, 50, 54)
-            },
-            'mie_longitude': {'min': 100, 'max': 120},
-        }, [
-            'mie_range', 'longitude_of_DEM_intersection'
-        ], [
-            #'rayleigh_channel_A_SNR'
-        ], True, convert_arrays=True)
-    )
+    import contextlib
+    import time
 
+
+    @contextlib.contextmanager
+    def timed(name):
+        start = time.time()
+        yield
+        print str(int((time.time() - start) * 1000)) + 'ms', name
+
+    # extract_data(test_file, {
+    #     'time': {
+    #         'min': datetime(2015, 10, 01, 10, 44, 54),
+    #         'max': datetime(2015, 10, 01, 10, 45, 0),
+    #         # datetime(2015, 10, 01, 10, 50, 54)
+    #     },
+    #     'mie_longitude': {'min': 100, 'max': 120},
+    # }, [
+    #     'mie_range', 'longitude_of_DEM_intersection'
+    # ], [
+    #     #'rayleigh_channel_A_SNR'
+    # ], True, convert_arrays=True)
+
+    # data = extract_data(test_file, {
+    #         'time': {
+    #             'min': datetime(2015, 10, 01, 10, 44, 18),
+    #             'max': datetime(2015, 10, 01, 12, 13, 57),
+    #             # datetime(2015, 10, 01, 10, 50, 54)
+    #         },
+    #     }, [
+    #         # 'mie_range', 'longitude_of_DEM_intersection'
+    #     ], [
+    #         'time' ,'mie_HLOS_wind_speed' ,'mie_latitude' ,'mie_altitude' ,'mie_bin_quality_flag'
+    #     ], True, convert_arrays=True
+    # )
+    # # pprint(data)
+
+
+
+    f = CODAFile(test_file)
+    # data = f.fetch('/wind_velocity', -1, 'observation_wind_profile/mie_altitude_bin_wind_info', -1, 'bin_quality_flag')
+    # print data.dtype, data.shape
+
+    data = f.fetch(*OBSERVATION_LOCATIONS['longitude_of_DEM_intersection']);
+    print min(data), max(data)
+
+
+    # with timed('all'):
+    #     data = np.hstack(f.fetch('/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'wind_velocity'))
+    #     print data.shape
+
+    # with timed('iteratively'):
+    #     data = np.array([
+    #         f.fetch('/wind_velocity', i, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'wind_velocity')
+    #         for i in range(449)
+    #     ])
+    #     print data.shape
+
+
+        #f.fetch('/geolocation[1:3]/measurement_aocs', -1, 'measurement_centroid_time')
+
+
+        # for field in ['time', 'mie_HLOS_wind_speed', 'mie_latitude', 'mie_altitude', 'mie_bin_quality_flag']:
+        #     with timed(field):
+        #         f.fetch(*MEASUREMENT_LOCATIONS[field])
 
 
     # from aeolus.coda_utils import CODAFile, datetime_to_coda_time
@@ -343,3 +414,5 @@ def main():
     #     if name not in ARRAY_FIELDS:
     #         print name, data
     #     else: print name, data
+
+main()
