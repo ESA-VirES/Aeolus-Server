@@ -121,7 +121,7 @@ class Level1BAUXExctract(Component):
 
             db_filters['ground_path__intersects'] = box
 
-        data_filters = filters.data or {}
+        data_filters = filters.data if filters else {}
 
         output = {}
         for collection in collections:

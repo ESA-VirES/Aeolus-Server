@@ -121,7 +121,7 @@ class Level1BExctract(Component):
 
         data_filters = dict(
             time={'min': begin_time, 'max': end_time},
-            **(filters.data or {})
+            **(filters.data if filters else {})
         )
 
         if bbox:
