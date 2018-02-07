@@ -121,10 +121,12 @@ class Level1BExctract(Component):
 
         data_filters = dict(
             time={'min': begin_time, 'max': end_time},
-            **(filters or {})
+            **(filters.data or {})
         )
 
         if bbox:
+            # TODO: assure that bbox is within -180,-90,180,90
+            # TODO: when minlon > maxlon, make 2 bboxes
             tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             box = Polygon.from_bbox(tpl_box)
 
