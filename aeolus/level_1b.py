@@ -207,10 +207,20 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
     out_observation_data = defaultdict(list)
     out_measurement_data = defaultdict(list)
 
+    # check that filters are correct
     for filter_name in filters:
         if filter_name not in OBSERVATION_LOCATIONS  \
                 and filter_name not in MEASUREMENT_LOCATIONS:
             raise KeyError("No such field '%s'" % filter_name)
+
+    # check validity of observation/measurement fields
+    for observation_field in observation_fields:
+        if observation_field not in OBSERVATION_LOCATIONS:
+            raise KeyError("No such observation field '%s'" % observation_field)
+
+    for measurement_field in measurement_fields:
+        if measurement_field not in MEASUREMENT_LOCATIONS:
+            raise KeyError("No such measurement field '%s'" % measurement_field)
 
     for cf in [CODAFile(filename) for filename in filenames]:
         with cf:
