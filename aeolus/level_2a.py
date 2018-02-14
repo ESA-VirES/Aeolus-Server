@@ -136,13 +136,25 @@ def calculate_rayleigh_altitude_obs(cf):
 def calculate_group_end_time(cf):
     """ use last measurement/observation end time
     """
-    pass
+    # print cf.fetch(*GROUP_LOCATIONS['group_start_obs'])
+    # print cf.fetch(*GROUP_LOCATIONS['group_start_meas_obs'])
+
+    end_obs = cf.fetch(*GROUP_LOCATIONS['group_end_obs']) - 1
+    end_meas = cf.fetch(*GROUP_LOCATIONS['group_end_meas_obs']) - 1
+
+    measurement_times = np.stack(
+        cf.fetch(*MEASUREMENT_LOCATIONS['L1B_time_meas'])
+    )
+    return measurement_times[(end_obs, end_meas)]
 
 
 def calculate_group_centroid_time(cf):
     """ average from start/end
     """
-    pass
+    start_times = cf.fetch(*GROUP_LOCATIONS['group_start_time'])
+    end_times = calculate_group_end_time(cf)
+
+    return (start_times + end_times) / 2
 
 
 OBSERVATION_LOCATIONS = {
@@ -236,6 +248,8 @@ GROUP_LOCATIONS = {
 }
 
 ARRAY_FIELDS = set([
+    'mie_altitude_obs',
+    'rayleigh_altitude_obs',
     'SCA_extinction_variance',
     'SCA_backscatter_variance',
     'SCA_LOD_variance',
@@ -375,6 +389,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
             # check whether groups are available in the product
             if not check_has_groups(cf):
+                print "no groups"
                 continue
 
             # Handle "groups", by building a group mask for all filters related
@@ -382,6 +397,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             group_mask = None
             for field_name, filter_value in group_filters.items():
                 location = GROUP_LOCATIONS[field_name]
+                print location, field_name
                 if callable(location):
                     data = location(cf)
                 else:
@@ -469,16 +485,16 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
 
 
 
-test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
-
+# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
+test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
 
 # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
 
 # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_001188000_017071_0001.DBL'
 
 def main():
-    #print
-    extract_data(
+
+    print extract_data(
         test_file,
         filters={
             # 'L1B_centroid_time_obs': {
@@ -487,13 +503,14 @@ def main():
             # }
         },
         observation_fields=[
-            'rayleigh_altitude_obs'
+            # 'rayleigh_altitude_obs'
         ],
         measurement_fields=[
             # 'longitude_of_DEM_intersection_meas'
         ],
         group_fields=[
             # 'group_LOD_variance'
+            'group_centroid_time'
         ],
     )
 
