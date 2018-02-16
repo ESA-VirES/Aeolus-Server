@@ -28,16 +28,23 @@
 # ------------------------------------------------------------------------------
 
 from itertools import chain
+from datetime import datetime, timedelta
 
+from django.utils.timezone import utc
 from django.contrib.gis.geos import (
     MultiLineString, LineString, MultiPolygon, Polygon
 )
 from eoxserver.backends import models as backends
 from eoxserver.resources.coverages import models as coverages
+from eoxserver.contrib import gdal
 
 from aeolus import models
 from aeolus.coda_utils import CODAFile
 from aeolus import aux
+
+
+class RegistrationError(Exception):
+    pass
 
 
 def _get_ground_path(codafile):
@@ -231,3 +238,88 @@ def register_product(filename, overrides):
 
 def register_collection(identifier):
     pass
+
+
+def register_albedo(filename, year, month, replace=False):
+    """
+    """
+    try:
+        ds = gdal.Open(filename)
+    except Exception as e:
+        raise RegistrationError(
+            "Failed to open raster file '%s'. Error was: %s"
+            % (filename, e)
+        )
+
+    subdatasets = ds.GetSubDatasets()
+
+    nadir_location = offnadir_location = None
+    for subdataset, _ in subdatasets:
+        if subdataset.endswith('ADAM_albedo_nadir'):
+            nadir_location = subdataset
+        elif subdataset.endswith('ADAM_albedo_offnadir'):
+            offnadir_location = subdataset
+
+    if not nadir_location:
+        raise RegistrationError(
+            "File '%s' is missing the nadir subdataset" % filename
+        )
+    if not offnadir_location:
+        raise RegistrationError(
+            "File '%s' is missing the offnadir subdataset" % filename
+        )
+
+    sds = gdal.Open(nadir_location)
+
+    begin_time = datetime(year, month, 1, tzinfo=utc)
+    end_time = datetime(
+        begin_time.year + (begin_time.month / 12),
+        ((begin_time.month % 12) + 1), 1, tzinfo=utc
+    ) - timedelta(milliseconds=1)
+
+    extent = (-180, -90, 180, 90)
+
+    try:
+        range_type = coverages.RangeType.objects.get(name='ADAM_albedo')
+    except coverages.RangeType.DoesNotExist:
+        raise RegistrationError('Could not find Albedo range type.')
+
+    identifier = 'ADAM_albedo_%d_%d' % (year, month)
+
+    exists = coverages.RectifiedDataset.objects.filter(
+        identifier=identifier
+    ).exists()
+    if exists:
+        if replace:
+            coverages.RectifiedDataset.objects.get(
+                identifier=identifier
+            ).delete()
+        else:
+            raise RegistrationError(
+                'Albedo file for %d/%d already registered' % (year, month)
+            )
+
+    ds_model = coverages.RectifiedDataset.objects.create(
+        identifier=identifier,
+        begin_time=begin_time,
+        end_time=end_time,
+        footprint=MultiPolygon(Polygon.from_bbox(extent)),
+        size_x=sds.RasterXSize,
+        size_y=sds.RasterYSize,
+        srid=4326,
+        min_x=-180,
+        min_y=-90,
+        max_x=180,
+        max_y=90,
+        range_type=range_type,
+    )
+
+    for i, path in enumerate((offnadir_location, nadir_location), start=1):
+        backends.DataItem.objects.create(
+            location=path,
+            format='NetCDF',
+            semantic='bands[%d]' % i,
+            dataset=ds_model,
+        )
+
+    return ds_model
