@@ -2296,4 +2296,24 @@
         "nil_values": [],
         "uom": "?"
     }]
+}, {
+    "name": "ADAM_albedo",
+    "data_type": "Float32",
+    "bands": [{
+        "name": "ADAM_albedo_offnadir",
+        "identifier": "ADAM_albedo_offnadir",
+        "description": "",
+        "definition": "",
+        "gdal_interpretation": "Undefined",
+        "nil_values": [],
+        "uom": "?"
+    }, {
+        "name": "ADAM_albedo_nadir",
+        "identifier": "ADAM_albedo_nadir",
+        "description": "",
+        "definition": "",
+        "gdal_interpretation": "Undefined",
+        "nil_values": [],
+        "uom": "?"
+    }]
 }]
