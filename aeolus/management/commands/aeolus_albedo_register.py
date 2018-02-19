@@ -54,12 +54,12 @@ class Command(CommandOutputMixIn, BaseCommand):
         ),
 
         make_option(
-            '-y', '--year', type=int, default=None, dest='year_range',
+            '-y', '--year', type=int, default=None,
             help='The year to register the Albedo map for.'
         ),
 
         make_option(
-            '-r', '--year-range', default=None,
+            '-r', '--year-range', default=None, dest='year_range',
             help='The year-range to register the Albedo map for. E.g: 2012-2018'
         ),
 
