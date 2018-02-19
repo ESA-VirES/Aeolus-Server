@@ -54,8 +54,13 @@ class Command(CommandOutputMixIn, BaseCommand):
         ),
 
         make_option(
-            '-y', '--year', type=int, default=None,
+            '-y', '--year', type=int, default=None, dest='year_range',
             help='The year to register the Albedo map for.'
+        ),
+
+        make_option(
+            '-r', '--year-range', default=None,
+            help='The year-range to register the Albedo map for. E.g: 2012-2018'
         ),
 
         make_option(
@@ -82,32 +87,44 @@ class Command(CommandOutputMixIn, BaseCommand):
     )
 
     @nested_commit_on_success
-    def handle(self, input_file, month, year, collection_id, conflict, **kwargs):
-        try:
-            ds_model = register_albedo(
-                input_file, year, month, conflict == 'REPLACE'
-            )
-        except Exception as e:
-            raise CommandError(str(e))
+    def handle(self, input_file, month, year, year_range,
+               collection_id, conflict, **kwargs):
 
-        self.print_msg(
-            "Succesfully registered Albedo file %s for %d/%d"
-            % (input_file, year, month)
-        )
+        if year is not None:
+            year_range = [year]
+        elif year_range is not None:
+            low, high = [int(v) for v in year_range.split('-')]
+            year_range = range(low, high + 1)
+        else:
+            raise CommandError('Neither --year nor --year-range specified')
 
-        if collection_id:
+        for year in year_range:
             try:
-                collection = models.Collection.objects.get(
-                    identifier=collection_id
-                ).cast()
-
-                collection.insert(ds_model)
-                self.print_msg(
-                    "Succesfully inserted dataset in collection '%s'"
-                    % collection_id
+                ds_model = register_albedo(
+                    input_file, year, month, conflict == 'REPLACE'
                 )
             except Exception as e:
-                self.print_err(
-                    "Failed to insert dataset in collection '%s'. Error was: %s"
-                    % (collection_id, e)
-                )
+                raise CommandError(str(e))
+
+            self.print_msg(
+                "Succesfully registered Albedo file %s for %d/%d"
+                % (input_file, year, month)
+            )
+
+            if collection_id:
+                try:
+                    collection = models.Collection.objects.get(
+                        identifier=collection_id
+                    ).cast()
+
+                    collection.insert(ds_model)
+                    self.print_msg(
+                        "Succesfully inserted dataset in collection '%s'"
+                        % collection_id
+                    )
+                except Exception as e:
+                    self.print_err(
+                        "Failed to insert dataset in collection '%s'. "
+                        "Error was: %s"
+                        % (collection_id, e)
+                    )
