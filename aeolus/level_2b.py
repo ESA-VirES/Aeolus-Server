@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------
 #
-#  Aeolus - Level 1B data extraction
+#  Aeolus - Level 2B data extraction
 #
 # Project: VirES-Aeolus
 # Authors: Fabian Schindler <fabian.schindler@eox.at>
@@ -27,12 +27,11 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from datetime import datetime
 from collections import defaultdict
 
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, datetime_to_coda_time
+from aeolus.coda_utils import CODAFile
 from aeolus.filtering import make_mask, combine_mask
 
 
@@ -264,29 +263,6 @@ MEASUREMENT_FIELDS = set([
 ])
 
 
-def _array_to_list(data):
-    if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
-        data = data.tolist()
-        if isobject:
-            data = [
-                _array_to_list(obj) for obj in data
-            ]
-    return data
-
-
-def join_mask(cf, wind_mask, profile_mask, grouping_mask, measurement_mask,
-              is_mie):
-    if is_mie:
-        profile_to_wind_field = 'mie_wind_profile_wind_result_id'
-        measurement_to_wind_field = 'mie_measurement_map'
-    else:
-        profile_to_wind_field = 'rayleigh_wind_profile_wind_result_id'
-        measurement_to_wind_field = 'rayleigh_measurement_map'
-
-    pass
-
-
 def extract_data(filenames, filters,
                  mie_grouping_fields, rayleigh_grouping_fields,
                  mie_profile_fields, rayleigh_profile_fields,
@@ -372,6 +348,51 @@ def extract_data(filenames, filters,
 
                 mie_wind_mask = combine_mask(new_mask, mie_wind_mask)
 
+            # measurement to mie wind mask
+            if measurement_mask is not None:
+                wind_ids = cf.fetch(
+                    *locations['mie_measurement_map']
+                )
+                filtered = wind_ids[np.nonzero(measurement_mask)]
+                stacked = np.hstack(filtered)
+
+                new_mask = np.zeros(
+                    (cf.fetch('/sph/NumMieWindResults'),), np.bool
+                )
+                new_mask[stacked[stacked != 0] - 1] = True
+
+                mie_wind_mask = combine_mask(new_mask, mie_wind_mask)
+
+            # rayleigh profile to rayleigh wind mask
+            if rayleigh_profile_mask is not None:
+                wind_ids = cf.fetch(
+                    *locations['rayleigh_wind_profile_wind_result_id']
+                )
+                filtered = wind_ids[np.nonzero(rayleigh_profile_mask)]
+                stacked = np.hstack(filtered)
+
+                new_mask = np.zeros(
+                    (cf.fetch('/sph/NumRayleighWindResults'),), np.bool
+                )
+                new_mask[stacked[stacked != 0] - 1] = True
+
+                rayleigh_wind_mask = combine_mask(new_mask, rayleigh_wind_mask)
+
+            # measurement to rayleigh wind mask
+            if measurement_mask is not None:
+                wind_ids = cf.fetch(
+                    *locations['rayleigh_measurement_map']
+                )
+                filtered = wind_ids[np.nonzero(measurement_mask)]
+                stacked = np.hstack(filtered)
+
+                new_mask = np.zeros(
+                    (cf.fetch('/sph/NumRayleighWindResults'),), np.bool
+                )
+                new_mask[stacked[stacked != 0] - 1] = True
+
+                rayleigh_wind_mask = combine_mask(new_mask, rayleigh_wind_mask)
+
             make_outputs(
                 cf, mie_grouping_fields,
                 mie_grouping_data, mie_grouping_mask
@@ -401,74 +422,6 @@ def extract_data(filenames, filters,
                 measurement_data, measurement_mask
             )
 
-
-
-
-
-
-            # for filters, fields, output in filters_and_fields_and_output:
-            #     mask = None
-            #     for field, filter_value in filters.items():
-            #         new_mask = make_mask(
-            #             data=cf.fetch(*locations[field]),
-            #             **filter_value
-            #         )
-            #         mask = combine_mask(new_mask, mask)
-
-            #     ids = np.nonzero(mask)
-
-            #     for field in fields:
-            #         data = cf.fetch(*locations[field])
-            #         if mask is not None:
-            #             data = data[ids]
-
-            #         output[field].extend(_array_to_list(data))
-
-
-
-            # filters, fields, output = (
-            #     mie_profile_filters, mie_profile_fields, mie_profile_data
-            # )
-            # profile_mask = None
-            # for field, filter_value in filters.items():
-            #     new_mask = make_mask(
-            #         data=cf.fetch(*locations[field]),
-            #         **filter_value
-            #     )
-            #     profile_mask = combine_mask(new_mask, profile_mask)
-
-            # ids = np.nonzero(profile_mask)
-
-            # for field in fields:
-            #     data = cf.fetch(*locations[field])
-            #     if profile_mask is not None:
-            #         data = data[ids]
-
-            #     output[field].extend(_array_to_list(data))
-
-
-
-            # filters, fields, output = (
-            #     mie_wind_filters, mie_wind_fields, mie_wind_data
-            # )
-            # wind_mask = None
-            # for field, filter_value in filters.items():
-            #     new_mask = make_mask(
-            #         data=cf.fetch(*locations[field]),
-            #         **filter_value
-            #     )
-            #     wind_mask = combine_mask(new_mask, wind_mask)
-
-            # ids = np.nonzero(wind_mask)
-
-            # for field in fields:
-            #     data = cf.fetch(*locations[field])
-            #     if wind_mask is not None:
-            #         data = data[ids]
-
-            #     output[field].extend(_array_to_list(data))
-
-
     return (
         mie_grouping_data,
         rayleigh_grouping_data,
@@ -478,7 +431,6 @@ def extract_data(filenames, filters,
         rayleigh_wind_data,
         measurement_data,
     )
-
 
 
 def create_type_mask(cf, filters):
@@ -497,20 +449,21 @@ def make_outputs(cf, fields, output, mask=None):
     ids = np.nonzero(mask) if mask is not None else None
     for field in fields:
         data = cf.fetch(*locations[field])
-
-        print data.shape
         if mask is not None:
             data = data[ids]
-
-        print data.shape
-
-        print field, mask
 
         output[field].extend(_array_to_list(data))
 
 
-
-
+def _array_to_list(data):
+    if isinstance(data, np.ndarray):
+        isobject = data.dtype == np.object
+        data = data.tolist()
+        if isobject:
+            data = [
+                _array_to_list(obj) for obj in data
+            ]
+    return data
 
 
 test_file = '/mnt/data/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001.DBL'
@@ -529,21 +482,39 @@ def main():
             # },
 
 
-            'mie_wind_profile_observation_type': {
-                'min_value': 1,
-                'max_value': 1
-            }
+            # 'mie_wind_profile_observation_type': {
+            #     'min_value': 1,
+            #     'max_value': 1
+            # }
+
+            # 'l1B_obs_number': {
+            #     'min_value': 300,
+            #     'max_value': 310,
+            # }
+
         },
-        mie_grouping_fields=[],
-        rayleigh_grouping_fields=[],
+        mie_grouping_fields=[
+
+        ],
+        rayleigh_grouping_fields=[
+
+        ],
         mie_profile_fields=[
             # 'mie_wind_profile_observation_type',
             # 'mie_wind_profile_wind_result_id'
         ],
-        rayleigh_profile_fields=[],
-        mie_wind_fields=['mie_wind_result_id'],
-        rayleigh_wind_fields=[],
-        measurement_fields=[],
+        rayleigh_profile_fields=[
+
+        ],
+        mie_wind_fields=[
+            # 'mie_wind_result_id'
+        ],
+        rayleigh_wind_fields=[
+
+        ],
+        measurement_fields=[
+            # 'l1B_obs_number'
+        ],
     )
 
 if __name__ == '__main__':
