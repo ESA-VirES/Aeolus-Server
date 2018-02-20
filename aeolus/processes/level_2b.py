@@ -87,7 +87,7 @@ class Level2BExctract(Component):
             abstract="Comma-separated list of the extracted data variables."
         )),
         ("mie_wind_fields", LiteralData(
-            'mie_grouping_fields', str, optional=True, default=None,
+            'mie_wind_fields', str, optional=True, default=None,
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
@@ -102,7 +102,7 @@ class Level2BExctract(Component):
             abstract="Comma-separated list of the extracted data variables."
         )),
         ("rayleigh_wind_fields", LiteralData(
-            'rayleigh_grouping_fields', str, optional=True, default=None,
+            'rayleigh_wind_fields', str, optional=True, default=None,
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
