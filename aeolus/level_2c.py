@@ -84,7 +84,6 @@ calc_rayleigh_profile_geoid_separation = _make_profile_from_wind_calc(
     'rayleigh_wind_result_geoid_separation'
 )
 
-
 calc_rayleigh_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
     'rayleigh_wind_profile_wind_result_id',
     'rayleigh_wind_result_alt_of_DEM_intersection'
