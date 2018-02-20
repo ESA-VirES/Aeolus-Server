@@ -83,7 +83,7 @@ def _get_ground_path(codafile):
             )
         )
 
-    elif product_type == 'ALD_U_N_2B':
+    elif product_type in ['ALD_U_N_2B', 'ALD_U_N_2C']:
         ground_points = zip(
             codafile.fetch('/mie_profile', -1, 'profile_lon_average'),
             codafile.fetch('/mie_profile', -1, 'profile_lat_average')
