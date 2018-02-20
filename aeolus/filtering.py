@@ -35,12 +35,17 @@ import numpy as np
 from aeolus.coda_utils import datetime_to_coda_time
 
 
-def make_mask(data, min_value=None, max_value=None, is_array=False):
+def make_mask(data, min_value=None, max_value=None, is_array=False, **kwargs):
     """ Utility function to generate a bitmask with the given filter values.
         When the data itself is an Array of arrays, the filter is broadcast to
         the sub-arrays and a summary value is used (if any of the sub-arrays
         values are ``True`)
     """
+
+    # allow both min and min_value
+    min_value = min_value if min_value is not None else kwargs.get('min')
+    max_value = max_value if max_value is not None else kwargs.get('max')
+
     if is_array:
         mask = np.empty(data.shape, dtype=bool)
         for i, array in enumerate(data):
