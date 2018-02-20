@@ -200,7 +200,16 @@ class Level2CExctract(Component):
                     **db_filters
                 ).order_by('begin_time')
             ]
-            output[collection.identifier] = extract_data(
+
+            (
+                mie_grouping_data,
+                rayleigh_grouping_data,
+                mie_profile_data,
+                rayleigh_profile_data,
+                mie_wind_data,
+                rayleigh_wind_data,
+                measurement_data,
+            ) = extract_data(
                 dbl_files, data_filters,
                 mie_grouping_fields=mie_grouping_fields,
                 mie_profile_fields=mie_profile_fields,
@@ -209,6 +218,16 @@ class Level2CExctract(Component):
                 rayleigh_profile_fields=rayleigh_profile_fields,
                 rayleigh_wind_fields=rayleigh_wind_fields,
                 measurement_fields=measurement_fields,
+            )
+
+            output[collection.identifier] = dict(
+                mie_grouping_data=mie_grouping_data,
+                rayleigh_grouping_data=rayleigh_grouping_data,
+                mie_profile_data=mie_profile_data,
+                rayleigh_profile_data=rayleigh_profile_data,
+                mie_wind_data=mie_wind_data,
+                rayleigh_wind_data=rayleigh_wind_data,
+                measurement_data=measurement_data,
             )
 
         # encode as messagepack
