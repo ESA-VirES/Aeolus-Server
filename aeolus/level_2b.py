@@ -35,6 +35,60 @@ from aeolus.coda_utils import CODAFile
 from aeolus.filtering import make_mask, combine_mask
 
 
+def _make_profile_from_wind_calc(id_field, value_field):
+    def _inner(cf):
+        profile_ids = cf.fetch(*locations[id_field])
+        values = cf.fetch(*locations[value_field])
+
+        out = np.empty(profile_ids.shape[0])
+        for i, ids in enumerate(profile_ids):
+            out[i] = values[np.nonzero(ids)[0][0] - 1]
+
+        return out
+    return _inner
+
+
+calc_mie_profile_lat_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_lat_of_DEM_intersection'
+)
+
+calc_mie_profile_lon_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_lon_of_DEM_intersection'
+)
+
+calc_mie_profile_geoid_separation = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_geoid_separation'
+)
+
+calc_mie_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_alt_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_lat_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_lat_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_lon_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_lon_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_geoid_separation = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_geoid_separation'
+)
+
+calc_rayleigh_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_alt_of_DEM_intersection'
+)
+
+
 locations = {
     'mie_measurement_map':                              ['/meas_map', -1, 'mie_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
     'rayleigh_measurement_map':                         ['/meas_map', -1, 'rayleigh_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
@@ -73,13 +127,13 @@ locations = {
     'mie_wind_result_COG_longitude':                    ['/mie_geolocation', -1, 'windresult_geolocation/longitude_cog'],
     'mie_wind_result_stop_longitude':                   ['/mie_geolocation', -1, 'windresult_geolocation/longitude_stop'],
     'mie_wind_result_lat_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/lat_of_dem_intersection'],
-    # 'mie_profile_lat_of_DEM_intersection':              [''],
+    'mie_profile_lat_of_DEM_intersection':              calc_mie_profile_lat_of_DEM_intersection,
     'mie_wind_result_lon_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/lon_of_dem_intersection'],
-    # 'mie_profile_lon_of_DEM_intersection':              [''],
+    'mie_profile_lon_of_DEM_intersection':              calc_mie_profile_lon_of_DEM_intersection,
     'mie_wind_result_geoid_separation':                 ['/mie_geolocation', -1, 'windresult_geolocation/wgs84_to_geoid_altitude'],
-    # 'mie_profile_geoid_separation':                     [''],
+    'mie_profile_geoid_separation':                     calc_mie_profile_geoid_separation,
     'mie_wind_result_alt_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
-    # 'mie_profile_alt_of_DEM_intersection':              [''],
+    'mie_profile_alt_of_DEM_intersection':              calc_mie_profile_alt_of_DEM_intersection,
     'rayleigh_wind_result_id':                          ['/rayleigh_geolocation', -1, 'wind_result_id'],
     'rayleigh_wind_profile_wind_result_id':             ['/rayleigh_profile', -1, 'l2b_wind_profiles/wind_result_id_number', -1],
     'rayleigh_wind_result_range_bin_number':            ['/rayleigh_hloswind', -1, 'windresult/which_range_bin'], # TODO ??
@@ -99,13 +153,13 @@ locations = {
     'rayleigh_wind_result_COG_longitude':               ['/rayleigh_geolocation', -1, 'windresult_geolocation/longitude_cog'],
     'rayleigh_wind_result_stop_longitude':              ['/rayleigh_geolocation', -1, 'windresult_geolocation/longitude_stop'],
     'rayleigh_wind_result_lat_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/lat_of_dem_intersection'],
-    # 'rayleigh_profile_lat_of_DEM_intersection':         [''],
+    'rayleigh_profile_lat_of_DEM_intersection':         calc_rayleigh_profile_lat_of_DEM_intersection,
     'rayleigh_wind_result_lon_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/lon_of_dem_intersection'],
-    # 'rayleigh_profile_lon_of_DEM_intersection':         [''],
+    'rayleigh_profile_lon_of_DEM_intersection':         calc_rayleigh_profile_lon_of_DEM_intersection,
     'rayleigh_wind_result_geoid_separation':            ['/rayleigh_geolocation', -1, 'windresult_geolocation/wgs84_to_geoid_altitude'],
-    # 'rayleigh_profile_geoid_separation':                [''],
+    'rayleigh_profile_geoid_separation':                calc_rayleigh_profile_geoid_separation,
     'rayleigh_wind_result_alt_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
-    # 'rayleigh_profile_alt_of_DEM_intersection':         [''],
+    'rayleigh_profile_alt_of_DEM_intersection':         calc_rayleigh_profile_alt_of_DEM_intersection,
     # 'l1B_measurement_time':                             [''],  # TODO: not available
     # 'mie_bin_classification':                           [''],  # TODO: not described in XLS sheet
     # 'rayleigh_bin_classification':                      [''],  # TODO: not described in XLS sheet
@@ -313,16 +367,6 @@ def extract_data(filenames, filters,
         for name, value in filters.items() if name in MEASUREMENT_FIELDS
     }
 
-    filters_and_fields_and_output = (
-        (mie_grouping_filters, mie_grouping_fields, mie_grouping_data),
-        (rayleigh_grouping_filters, rayleigh_grouping_fields, rayleigh_grouping_data),
-        (mie_profile_filters, mie_profile_fields, mie_profile_data),
-        (rayleigh_profile_filters, rayleigh_profile_fields, rayleigh_profile_data),
-        (mie_wind_filters, mie_wind_fields, mie_wind_data),
-        (rayleigh_wind_filters, rayleigh_wind_fields, rayleigh_wind_data),
-        (measurement_filters, measurement_fields, measurement_data),
-    )
-
     for cf in [CODAFile(filename) for filename in filenames]:
         with cf:
             mie_grouping_mask = create_type_mask(cf, mie_grouping_filters)
@@ -335,63 +379,39 @@ def extract_data(filenames, filters,
 
             # mie profile to mie wind mask
             if mie_profile_mask is not None:
-                wind_ids = cf.fetch(
-                    *locations['mie_wind_profile_wind_result_id']
+                mie_wind_mask = join_mask(cf,
+                    'mie_wind_profile_wind_result_id',
+                    '/sph/NumMieWindResults',
+                    mie_profile_mask,
+                    mie_wind_mask
                 )
-                filtered = wind_ids[np.nonzero(mie_profile_mask)]
-                stacked = np.hstack(filtered)
-
-                new_mask = np.zeros(
-                    (cf.fetch('/sph/NumMieWindResults'),), np.bool
-                )
-                new_mask[stacked[stacked != 0] - 1] = True
-
-                mie_wind_mask = combine_mask(new_mask, mie_wind_mask)
 
             # measurement to mie wind mask
             if measurement_mask is not None:
-                wind_ids = cf.fetch(
-                    *locations['mie_measurement_map']
+                mie_wind_mask = join_mask(cf,
+                    'mie_measurement_map',
+                    '/sph/NumMieWindResults',
+                    measurement_mask,
+                    mie_wind_mask
                 )
-                filtered = wind_ids[np.nonzero(measurement_mask)]
-                stacked = np.hstack(filtered)
-
-                new_mask = np.zeros(
-                    (cf.fetch('/sph/NumMieWindResults'),), np.bool
-                )
-                new_mask[stacked[stacked != 0] - 1] = True
-
-                mie_wind_mask = combine_mask(new_mask, mie_wind_mask)
 
             # rayleigh profile to rayleigh wind mask
             if rayleigh_profile_mask is not None:
-                wind_ids = cf.fetch(
-                    *locations['rayleigh_wind_profile_wind_result_id']
+                rayleigh_wind_mask = join_mask(cf,
+                    'rayleigh_wind_profile_wind_result_id',
+                    '/sph/NumRayleighWindResults',
+                    rayleigh_profile_mask,
+                    rayleigh_wind_mask
                 )
-                filtered = wind_ids[np.nonzero(rayleigh_profile_mask)]
-                stacked = np.hstack(filtered)
-
-                new_mask = np.zeros(
-                    (cf.fetch('/sph/NumRayleighWindResults'),), np.bool
-                )
-                new_mask[stacked[stacked != 0] - 1] = True
-
-                rayleigh_wind_mask = combine_mask(new_mask, rayleigh_wind_mask)
 
             # measurement to rayleigh wind mask
             if measurement_mask is not None:
-                wind_ids = cf.fetch(
-                    *locations['rayleigh_measurement_map']
+                rayleigh_wind_mask = join_mask(cf,
+                    'rayleigh_measurement_map',
+                    '/sph/NumRayleighWindResults',
+                    measurement_mask,
+                    rayleigh_wind_mask
                 )
-                filtered = wind_ids[np.nonzero(measurement_mask)]
-                stacked = np.hstack(filtered)
-
-                new_mask = np.zeros(
-                    (cf.fetch('/sph/NumRayleighWindResults'),), np.bool
-                )
-                new_mask[stacked[stacked != 0] - 1] = True
-
-                rayleigh_wind_mask = combine_mask(new_mask, rayleigh_wind_mask)
 
             make_outputs(
                 cf, mie_grouping_fields,
@@ -433,11 +453,18 @@ def extract_data(filenames, filters,
     )
 
 
+def fetch_array(cf, name):
+    path = locations[name]
+    if callable(path):
+        return path(cf)
+    return cf.fetch(*path)
+
+
 def create_type_mask(cf, filters):
     mask = None
     for field, filter_value in filters.items():
         new_mask = make_mask(
-            data=cf.fetch(*locations[field]),
+            data=fetch_array(cf, field),
             **filter_value
         )
         mask = combine_mask(new_mask, mask)
@@ -445,10 +472,24 @@ def create_type_mask(cf, filters):
     return mask
 
 
+def join_mask(cf, mapping_field, length_field, related_mask, joined_mask):
+    ids = fetch_array(cf, mapping_field)
+    new_mask = np.zeros((cf.fetch(length_field),), np.bool)
+
+    filtered = ids[np.nonzero(related_mask)]
+
+    if filtered.shape[0] > 0:
+        stacked = np.hstack(filtered)
+        new_mask[stacked[stacked != 0] - 1] = True
+        new_mask = combine_mask(new_mask, joined_mask)
+
+    return new_mask
+
+
 def make_outputs(cf, fields, output, mask=None):
     ids = np.nonzero(mask) if mask is not None else None
     for field in fields:
-        data = cf.fetch(*locations[field])
+        data = fetch_array(cf, field)
         if mask is not None:
             data = data[ids]
 
