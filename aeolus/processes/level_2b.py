@@ -170,7 +170,14 @@ class Level2BExctract(Component):
         )
 
         data_filters = dict(
-            time={'min': begin_time, 'max': end_time},
+            mie_profile_datetime_start={'min_value': begin_time},
+            mie_profile_datetime_stop={'max_value': end_time},
+            rayleigh_profile_datetime_start={'min_value': begin_time},
+            rayleigh_profile_datetime_stop={'max_value': end_time},
+            mie_wind_result_start_time={'min_value': begin_time},
+            mie_wind_result_stop_time={'max_value': end_time},
+            rayleigh_wind_result_start_time={'min_value': begin_time},
+            rayleigh_wind_result_stop_time={'max_value': end_time},
             **(filters.data if filters else {})
         )
 

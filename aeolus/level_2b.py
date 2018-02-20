@@ -192,6 +192,14 @@ locations = {
     'rayleigh_wind_result_reference_backscatter_ratio': ['/rayleigh_hloswind', -1, 'windresult/reference_backscatter_ratio'],
     'mie_wind_profile_observation_type':                ['/mie_profile', -1, 'l2b_wind_profiles/obs_type'],
     'rayleigh_wind_profile_observation_type':           ['/rayleigh_profile', -1, 'l2b_wind_profiles/obs_type'],
+
+     # custom fields:
+    'mie_profile_datetime_start':                                   ['/mie_profile', -1, 'profile_datetime_start'],
+    'mie_profile_datetime_average':                                 ['/mie_profile', -1, 'profile_datetime_average'],
+    'mie_profile_datetime_stop':                                    ['/mie_profile', -1, 'profile_datetime_stop'],
+    'rayleigh_profile_datetime_start':                              ['/rayleigh_profile', -1, 'profile_datetime_start'],
+    'rayleigh_profile_datetime_average':                            ['/rayleigh_profile', -1, 'profile_datetime_average'],
+    'rayleigh_profile_datetime_stop':                               ['/rayleigh_profile', -1, 'profile_datetime_stop'],
 }
 
 
@@ -221,6 +229,9 @@ MIE_PROFILE_FIELDS = set([
     'mie_profile_lon_of_DEM_intersection',
     'mie_profile_geoid_separation',
     'mie_profile_alt_of_DEM_intersection',
+    'mie_profile_datetime_start',
+    'mie_profile_datetime_average',
+    'mie_profile_datetime_stop',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
@@ -230,6 +241,9 @@ RAYLEIGH_PROFILE_FIELDS = set([
     'rayleigh_profile_lon_of_DEM_intersection',
     'rayleigh_profile_geoid_separation',
     'rayleigh_profile_alt_of_DEM_intersection',
+    'rayleigh_profile_datetime_start',
+    'rayleigh_profile_datetime_average',
+    'rayleigh_profile_datetime_stop',
 ])
 
 MIE_WIND_FIELDS = set([

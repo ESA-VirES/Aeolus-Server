@@ -290,6 +290,15 @@ locations = {
     'rayleigh_assimilation_analysis_v_wind_velocity':               ['/rayleigh_vecwind', -1, 'height_bin_vecwind/analysis_meridional_wind_velocity'],
     'rayleigh_assimilation_analysis_horizontal_wind_velocity':      calc_rayleigh_assimilation_analysis_horizontal_wind_velocity,
     'rayleigh_assimilation_analysis_wind_direction':                calc_rayleigh_assimilation_analysis_wind_direction,
+
+    # custom fields:
+    'mie_profile_datetime_start':                                   ['/mie_profile', -1, 'profile_datetime_start'],
+    'mie_profile_datetime_average':                                 ['/mie_profile', -1, 'profile_datetime_average'],
+    'mie_profile_datetime_stop':                                    ['/mie_profile', -1, 'profile_datetime_stop'],
+    'rayleigh_profile_datetime_start':                              ['/rayleigh_profile', -1, 'profile_datetime_start'],
+    'rayleigh_profile_datetime_average':                            ['/rayleigh_profile', -1, 'profile_datetime_average'],
+    'rayleigh_profile_datetime_stop':                               ['/rayleigh_profile', -1, 'profile_datetime_stop'],
+
 }
 
 MIE_GROUPING_FIELDS = set([
@@ -318,6 +327,9 @@ MIE_PROFILE_FIELDS = set([
     'mie_profile_geoid_separation',
     'mie_profile_alt_of_DEM_intersection',
     'mie_wind_profile_observation_type',
+    'mie_profile_datetime_start',
+    'mie_profile_datetime_average',
+    'mie_profile_datetime_stop',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
@@ -327,6 +339,9 @@ RAYLEIGH_PROFILE_FIELDS = set([
     'rayleigh_profile_geoid_separation',
     'rayleigh_profile_alt_of_DEM_intersection',
     'rayleigh_wind_profile_observation_type',
+    'rayleigh_profile_datetime_start',
+    'rayleigh_profile_datetime_average',
+    'rayleigh_profile_datetime_stop',
 ])
 
 MIE_WIND_FIELDS = set([
