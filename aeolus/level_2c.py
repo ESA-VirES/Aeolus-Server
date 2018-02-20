@@ -28,6 +28,7 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
+import math
 
 import numpy as np
 
@@ -35,68 +36,115 @@ from aeolus.coda_utils import CODAFile
 from aeolus.filtering import make_mask, combine_mask
 
 
-def calc_mie_profile_lat_of_DEM_intersection(cf):
-    pass
+def _make_profile_from_wind_calc(id_field, value_field):
+    def _inner(cf):
+        profile_ids = cf.fetch(*locations[id_field])
+        values = cf.fetch(*locations[value_field])
+
+        out = np.empty(profile_ids.shape[0])
+        for i, ids in enumerate(profile_ids):
+            out[i] = values[np.nonzero(ids)[0][0] - 1]
+
+        return out
+    return _inner
 
 
-def calc_mie_profile_lon_of_DEM_intersection(cf):
-    pass
+calc_mie_profile_lat_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_lat_of_DEM_intersection'
+)
+
+calc_mie_profile_lon_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_lon_of_DEM_intersection'
+)
+
+calc_mie_profile_geoid_separation = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_geoid_separation'
+)
+
+calc_mie_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
+    'mie_wind_profile_wind_result_id',
+    'mie_wind_result_alt_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_lat_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_lat_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_lon_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_lon_of_DEM_intersection'
+)
+
+calc_rayleigh_profile_geoid_separation = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_geoid_separation'
+)
 
 
-def calc_mie_profile_geoid_separation(cf):
-    pass
+calc_rayleigh_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_wind_result_alt_of_DEM_intersection'
+)
 
 
-def calc_mie_profile_alt_of_DEM_intersection(cf):
-    pass
+def _calc_velocity(u, v):
+    return np.sqrt(np.square(u) + np.square(v))
 
 
-def calc_rayleigh_profile_lat_of_DEM_intersection(cf):
-    pass
-
-
-def calc_rayleigh_profile_lon_of_DEM_intersection(cf):
-    pass
-
-
-def calc_rayleigh_profile_geoid_separation(cf):
-    pass
-
-
-def calc_rayleigh_profile_alt_of_DEM_intersection(cf):
-    pass
+def _calc_direction(u, v):
+    return (180 / math.pi) * np.arctan2(u, v) + 180
 
 
 def calc_mie_assimilation_background_horizontal_wind_velocity(cf):
-    pass
+    u = cf.fetch(*locations['mie_assimilation_background_u_wind_velocity'])
+    v = cf.fetch(*locations['mie_assimilation_background_v_wind_velocity'])
+    return _calc_velocity(u, v)
 
 
 def calc_mie_assimilation_background_wind_direction(cf):
-    pass
+    u = cf.fetch(*locations['mie_assimilation_background_u_wind_velocity'])
+    v = cf.fetch(*locations['mie_assimilation_background_v_wind_velocity'])
+    return _calc_direction(u, v)
 
 
 def calc_mie_assimilation_analysis_horizontal_wind_velocity(cf):
-    pass
+    u = cf.fetch(*locations['mie_assimilation_analysis_u_wind_velocity'])
+    v = cf.fetch(*locations['mie_assimilation_analysis_v_wind_velocity'])
+    return _calc_velocity(u, v)
 
 
 def calc_mie_assimilation_analysis_wind_direction(cf):
-    pass
+    u = cf.fetch(*locations['mie_assimilation_analysis_u_wind_velocity'])
+    v = cf.fetch(*locations['mie_assimilation_analysis_v_wind_velocity'])
+    return _calc_direction(u, v)
 
 
 def calc_rayleigh_assimilation_background_horizontal_wind_velocity(cf):
-    pass
+    u = cf.fetch(*locations['rayleigh_assimilation_background_u_wind_velocity'])
+    v = cf.fetch(*locations['rayleigh_assimilation_background_v_wind_velocity'])
+    return _calc_velocity(u, v)
 
 
 def calc_rayleigh_assimilation_background_wind_direction(cf):
-    pass
+    u = cf.fetch(*locations['rayleigh_assimilation_background_u_wind_velocity'])
+    v = cf.fetch(*locations['rayleigh_assimilation_background_v_wind_velocity'])
+    return _calc_direction(u, v)
 
 
 def calc_rayleigh_assimilation_analysis_horizontal_wind_velocity(cf):
-    pass
+    u = cf.fetch(*locations['rayleigh_assimilation_analysis_u_wind_velocity'])
+    v = cf.fetch(*locations['rayleigh_assimilation_analysis_v_wind_velocity'])
+    return _calc_velocity(u, v)
 
 
 def calc_rayleigh_assimilation_analysis_wind_direction(cf):
-    pass
+    u = cf.fetch(*locations['rayleigh_assimilation_analysis_u_wind_velocity'])
+    v = cf.fetch(*locations['rayleigh_assimilation_analysis_v_wind_velocity'])
+    return _calc_direction(u, v)
 
 
 locations = {
@@ -265,24 +313,25 @@ RAYLEIGH_GROUPING_FIELDS = set([
 ])
 
 MIE_PROFILE_FIELDS = set([
-    # 'mie_profile_lat_of_DEM_intersection',
-    # 'mie_profile_lon_of_DEM_intersection',
-    # 'mie_profile_geoid_separation',
-    # 'mie_profile_alt_of_DEM_intersection',
+    'mie_wind_profile_wind_result_id',
+    'mie_profile_lat_of_DEM_intersection',
+    'mie_profile_lon_of_DEM_intersection',
+    'mie_profile_geoid_separation',
+    'mie_profile_alt_of_DEM_intersection',
     'mie_wind_profile_observation_type',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
-    # 'rayleigh_profile_lat_of_DEM_intersection',
-    # 'rayleigh_profile_lon_of_DEM_intersection',
-    # 'rayleigh_profile_geoid_separation',
-    # 'rayleigh_profile_alt_of_DEM_intersection',
+    'rayleigh_wind_profile_wind_result_id',
+    'rayleigh_profile_lat_of_DEM_intersection',
+    'rayleigh_profile_lon_of_DEM_intersection',
+    'rayleigh_profile_geoid_separation',
+    'rayleigh_profile_alt_of_DEM_intersection',
     'rayleigh_wind_profile_observation_type',
 ])
 
 MIE_WIND_FIELDS = set([
     'mie_wind_result_id',
-    'mie_wind_profile_wind_result_id',
     'mie_wind_result_range_bin_number',
     'mie_wind_result_start_time',
     'mie_wind_result_COG_time',
@@ -327,18 +376,17 @@ MIE_WIND_FIELDS = set([
     'mie_assimilation_background_HLOS',
     'mie_assimilation_background_u_wind_velocity',
     'mie_assimilation_background_v_wind_velocity',
-    # 'mie_assimilation_background_horizontal_wind_velocity',
-    # 'mie_assimilation_background_wind_direction',
+    'mie_assimilation_background_horizontal_wind_velocity',
+    'mie_assimilation_background_wind_direction',
     'mie_assimilation_analysis_HLOS',
     'mie_assimilation_analysis_u_wind_velocity',
     'mie_assimilation_analysis_v_wind_velocity',
-    # 'mie_assimilation_analysis_horizontal_wind_velocity',
-    # 'mie_assimilation_analysis_wind_direction',
+    'mie_assimilation_analysis_horizontal_wind_velocity',
+    'mie_assimilation_analysis_wind_direction',
 ])
 
 RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_wind_result_id',
-    'rayleigh_wind_profile_wind_result_id',
     'rayleigh_wind_result_range_bin_number',
     'rayleigh_wind_result_start_time',
     'rayleigh_wind_result_COG_time',
@@ -385,13 +433,13 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_assimilation_background_HLOS',
     'rayleigh_assimilation_background_u_wind_velocity',
     'rayleigh_assimilation_background_v_wind_velocity',
-    # 'rayleigh_assimilation_background_horizontal_wind_velocity',
-    # 'rayleigh_assimilation_background_wind_direction',
+    'rayleigh_assimilation_background_horizontal_wind_velocity',
+    'rayleigh_assimilation_background_wind_direction',
     'rayleigh_assimilation_analysis_HLOS',
     'rayleigh_assimilation_analysis_u_wind_velocity',
     'rayleigh_assimilation_analysis_v_wind_velocity',
-    # 'rayleigh_assimilation_analysis_horizontal_wind_velocity',
-    # 'rayleigh_assimilation_analysis_wind_direction',
+    'rayleigh_assimilation_analysis_horizontal_wind_velocity',
+    'rayleigh_assimilation_analysis_wind_direction',
 ])
 
 MEASUREMENT_FIELDS = set([
@@ -606,16 +654,16 @@ test_file = '/mnt/data/AE_OPER_ALD_U_N_2C_20151001T001124_20151001T014439_0002/A
 def main():
     print extract_data(
         test_file, {
-            # 'mie_wind_result_id': {
-            #     'min_value': 1,
+            'mie_wind_result_id': {
+                'min_value': 1000,
+                'max_value': 1010
+            },
+
+
+            # 'l1B_obs_number': {
+            #     'min_value': 3,
             #     'max_value': 10
-            # },
-
-
-            'l1B_obs_number': {
-                'min_value': 3,
-                'max_value': 10
-            }
+            # }
 
             # 'l1B_obs_number': {
             #     'min_value': 300,
@@ -629,6 +677,7 @@ def main():
 
         ],
         mie_profile_fields=[
+            # 'mie_profile_lat_of_DEM_intersection'
             # 'mie_wind_profile_observation_type',
             # 'mie_wind_profile_wind_result_id'
         ],
@@ -636,10 +685,12 @@ def main():
 
         ],
         mie_wind_fields=[
-            'mie_wind_result_id'
+            'mie_assimilation_background_horizontal_wind_velocity',
+            'mie_assimilation_background_wind_direction',
+            # 'mie_wind_result_id'
         ],
         rayleigh_wind_fields=[
-            'rayleigh_wind_result_id'
+            # 'rayleigh_wind_result_id'
         ],
         measurement_fields=[
             # 'l1B_obs_number'
