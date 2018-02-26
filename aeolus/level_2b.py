@@ -42,7 +42,7 @@ def _make_profile_from_wind_calc(id_field, value_field):
 
         out = np.empty(profile_ids.shape[0])
         for i, ids in enumerate(profile_ids):
-            out[i] = values[np.nonzero(ids)[0][0] - 1]
+            out[i] = values[ids[np.nonzero(ids)][0] - 1]
 
         return out
     return _inner
