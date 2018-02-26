@@ -195,9 +195,14 @@ class Command(CommandOutputMixIn, BaseCommand):
 
             if product and kwargs['insert_into_collection']:
                 try:
-                    collection = ProductCollection.objects.get(
-                        range_type=product.range_type
-                    )
+                    if kwargs.get('collection_id'):
+                        collection = ProductCollection.objects.get(
+                            identifier=kwargs.get('collection_id')
+                        )
+                    else:
+                        collection = ProductCollection.objects.get(
+                            range_type=product.range_type
+                        )
                     collection_link_product(collection, product)
                 except ProductCollection.DoesNotExist:
                     self.print_err(
