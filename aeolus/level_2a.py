@@ -313,7 +313,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
     ]
 
     if unknown_fields:
-        raise KeyError('Unknown fields: %s', ', '.join(unknown_fields))
+        raise KeyError('Unknown fields: %s' % ', '.join(unknown_fields))
 
     observation_filters = {
         name: value
