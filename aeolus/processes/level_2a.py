@@ -130,7 +130,10 @@ class Level2AExctract(Component):
         )
 
         data_filters = dict(
-            time={'min': begin_time, 'max': end_time},
+            L1B_centroid_time_obs={'min': begin_time, 'max': end_time},
+            L1B_time_meas={'min': begin_time, 'max': end_time},
+            group_start_time={'min': begin_time},
+            group_end_time={'max': end_time},
             **(filters.data if filters else {})
         )
 
