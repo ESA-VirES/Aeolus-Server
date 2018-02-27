@@ -303,12 +303,17 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
     out_measurement_data = defaultdict(list)
     out_group_data = defaultdict(list)
 
-    for field_name, filter_value in filters.items():
-        assert (
-            field_name in OBSERVATION_LOCATIONS or
-            field_name in MEASUREMENT_LOCATIONS or
-            field_name in GROUP_LOCATIONS
+    unknown_fields = [
+        field_name for field_name in filters
+        if (
+            field_name not in OBSERVATION_LOCATIONS and
+            field_name not in MEASUREMENT_LOCATIONS and
+            field_name not in GROUP_LOCATIONS
         )
+    ]
+
+    if unknown_fields:
+        raise KeyError('Unknown fields: %s', ', '.join(unknown_fields))
 
     observation_filters = {
         name: value
@@ -389,7 +394,6 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
             # check whether groups are available in the product
             if not check_has_groups(cf):
-                print "no groups"
                 continue
 
             # Handle "groups", by building a group mask for all filters related
@@ -397,7 +401,6 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             group_mask = None
             for field_name, filter_value in group_filters.items():
                 location = GROUP_LOCATIONS[field_name]
-                print location, field_name
                 if callable(location):
                     data = location(cf)
                 else:
@@ -418,7 +421,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             # fetch the requested observation fields, filter accordingly and
             # write to the output dict
             for field_name in group_fields:
-                assert field_name in GROUP_LOCATIONS
+                if field_name not in GROUP_LOCATIONS:
+                    raise KeyError('Unknown group field %s' % field_name)
                 location = GROUP_LOCATIONS[field_name]
                 if callable(location):
                     data = location(cf)
