@@ -102,7 +102,8 @@ def calculate_altitude_of_DEM_intersection_obs(cf):
     measurement_altitude = cf.fetch(
         *MEASUREMENT_LOCATIONS['altitude_of_DEM_intersection_meas']
     )
-    return np.amax(np.stack(measurement_altitude), axis=1)
+
+    return np.amax(np.vstack(measurement_altitude), axis=1)
 
 
 def calculate_mie_altitude_obs(cf):
@@ -142,7 +143,7 @@ def calculate_group_end_time(cf):
     end_obs = cf.fetch(*GROUP_LOCATIONS['group_end_obs']) - 1
     end_meas = cf.fetch(*GROUP_LOCATIONS['group_end_meas_obs']) - 1
 
-    measurement_times = np.stack(
+    measurement_times = np.vstack(
         cf.fetch(*MEASUREMENT_LOCATIONS['L1B_time_meas'])
     )
     return measurement_times[(end_obs, end_meas)]
