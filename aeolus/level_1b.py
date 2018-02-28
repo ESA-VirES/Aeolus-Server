@@ -33,6 +33,7 @@ from collections import defaultdict
 import numpy as np
 
 from aeolus.coda_utils import CODAFile, datetime_to_coda_time
+from aeolus.filtering import make_mask, combine_mask
 
 
 # all observation fields and their respective coda path for their location in
@@ -144,49 +145,6 @@ ARRAY_FIELDS = set([
 ])
 
 
-def _make_mask(data, min_value=None, max_value=None, is_array=False):
-    """ Utility function to generate a bitmask with the given filter values.
-        When the data itself is an Array of arrays, the filter is broadcast to
-        the sub-arrays and a summary value is used (if any of the sub-arrays
-        values are ``True`)
-    """
-    if is_array:
-        mask = np.empty(data.shape, dtype=bool)
-        for i, array in enumerate(data):
-            mask[i] = np.any(_make_mask(array, min_value, max_value, False))
-        return mask
-
-    if isinstance(min_value, datetime):
-        min_value = datetime_to_coda_time(min_value)
-    if isinstance(max_value, datetime):
-        max_value = datetime_to_coda_time(max_value)
-
-    if min_value is not None and min_value == max_value:
-        mask = data == min_value
-    elif min_value is not None and max_value is not None:
-        mask = np.logical_and(
-            data <= max_value,
-            data >= min_value
-        )
-    elif min_value is not None:
-        mask = data >= min_value
-    elif max_value is not None:
-        mask = data <= max_value
-    else:
-        raise NotImplementedError
-    return mask
-
-
-def _combine_mask(mask_a, mask_b=None):
-    """ Combine two bit masks of the same shape. One may be unset (and thus
-        ``None``).
-    """
-    if mask_b is None:
-        return mask_a
-
-    return np.logical_and(mask_a, mask_b)
-
-
 def _array_to_list(data):
     if isinstance(data, np.ndarray):
         isobject = data.dtype == np.object
@@ -229,12 +187,12 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             for field_name, filter_value in filters.items():
 
                 data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
-                new_mask = _make_mask(
+                new_mask = make_mask(
                     data, filter_value.get('min'), filter_value.get('max'),
                     field_name in ARRAY_FIELDS
                 )
 
-                observation_mask = _combine_mask(new_mask, observation_mask)
+                observation_mask = combine_mask(new_mask, observation_mask)
 
             if observation_mask is not None:
                 filtered_observation_ids = np.nonzero(observation_mask)
@@ -294,13 +252,13 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
             path = MEASUREMENT_LOCATIONS[field_name]
             data = cf.fetch(path[0], int(observation_id), *path[2:])
 
-            new_mask = _make_mask(
+            new_mask = make_mask(
                 data, filter_value.get('min'), filter_value.get('max'),
                 field_name in ARRAY_FIELDS
             )
 
             # combine the masks
-            measurement_mask = _combine_mask(new_mask, measurement_mask)
+            measurement_mask = combine_mask(new_mask, measurement_mask)
 
         filtered_measurement_ids = None
         if measurement_mask is not None:
