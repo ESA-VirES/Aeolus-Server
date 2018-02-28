@@ -144,11 +144,19 @@ class Level2AExctract(Component):
             box = Polygon.from_bbox(tpl_box)
 
             db_filters['ground_path__intersects'] = box
-            data_filters['longitude_of_DEM_intersection'] = {
+            data_filters['longitude_of_DEM_intersection_obs'] = {
                 'min': tpl_box[0],
                 'max': tpl_box[2]
             }
-            data_filters['latitude_of_DEM_intersection'] = {
+            data_filters['longitude_of_DEM_intersection_meas'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2]
+            }
+            data_filters['latitude_of_DEM_intersection_obs'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3]
+            }
+            data_filters['latitude_of_DEM_intersection_meas'] = {
                 'min': tpl_box[1],
                 'max': tpl_box[3]
             }
@@ -163,11 +171,18 @@ class Level2AExctract(Component):
                     **db_filters
                 ).order_by('begin_time')
             ]
-            output[collection.identifier] = extract_data(
+
+            observation_data, measurement_data, group_data = extract_data(
                 dbl_files, data_filters,
                 observation_fields, measurement_fields, group_fields,
                 simple_observation_filters=True,
                 convert_arrays=True
+            )
+
+            output[collection.identifier] = dict(
+                observation_data=observation_data,
+                measurement_data=measurement_data,
+                group_data=group_data,
             )
 
         # encode as messagepack
