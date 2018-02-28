@@ -41,6 +41,7 @@ import msgpack
 
 from aeolus import models
 from aeolus.level_2c import extract_data
+from aeolus.processes.util.bbox import translate_bbox
 
 
 class Level2CExctract(Component):
@@ -188,14 +189,40 @@ class Level2CExctract(Component):
             box = Polygon.from_bbox(tpl_box)
 
             db_filters['ground_path__intersects'] = box
-            # data_filters['longitude_of_DEM_intersection'] = {
-            #     'min': tpl_box[0],
-            #     'max': tpl_box[2]
-            # }
-            # data_filters['latitude_of_DEM_intersection'] = {
-            #     'min': tpl_box[1],
-            #     'max': tpl_box[3]
-            # }
+
+            tpl_box = translate_bbox(tpl_box)
+            data_filters['mie_profile_lon_of_DEM_intersection'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2],
+            }
+            data_filters['mie_profile_lat_of_DEM_intersection'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3],
+            }
+            data_filters['rayleigh_profile_lon_of_DEM_intersection'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2],
+            }
+            data_filters['rayleigh_profile_lat_of_DEM_intersection'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3],
+            }
+            data_filters['mie_wind_result_COG_longitude'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2],
+            }
+            data_filters['mie_wind_result_COG_latitude'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3],
+            }
+            data_filters['rayleigh_wind_result_COG_longitude'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2],
+            }
+            data_filters['rayleigh_wind_result_COG_latitude'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3],
+            }
 
         output = {}
         for collection in collections:
