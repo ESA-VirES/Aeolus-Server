@@ -60,10 +60,16 @@ def make_mask(data, min_value=None, max_value=None, is_array=False, **kwargs):
     if min_value is not None and min_value == max_value:
         mask = data == min_value
     elif min_value is not None and max_value is not None:
-        mask = np.logical_and(
-            data <= max_value,
-            data >= min_value
-        )
+        if min_value > max_value:
+            mask = np.logical_or(
+                data <= max_value,
+                data >= min_value
+            )
+        else:
+            mask = np.logical_and(
+                data <= max_value,
+                data >= min_value
+            )
     elif min_value is not None:
         mask = data >= min_value
     elif max_value is not None:
