@@ -41,6 +41,7 @@ import msgpack
 
 from aeolus import models
 from aeolus.level_2a import extract_data
+from aeolus.processes.util.bbox import translate_bbox
 
 
 class Level2AExctract(Component):
@@ -143,6 +144,7 @@ class Level2AExctract(Component):
             tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             box = Polygon.from_bbox(tpl_box)
 
+            tpl_box = translate_bbox(tpl_box)
             db_filters['ground_path__intersects'] = box
             data_filters['longitude_of_DEM_intersection_obs'] = {
                 'min': tpl_box[0],
