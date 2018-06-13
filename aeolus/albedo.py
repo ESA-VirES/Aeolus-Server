@@ -27,12 +27,16 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import os
 from itertools import izip
 
 import numpy as np
 
 from eoxserver.resources.coverages import models
 from eoxserver.contrib import gdal
+
+
+os.environ.setdefault("GDAL_NETCDF_BOTTOMUP", "NO")
 
 
 def sample_offnadir(year, month, lons, lats):

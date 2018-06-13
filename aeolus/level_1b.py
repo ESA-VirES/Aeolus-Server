@@ -27,96 +27,141 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from datetime import datetime
 from collections import defaultdict
 
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, datetime_to_coda_time
+from aeolus.coda_utils import CODAFile
 from aeolus.filtering import make_mask, combine_mask
+from aeolus.albedo import sample_offnadir
 
+
+def access_location(cf, location):
+    return location(cf) if callable(location) else cf.fetch(*location)
+
+
+def location_for_observation(location, observation_id):
+    return [location[0], observation_id] + location[2:]
+
+
+def calculate_albedo_off_nadir(cf, observation_id=None):
+    start = cf.fetch_date('/mph/sensing_start')
+    stop = cf.fetch_date('/mph/sensing_stop')
+
+    mean = start + (stop - start) / 2
+    if observation_id:
+        lons = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['longitude_of_DEM_intersection'],
+                observation_id,
+            )
+        )
+        lats = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['latitude_of_DEM_intersection'],
+                observation_id,
+            )
+        )
+    else:
+        lons = access_location(cf,
+            OBSERVATION_LOCATIONS['longitude_of_DEM_intersection'],
+        )
+        lats = access_location(cf,
+            OBSERVATION_LOCATIONS['latitude_of_DEM_intersection'],
+        )
+
+    lons[lons > 180] -= 360
+
+    # TODO: get year/month
+    return sample_offnadir(mean.year, mean.month, lons, lats)
 
 # all observation fields and their respective coda path for their location in
 # the DBL file.
 OBSERVATION_LOCATIONS = {
-    'time': ('/geolocation', -1, 'observation_aocs/observation_centroid_time'),
-    'longitude_of_DEM_intersection': ('/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/longitude_of_dem_intersection'),
-    'latitude_of_DEM_intersection': ('/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/latitude_of_dem_intersection'),
-    'altitude_of_DEM_intersection': ('/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/altitude_of_dem_intersection'),
-    'mie_longitude': ('/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'longitude_of_height_bin'),
-    'mie_latitude': ('/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'latitude_of_height_bin'),
-    'rayleigh_longitude': ('/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'longitude_of_height_bin'),
-    'rayleigh_latitude': ('/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'latitude_of_height_bin'),
-    'mie_altitude': ('/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'altitude_of_height_bin'),
-    'rayleigh_altitude': ('/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'altitude_of_height_bin'),
-    'mie_range': ('/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'satellite_range_of_height_bin'),
-    'rayleigh_range': ('/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'satellite_range_of_height_bin'),
-    'geoid_separation': ('/geolocation', -1, 'observation_geolocation/geoid_separation'),
-    'velocity_at_DEM_intersection': ('/geolocation', -1, 'observation_geolocation/line_of_sight_velocity'),
-    'AOCS_pitch_angle': ('/geolocation', -1, 'observation_aocs/pitch_angle'),
-    'AOCS_roll_angle': ('/geolocation', -1, 'observation_aocs/roll_angle'),
-    'AOCS_yaw_angle': ('/geolocation', -1, 'observation_aocs/yaw_angle'),
-    'mie_HLOS_wind_speed': ('/wind_velocity', -1, 'observation_wind_profile/mie_altitude_bin_wind_info', -1, 'wind_velocity'),
-    'rayleigh_HLOS_wind_speed': ('/wind_velocity', -1, 'observation_wind_profile/rayleigh_altitude_bin_wind_info', -1, 'wind_velocity'),
-    'mie_signal_intensity': ('/useful_signal', -1, 'observation_useful_signals/mie_altitude_bin_useful_signal_info', -1, 'useful_signal'),
-    'rayleigh_signal_channel_A_intensity': ('/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'),
-    'rayleigh_signal_channel_B_intensity': ('/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'),
+    'time':                                 ['/geolocation', -1, 'observation_aocs/observation_centroid_time'],
+    'longitude_of_DEM_intersection':        ['/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/longitude_of_dem_intersection'],
+    'latitude_of_DEM_intersection':         ['/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/latitude_of_dem_intersection'],
+    'altitude_of_DEM_intersection':         ['/geolocation', -1, 'observation_geolocation/geolocation_of_dem_intersection/altitude_of_dem_intersection'],
+    'mie_longitude':                        ['/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'longitude_of_height_bin'],
+    'mie_latitude':                         ['/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'latitude_of_height_bin'],
+    'rayleigh_longitude':                   ['/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'longitude_of_height_bin'],
+    'rayleigh_latitude':                    ['/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'latitude_of_height_bin'],
+    'mie_altitude':                         ['/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'altitude_of_height_bin'],
+    'rayleigh_altitude':                    ['/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'altitude_of_height_bin'],
+    'mie_range':                            ['/geolocation', -1, 'observation_geolocation/observation_mie_geolocation', -1, 'satellite_range_of_height_bin'],
+    'rayleigh_range':                       ['/geolocation', -1, 'observation_geolocation/observation_rayleigh_geolocation', -1, 'satellite_range_of_height_bin'],
+    'geoid_separation':                     ['/geolocation', -1, 'observation_geolocation/geoid_separation'],
+    'velocity_at_DEM_intersection':         ['/geolocation', -1, 'observation_geolocation/line_of_sight_velocity'],
+    'AOCS_pitch_angle':                     ['/geolocation', -1, 'observation_aocs/pitch_angle'],
+    'AOCS_roll_angle':                      ['/geolocation', -1, 'observation_aocs/roll_angle'],
+    'AOCS_yaw_angle':                       ['/geolocation', -1, 'observation_aocs/yaw_angle'],
+    'mie_HLOS_wind_speed':                  ['/wind_velocity', -1, 'observation_wind_profile/mie_altitude_bin_wind_info', -1, 'wind_velocity'],
+    'rayleigh_HLOS_wind_speed':             ['/wind_velocity', -1, 'observation_wind_profile/rayleigh_altitude_bin_wind_info', -1, 'wind_velocity'],
+    'mie_signal_intensity':                 ['/useful_signal', -1, 'observation_useful_signals/mie_altitude_bin_useful_signal_info', -1, 'useful_signal'],
+    'rayleigh_signal_channel_A_intensity':  ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'],
+    'rayleigh_signal_channel_B_intensity':  ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
     # 'rayleigh_signal_intensity: '),
-    'mie_ground_velocity': ('/ground_wind_detection', -1, 'mie_ground_correction_velocity'),
-    'rayleigh_ground_velocity': ('/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'),
-    'mie_HBE_ground_velocity': ('/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'),
-    'rayleigh_HBE_ground_velocity': ('/ground_wind_detection', -1, 'hbe_rayleigh_ground_correction_velocity'),
-    'mie_total_ZWC': ('/ground_wind_detection', -1, 'mie_channel_total_zero_wind_correction'),
-    'rayleigh_total_ZWC': ('/ground_wind_detection', -1, 'rayleigh_channel_total_zero_wind_correction'),
-    'mie_scattering_ratio': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'),
-    'mie_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'),
-    'rayleigh_channel_A_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'),
-    'rayleigh_channel_B_SNR': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'),
+    'mie_ground_velocity':                  ['/ground_wind_detection', -1, 'mie_ground_correction_velocity'],
+    'rayleigh_ground_velocity':             ['/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'],
+    'mie_HBE_ground_velocity':              ['/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'],
+    'rayleigh_HBE_ground_velocity':         ['/ground_wind_detection', -1, 'hbe_rayleigh_ground_correction_velocity'],
+    'mie_total_ZWC':                        ['/ground_wind_detection', -1, 'mie_channel_total_zero_wind_correction'],
+    'rayleigh_total_ZWC':                   ['/ground_wind_detection', -1, 'rayleigh_channel_total_zero_wind_correction'],
+    'mie_scattering_ratio':                 ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'],
+    'mie_SNR':                              ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
+    'rayleigh_channel_A_SNR':               ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
+    'rayleigh_channel_B_SNR':               ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'],
     # 'rayleigh_SNR: '),
-    'mie_error_quantifier': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_mie'),
-    'rayleigh_error_quantifier': ('/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_rayleigh'),
-    'average_laser_energy': ('/product_confidence_data', -1, 'observation_pcd/avg_uv_energy'),
-    'laser_frequency': ('/product_confidence_data', -1, 'observation_pcd/avg_laser_frequency_offset'),
-    'rayleigh_bin_quality_flag': ('/wind_velocity', -1, 'observation_wind_profile/rayleigh_altitude_bin_wind_info', -1, 'bin_quality_flag'),
-    'mie_bin_quality_flag': ('/wind_velocity', -1, 'observation_wind_profile/mie_altitude_bin_wind_info', -1, 'bin_quality_flag'),
-    'rayleigh_reference_pulse_quality_flag': ('/wind_velocity', -1, 'observation_wind_profile/rayleigh_reference_pulse_quality_flag'),
-    'mie_reference_pulse_quality_flag': ('/wind_velocity', -1, 'observation_wind_profile/mie_reference_pulse_quality_flag'),
+    'mie_error_quantifier':                 ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_mie'],
+    'rayleigh_error_quantifier':            ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_rayleigh'],
+    'average_laser_energy':                 ['/product_confidence_data', -1, 'observation_pcd/avg_uv_energy'],
+    'laser_frequency':                      ['/product_confidence_data', -1, 'observation_pcd/avg_laser_frequency_offset'],
+    'rayleigh_bin_quality_flag':            ['/wind_velocity', -1, 'observation_wind_profile/rayleigh_altitude_bin_wind_info', -1, 'bin_quality_flag'],
+    'mie_bin_quality_flag':                 ['/wind_velocity', -1, 'observation_wind_profile/mie_altitude_bin_wind_info', -1, 'bin_quality_flag'],
+    'rayleigh_reference_pulse_quality_flag': ['/wind_velocity', -1, 'observation_wind_profile/rayleigh_reference_pulse_quality_flag'],
+    'mie_reference_pulse_quality_flag':     ['/wind_velocity', -1, 'observation_wind_profile/mie_reference_pulse_quality_flag'],
+
+    # Albedo values:
+    'albedo_off_nadir':                     calculate_albedo_off_nadir,
 }
 
 # all measurement fields and their respective coda path for their location in
 # the DBL file.
 MEASUREMENT_LOCATIONS = {
-    'time': ('/geolocation', -1, 'measurement_aocs', -1, 'measurement_centroid_time'),
-    'longitude_of_DEM_intersection': ('/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/longitude_of_dem_intersection'),
-    'latitude_of_DEM_intersection': ('/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/latitude_of_dem_intersection'),
-    'altitude_of_DEM_intersection': ('/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/altitude_of_dem_intersection'),
-    'mie_longitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'longitude_of_height_bin'),
-    'mie_latitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'latitude_of_height_bin'),
-    'rayleigh_longitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'longitude_of_height_bin'),
-    'rayleigh_latitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'latitude_of_height_bin'),
-    'mie_altitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'altitude_of_height_bin'),
-    'rayleigh_altitude': ('/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'altitude_of_height_bin'),
-    'velocity_at_DEM_intersection': ('/geolocation', -1, 'measurement_geolocation', -1, 'aocs_los_velocity'),
-    'AOCS_pitch_angle': ('/geolocation', -1, 'measurement_aocs', -1, 'pitch_angle'),
-    'AOCS_roll_angle': ('/geolocation', -1, 'measurement_aocs', -1, 'roll_angle'),
-    'AOCS_yaw_angle': ('/geolocation', -1, 'measurement_aocs', -1, 'yaw_angle'),
-    'mie_HLOS_wind_speed': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'wind_velocity'),
-    'rayleigh_HLOS_wind_speed': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_altitude_bin_wind_info', -1, 'wind_velocity'),
-    'mie_signal_intensity': ('/useful_signal', -1, 'measurement_useful_signal', -1, 'mie_altitude_bin_useful_signal_info', -1, 'useful_signal'),
-    'rayleigh_signal_channel_A_intensity': ('/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'),
-    'rayleigh_signal_channel_B_intensity': ('/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'),
-    'mie_ground_velocity': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_ground_wind_velocity'),
-    'rayleigh_ground_velocity': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_ground_wind_velocity'),
-    'mie_scattering_ratio': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'),
-    'mie_SNR': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'),
-    'rayleigh_channel_A_SNR': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'),
-    'rayleigh_channel_B_SNR': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'),
-    'average_laser_energy': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_uv_energy'),
-    'laser_frequency': ('/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_laser_frequency_offset'),
-    'rayleigh_bin_quality_flag': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_altitude_bin_wind_info', -1, 'bin_quality_flag'),
-    'mie_bin_quality_flag': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'bin_quality_flag'),
-    'rayleigh_reference_pulse_quality_flag': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_reference_pulse_quality_flag'),
-    'mie_reference_pulse_quality_flag': ('/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_reference_pulse_quality_flag'),
+    'time':                                 ['/geolocation', -1, 'measurement_aocs', -1, 'measurement_centroid_time'],
+    'longitude_of_DEM_intersection':        ['/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/longitude_of_dem_intersection'],
+    'latitude_of_DEM_intersection':         ['/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/latitude_of_dem_intersection'],
+    'altitude_of_DEM_intersection':         ['/geolocation', -1, 'measurement_geolocation', -1, 'geolocation_of_dem_intersection/altitude_of_dem_intersection'],
+    'mie_longitude':                        ['/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'longitude_of_height_bin'],
+    'mie_latitude':                         ['/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'latitude_of_height_bin'],
+    'rayleigh_longitude':                   ['/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'longitude_of_height_bin'],
+    'rayleigh_latitude':                    ['/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'latitude_of_height_bin'],
+    'mie_altitude':                         ['/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation', -1, 'altitude_of_height_bin'],
+    'rayleigh_altitude':                    ['/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation', -1, 'altitude_of_height_bin'],
+    'velocity_at_DEM_intersection':         ['/geolocation', -1, 'measurement_geolocation', -1, 'aocs_los_velocity'],
+    'AOCS_pitch_angle':                     ['/geolocation', -1, 'measurement_aocs', -1, 'pitch_angle'],
+    'AOCS_roll_angle':                      ['/geolocation', -1, 'measurement_aocs', -1, 'roll_angle'],
+    'AOCS_yaw_angle':                       ['/geolocation', -1, 'measurement_aocs', -1, 'yaw_angle'],
+    'mie_HLOS_wind_speed':                  ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'wind_velocity'],
+    'rayleigh_HLOS_wind_speed':             ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_altitude_bin_wind_info', -1, 'wind_velocity'],
+    'mie_signal_intensity':                 ['/useful_signal', -1, 'measurement_useful_signal', -1, 'mie_altitude_bin_useful_signal_info', -1, 'useful_signal'],
+    'rayleigh_signal_channel_A_intensity':  ['/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'],
+    'rayleigh_signal_channel_B_intensity':  ['/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
+    'mie_ground_velocity':                  ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_ground_wind_velocity'],
+    'rayleigh_ground_velocity':             ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_ground_wind_velocity'],
+    'mie_scattering_ratio':                 ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'],
+    'mie_SNR':                              ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
+    'rayleigh_channel_A_SNR':               ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
+    'rayleigh_channel_B_SNR':               ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'],
+    'average_laser_energy':                 ['/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_uv_energy'],
+    'laser_frequency':                      ['/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_laser_frequency_offset'],
+    'rayleigh_bin_quality_flag':            ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_altitude_bin_wind_info', -1, 'bin_quality_flag'],
+    'mie_bin_quality_flag':                 ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_altitude_bin_wind_info', -1, 'bin_quality_flag'],
+    'rayleigh_reference_pulse_quality_flag': ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_reference_pulse_quality_flag'],
+    'mie_reference_pulse_quality_flag':     ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_reference_pulse_quality_flag'],
+
+    # Albedo values:
+    'albedo_off_nadir':                     calculate_albedo_off_nadir,
 }
 
 # all fields whose values are actually arrays themselves
@@ -186,7 +231,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             observation_mask = None
             for field_name, filter_value in filters.items():
 
-                data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
+                data = access_location(cf, OBSERVATION_LOCATIONS[field_name])
                 new_mask = make_mask(
                     data, filter_value.get('min'), filter_value.get('max'),
                     field_name in ARRAY_FIELDS
@@ -203,7 +248,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             # write to the output dict
             for field_name in observation_fields:
                 assert field_name in OBSERVATION_LOCATIONS
-                data = cf.fetch(*OBSERVATION_LOCATIONS[field_name])
+                data = access_location(cf, OBSERVATION_LOCATIONS[field_name])
                 if filtered_observation_ids is not None:
                     data = data[filtered_observation_ids]
 
@@ -249,8 +294,11 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
             if field_name not in MEASUREMENT_LOCATIONS:
                 continue
 
-            path = MEASUREMENT_LOCATIONS[field_name]
-            data = cf.fetch(path[0], int(observation_id), *path[2:])
+            location = MEASUREMENT_LOCATIONS[field_name]
+            if callable(location):
+                data = location(cf, observation_id)
+            else:
+                data = cf.fetch(location[0], int(observation_id), *location[2:])
 
             new_mask = make_mask(
                 data, filter_value.get('min'), filter_value.get('max'),
@@ -267,8 +315,13 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
                 filtered_measurement_ids = None
 
         for field_name in measurement_fields:
-            path = MEASUREMENT_LOCATIONS[field_name]
-            data = cf.fetch(path[0], int(observation_id), *path[2:])
+            location = MEASUREMENT_LOCATIONS[field_name]
+            if callable(location):
+                data = location(cf, observation_id)
+            else:
+                data = cf.fetch(location[0], int(observation_id), *location[2:])
+
+            # data = cf.fetch(path[0], int(observation_id), *path[2:])
 
             if filtered_measurement_ids:
                 data = data[filtered_measurement_ids]
