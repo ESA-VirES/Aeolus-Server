@@ -115,3 +115,26 @@ def coda_time_to_datetime(value):
     return datetime.datetime(
         *coda.time_double_to_parts_utc(value), tzinfo=utc
     )
+
+
+def access_location(cf, location):
+    """
+    """
+    return location(cf) if callable(location) else cf.fetch(*location)
+
+
+class UnknownFieldError(Exception):
+    pass
+
+
+def check_fields(requested, available, label=None):
+    unavailable = set(requested) - set(available)
+
+    if unavailable:
+        raise UnknownFieldError(
+            'Unknown %sfield%s: %s' % (
+                label + ' ' if label else '',
+                's' if len(unavailable) > 1 else '',
+                ', '.join(unavailable)
+            )
+        )
