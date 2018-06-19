@@ -32,8 +32,9 @@ import math
 
 import numpy as np
 
-from aeolus.coda_utils import CODAFile
+from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, combine_mask
+from aeolus.albedo import sample_offnadir
 
 
 def _make_profile_from_wind_calc(id_field, value_field):
@@ -144,6 +145,58 @@ def calc_rayleigh_assimilation_analysis_wind_direction(cf):
     u = cf.fetch(*locations['rayleigh_assimilation_analysis_u_wind_velocity'])
     v = cf.fetch(*locations['rayleigh_assimilation_analysis_v_wind_velocity'])
     return _calc_direction(u, v)
+
+
+def _make_calc_albedo_off_nadir(lon_location, lat_location):
+    def _inner(cf):
+        start = cf.fetch_date('/mph/sensing_start')
+        stop = cf.fetch_date('/mph/sensing_stop')
+
+        mean = start + (stop - start) / 2
+        lons = access_location(cf,
+            locations[lon_location],
+        )
+        lats = access_location(cf,
+            locations[lat_location],
+        )
+
+        lons[lons > 180] -= 360
+        shape = lons.shape
+
+        if len(shape) > 1:
+            lons = lons.flatten()
+            lats = lats.flatten()
+
+        data = sample_offnadir(mean.year, mean.month, lons, lats)
+
+        if len(shape) > 1:
+            data = data.reshape(shape)
+
+        return data
+
+    return _inner
+
+
+calc_mie_wind_result_albedo_off_nadir = _make_calc_albedo_off_nadir(
+    'mie_wind_result_lon_of_DEM_intersection',
+    'mie_wind_result_lat_of_DEM_intersection',
+)
+
+calc_rayleigh_wind_result_albedo_off_nadir = _make_calc_albedo_off_nadir(
+    'rayleigh_wind_result_lon_of_DEM_intersection',
+    'rayleigh_wind_result_lat_of_DEM_intersection',
+)
+
+
+calc_mie_profile_albedo_off_nadir = _make_calc_albedo_off_nadir(
+    'mie_profile_lon_of_DEM_intersection',
+    'mie_profile_lat_of_DEM_intersection',
+)
+
+calc_rayleigh_profile_albedo_off_nadir = _make_calc_albedo_off_nadir(
+    'rayleigh_profile_lon_of_DEM_intersection',
+    'rayleigh_profile_lat_of_DEM_intersection',
+)
 
 
 locations = {
@@ -299,6 +352,11 @@ locations = {
     'rayleigh_profile_datetime_average':                            ['/rayleigh_profile', -1, 'profile_datetime_average'],
     'rayleigh_profile_datetime_stop':                               ['/rayleigh_profile', -1, 'profile_datetime_stop'],
 
+    # Albedo
+    'mie_wind_result_albedo_off_nadir':                             calc_mie_wind_result_albedo_off_nadir,
+    'rayleigh_wind_result_albedo_off_nadir':                        calc_rayleigh_wind_result_albedo_off_nadir,
+    'mie_profile_albedo_off_nadir':                                 calc_mie_profile_albedo_off_nadir,
+    'rayleigh_profile_albedo_off_nadir':                            calc_rayleigh_profile_albedo_off_nadir,
 }
 
 MIE_GROUPING_FIELDS = set([
@@ -330,6 +388,7 @@ MIE_PROFILE_FIELDS = set([
     'mie_profile_datetime_start',
     'mie_profile_datetime_average',
     'mie_profile_datetime_stop',
+    'mie_profile_albedo_off_nadir',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
@@ -342,6 +401,7 @@ RAYLEIGH_PROFILE_FIELDS = set([
     'rayleigh_profile_datetime_start',
     'rayleigh_profile_datetime_average',
     'rayleigh_profile_datetime_stop',
+    'rayleigh_profile_albedo_off_nadir',
 ])
 
 MIE_WIND_FIELDS = set([
@@ -397,6 +457,7 @@ MIE_WIND_FIELDS = set([
     'mie_assimilation_analysis_v_wind_velocity',
     'mie_assimilation_analysis_horizontal_wind_velocity',
     'mie_assimilation_analysis_wind_direction',
+    'mie_wind_result_albedo_off_nadir',
 ])
 
 RAYLEIGH_WIND_FIELDS = set([
@@ -454,6 +515,7 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_assimilation_analysis_v_wind_velocity',
     'rayleigh_assimilation_analysis_horizontal_wind_velocity',
     'rayleigh_assimilation_analysis_wind_direction',
+    'rayleigh_wind_result_albedo_off_nadir',
 ])
 
 MEASUREMENT_FIELDS = set([
@@ -610,9 +672,7 @@ def extract_data(filenames, filters,
 
 def fetch_array(cf, name):
     path = locations[name]
-    if callable(path):
-        return path(cf)
-    return cf.fetch(*path)
+    return access_location(cf, path)
 
 
 def create_type_mask(cf, filters):

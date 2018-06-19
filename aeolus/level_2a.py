@@ -27,14 +27,14 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from datetime import datetime
 from collections import defaultdict
 from itertools import izip
 
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, datetime_to_coda_time
+from aeolus.coda_utils import CODAFile, access_location, check_fields
 from aeolus.filtering import make_mask, combine_mask
+from aeolus.albedo import sample_offnadir
 
 
 def calculate_L1B_centroid_time_obs(cf):
@@ -158,6 +158,61 @@ def calculate_group_centroid_time(cf):
     return (start_times + end_times) / 2
 
 
+def location_for_observation(location, observation_id):
+    return [location[0], observation_id] + location[2:]
+
+
+def calculate_albedo_off_nadir(cf, observation_id=None):
+    """ Retrieves the albedo off_nadir values for the given file
+    """
+    start = cf.fetch_date('/mph/sensing_start')
+    stop = cf.fetch_date('/mph/sensing_stop')
+
+    mean = start + (stop - start) / 2
+    if observation_id is not None:
+        lons = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['longitude_of_DEM_intersection_meas'],
+                observation_id,
+            )
+        )
+
+        lats = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['latitude_of_DEM_intersection_meas'],
+                observation_id,
+            )
+        )
+        if observation_id == -1:
+            lons = np.vstack(lons)
+            lats = np.vstack(lats)
+    else:
+        lons = access_location(cf,
+            OBSERVATION_LOCATIONS['longitude_of_DEM_intersection_obs'],
+        )
+        lats = access_location(cf,
+            OBSERVATION_LOCATIONS['latitude_of_DEM_intersection_obs'],
+        )
+
+    lons[lons > 180] -= 360
+    shape = lons.shape
+
+    if len(shape) > 1:
+        lons = lons.flatten()
+        lats = lats.flatten()
+
+    data = sample_offnadir(mean.year, mean.month, lons, lats)
+
+    if len(shape) > 1:
+        data = data.reshape(shape)
+
+    return data
+
+
+def calculate_albedo_off_nadir_meas(cf, observation_id=-1):
+    return calculate_albedo_off_nadir(cf, observation_id)
+
+
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
     'L1B_centroid_time_obs':                        calculate_L1B_centroid_time_obs,
@@ -196,6 +251,9 @@ OBSERVATION_LOCATIONS = {
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
     'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
+
+    # Albedo values:
+    'albedo_off_nadir':                             calculate_albedo_off_nadir,
 }
 
 MEASUREMENT_LOCATIONS = {
@@ -205,6 +263,9 @@ MEASUREMENT_LOCATIONS = {
     'altitude_of_DEM_intersection_meas':            ['/geolocation', -1, 'measurement_geolocation', -1, 'altitude_of_dem_intersection'],
     'mie_altitude_meas':                            ['/geolocation', -1, 'measurement_geolocation', -1, 'mie_geolocation_height_bin', -1, 'altitude_of_height_bin'],
     'rayleigh_altitude_meas':                       ['/geolocation', -1, 'measurement_geolocation', -1, 'rayleigh_geolocation_height_bin', -1, 'altitude_of_height_bin'],
+
+    # Albedo values:
+    'albedo_off_nadir':                             calculate_albedo_off_nadir_meas,
 }
 
 GROUP_LOCATIONS = {
@@ -304,17 +365,16 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
     out_measurement_data = defaultdict(list)
     out_group_data = defaultdict(list)
 
-    unknown_fields = [
-        field_name for field_name in filters
-        if (
-            field_name not in OBSERVATION_LOCATIONS and
-            field_name not in MEASUREMENT_LOCATIONS and
-            field_name not in GROUP_LOCATIONS
-        )
-    ]
-
-    if unknown_fields:
-        raise KeyError('Unknown fields: %s' % ', '.join(unknown_fields))
+    check_fields(
+        filters.keys(),
+        OBSERVATION_LOCATIONS.keys() +
+        MEASUREMENT_LOCATIONS.keys() +
+        GROUP_LOCATIONS.keys(),
+        'filter'
+    )
+    check_fields(observation_fields, OBSERVATION_LOCATIONS.keys(), 'observation')
+    check_fields(measurement_fields, MEASUREMENT_LOCATIONS.keys(), 'measurement')
+    check_fields(group_fields, GROUP_LOCATIONS.keys(), 'group')
 
     observation_filters = {
         name: value
@@ -340,10 +400,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             observation_mask = None
             for field_name, filter_value in observation_filters.items():
                 location = OBSERVATION_LOCATIONS[field_name]
-                if callable(location):
-                    data = location(cf)
-                else:
-                    data = cf.fetch(*location)
+
+                data = access_location(cf, location)
 
                 new_mask = make_mask(
                     data, filter_value.get('min'), filter_value.get('max'),
@@ -361,10 +419,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             # write to the output dict
             for field_name in observation_fields:
                 location = OBSERVATION_LOCATIONS[field_name]
-                if callable(location):
-                    data = location(cf)
-                else:
-                    data = cf.fetch(*location)
+
+                data = access_location(cf, location)
 
                 if filtered_observation_ids is not None:
                     data = data[filtered_observation_ids]
@@ -402,10 +458,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
             group_mask = None
             for field_name, filter_value in group_filters.items():
                 location = GROUP_LOCATIONS[field_name]
-                if callable(location):
-                    data = location(cf)
-                else:
-                    data = cf.fetch(*location)
+
+                data = access_location(cf, location)
 
                 new_mask = make_mask(
                     data, filter_value.get('min'), filter_value.get('max'),
@@ -425,10 +479,8 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                 if field_name not in GROUP_LOCATIONS:
                     raise KeyError('Unknown group field %s' % field_name)
                 location = GROUP_LOCATIONS[field_name]
-                if callable(location):
-                    data = location(cf)
-                else:
-                    data = cf.fetch(*location)
+
+                data = access_location(location)
 
                 if filtered_group_ids is not None:
                     data = data[filtered_group_ids]
@@ -443,48 +495,53 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
 
 def _read_measurements(cf, measurement_fields, filters, observation_ids,
                        convert_arrays):
-
     out_measurement_data = defaultdict(list)
 
-    # iterate all (or selected) observations
-    for observation_id in observation_ids:
-        # build a measurement bitmask:
-        # loop over all filter fields, fetch the filter field data and
-        # perform the filter.
-        measurement_mask = None
-        for field_name, filter_value in filters.items():
-            # only apply filters for measurement fields
-            if field_name not in MEASUREMENT_LOCATIONS:
-                continue
+    # return early, when no measurement fields are actually requested
+    if not measurement_fields:
+        return out_measurement_data
 
-            path = MEASUREMENT_LOCATIONS[field_name]
-            data = cf.fetch(path[0], int(observation_id), *path[2:])
+    # Build a measurement mask
+    measurement_mask = None
+    for field_name, filter_value in filters.items():
+        # only apply filters for measurement fields
+        if field_name not in MEASUREMENT_LOCATIONS:
+            continue
 
-            new_mask = make_mask(
-                data, filter_value.get('min'), filter_value.get('max'),
-                field_name in ARRAY_FIELDS
-            )
+        location = MEASUREMENT_LOCATIONS[field_name]
 
-            # combine the masks
-            measurement_mask = combine_mask(new_mask, measurement_mask)
+        data = np.vstack(access_location(cf, location)[observation_ids])
 
-        filtered_measurement_ids = None
+        new_mask = make_mask(
+            data, filter_value.get('min'), filter_value.get('max'),
+            field_name in ARRAY_FIELDS
+        )
+        # combine the masks
+        measurement_mask = combine_mask(new_mask, measurement_mask)
+
+    # iterate over all requested fields
+    for field_name in measurement_fields:
+        location = MEASUREMENT_LOCATIONS[field_name]
+
+        # fetch the data, and apply the observation id mask
+        data = access_location(cf, location)[observation_ids]
+
+        # when a measurement mask was built, iterate over all measurement groups
+        # plus their mask respectively, and apply it to get a filtered list
         if measurement_mask is not None:
-            filtered_measurement_ids = np.nonzero(measurement_mask)
-            if measurement_mask.shape == filtered_measurement_ids[0].shape:
-                filtered_measurement_ids = None
+            data = [
+                (
+                    _array_to_list(measurement[mask])
+                    if convert_arrays else measurement[mask]
+                )
+                for measurement, mask in izip(data, measurement_mask)
+            ]
 
-        for field_name in measurement_fields:
-            path = MEASUREMENT_LOCATIONS[field_name]
-            data = cf.fetch(path[0], int(observation_id), *path[2:])
+        # convert to simple list instead of numpy array if requested
+        if convert_arrays and isinstance(data, np.ndarray):
+            data = _array_to_list(data)
 
-            if filtered_measurement_ids:
-                data = data[filtered_measurement_ids]
-            # convert to simple list instead of numpy array if requested
-            if convert_arrays and isinstance(data, np.ndarray):
-                data = _array_to_list(data)
-
-            out_measurement_data[field_name].append(data)
+        out_measurement_data[field_name].append(data)
 
     return out_measurement_data
 
