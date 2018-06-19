@@ -36,20 +36,37 @@ from eoxserver.resources.coverages import models
 from eoxserver.contrib import gdal
 
 
+# we have to use this in order to make the albedo NetCDFs readable
 os.environ.setdefault("GDAL_NETCDF_BOTTOMUP", "NO")
 
 
+class AlbedoFileError(Exception):
+    pass
+
+
 def sample_offnadir(year, month, lons, lats):
+    """ Sample the registered off-nadir values for the registered albedo files
+        for the given year, month, and longitudes/latitudes.
+    """
     return _sample_data_item(year, month, 1, lons, lats)
 
 
 def sample_nadir(year, month, lons, lats):
+    """ Sample the registered nadir values for the registered albedo files for
+        the given year, month, and longitudes/latitudes.
+    """
     return _sample_data_item(year, month, 2, lons, lats)
 
 
 def _sample_data_item(year, month, index, lons, lats):
     identifier = 'ADAM_albedo_%d_%d' % (year, month)
-    albedo = models.Coverage.objects.get(identifier=identifier)
+    try:
+        albedo = models.Coverage.objects.get(identifier=identifier)
+    except models.Coverage.DoesNotExist:
+        raise AlbedoFileError('No albedo file for %d/%d registered.' % (
+            year, month)
+        )
+
     data_item = albedo.data_items.get(semantic='bands[%d]' % index)
     ds = gdal.Open(data_item.location)
     band = ds.GetRasterBand(1)
