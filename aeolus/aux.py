@@ -32,8 +32,41 @@ from collections import defaultdict
 
 import numpy as np
 
-from aeolus.coda_utils import CODAFile
+from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, combine_mask
+from aeolus.albedo import sample_nadir
+
+
+def _make_calc_albedo_nadir_aux_mrc_rrc(lon_location, lat_location):
+    def _inner(cf):
+        start = cf.fetch_date(
+            '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
+            '/Validity_Period/Validity_Start'
+        )
+        stop = cf.fetch_date(
+            '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
+            '/Validity_Period/Validity_Stop'
+        )
+
+        mean = start + (stop - start) / 2
+        lons = np.vstack(access_location(cf, lon_location))
+        lats = np.vstack(access_location(cf, lat_location))
+
+        lons[lons > 180] -= 360
+        shape = lons.shape
+
+        if len(shape) > 1:
+            lons = lons.flatten()
+            lats = lats.flatten()
+
+        data = sample_nadir(mean.year, mean.month, lons, lats)
+
+        if len(shape) > 1:
+            data = data.reshape(shape)
+
+        return data
+
+    return _inner
 
 
 # ------------------------------------------------------------------------------
@@ -250,7 +283,18 @@ AUX_MRC_LOCATIONS = {
     'mie_core_measurement_FWHM':                            ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/List_of_Calibration_MC_Results/Calibration_MC_Result', -1, 'Frequency_Step_MC_Results/FWHM'],
     'mie_core_measurement_amplitude':                       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/List_of_Calibration_MC_Results/Calibration_MC_Result', -1, 'Frequency_Step_MC_Results/Amplitude'],
     'mie_core_measurement_offset':                          ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/List_of_Calibration_MC_Results/Calibration_MC_Result', -1, 'Frequency_Step_MC_Results/Offset'],
+
+    # Albedo
+    'albedo_nadir':                                         None,
 }
+
+calc_albedo_nadir_aux_mrc = _make_calc_albedo_nadir_aux_mrc_rrc(
+    AUX_MRC_LOCATIONS['lon_of_DEM_intersection'],
+    AUX_MRC_LOCATIONS['lat_of_DEM_intersection']
+)
+
+AUX_MRC_LOCATIONS['albedo_nadir'] = calc_albedo_nadir_aux_mrc
+
 
 AUX_MRC_CALIBRATION_FIELDS = set([
     'measurement_mean_sensitivity',
@@ -294,6 +338,7 @@ AUX_MRC_SCALAR_FIELDS = set([
     'mie_core_measurement_FWHM',
     'mie_core_measurement_amplitude',
     'mie_core_measurement_offset',
+    'albedo_nadir',
 ])
 
 AUX_MRC_ARRAY_FIELDS = set([
@@ -307,6 +352,7 @@ AUX_MRC_ARRAY_FIELDS = set([
 # ------------------------------------------------------------------------------
 # AUX RRC
 # ------------------------------------------------------------------------------
+
 
 AUX_RRC_LOCATIONS = {
     'lat_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_RRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Geolocations/Frequency_Step_Geolocation', -1, 'Latitude_of_DEM_Intersection'],
@@ -373,7 +419,17 @@ AUX_RRC_LOCATIONS = {
     'rayleigh_thermal_hood_temperature_3':                  ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_RRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Temperatures/Frequency_Step_Temperature', -1, 'RSPT_Average_Temperature/Thermocouple_10_Ray_Spectrometer_Thermal_Hood_3'],
     'rayleigh_thermal_hood_temperature_4':                  ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_RRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Temperatures/Frequency_Step_Temperature', -1, 'RSPT_Average_Temperature/Thermocouple_11_Ray_Spectrometer_Thermal_Hood_4'],
     'rayleigh_optical_baseplate_avg_temperature':           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_RRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_Frequency_Step_Temperatures/Frequency_Step_Temperature', -1, 'Optical_Baseplate_Average'],
+
+    # Albedo
+    'albedo_nadir':                                         None,
 }
+
+calc_albedo_nadir_aux_rrc = _make_calc_albedo_nadir_aux_mrc_rrc(
+    AUX_RRC_LOCATIONS['lon_of_DEM_intersection'],
+    AUX_RRC_LOCATIONS['lat_of_DEM_intersection']
+)
+
+AUX_RRC_LOCATIONS['albedo_nadir'] = calc_albedo_nadir_aux_rrc
 
 AUX_RRC_CALIBRATION_FIELDS = set([
     'measurement_mean_sensitivity',
@@ -438,6 +494,7 @@ AUX_RRC_SCALAR_FIELDS = set([
     'rayleigh_thermal_hood_temperature_3',
     'rayleigh_thermal_hood_temperature_4',
     'rayleigh_optical_baseplate_avg_temperature',
+    'albedo_nadir',
 ])
 
 AUX_RRC_ARRAY_FIELDS = set([
@@ -677,7 +734,7 @@ def extract_data(filenames, filters, fields, aux_type):
     frequency_filters = {
         name: filter_value
         for name, filter_value in filters.items()
-        if calibration_filters
+        if name not in calibration_filters
     }
 
     requested_calibration_fields = [
@@ -700,7 +757,7 @@ def extract_data(filenames, filters, fields, aux_type):
             for field_name, filter_value in calibration_filters.items():
                 path = locations[field_name][:]
                 new_mask = make_mask(
-                    cf.fetch(*path),
+                    access_location(cf, path),
                     filter_value.get('min'), filter_value.get('max'),
                     field in calibration_array_fields
                 )
@@ -726,13 +783,15 @@ def extract_data(filenames, filters, fields, aux_type):
             # load all desired values for the requested calibrations
             for field_name in requested_calibration_fields:
                 path = locations[field_name]
-                field_data = cf.fetch(*path)
+                field_data = access_location(cf, path)
 
                 if calibration_nonzero_ids is not None:
                     field_data = field_data[calibration_nonzero_ids]
 
                 # write out data
                 data[field_name].extend(_array_to_list(field_data))
+
+            print frequency_filters
 
             # iterate over all calibrations
             for calibration_id in calibration_ids:
@@ -741,8 +800,15 @@ def extract_data(filenames, filters, fields, aux_type):
                 for field_name, filter_value in frequency_filters.items():
                     path = locations[field_name]
 
+                    if callable(path):
+                        field_data = access_location(cf, path)[calibration_id]
+                    else:
+                        field_data = access_location(
+                            cf, [path[0], calibration_id] + path[2:]
+                        )
+
                     new_mask = make_mask(
-                        cf.fetch(path[0], calibration_id, *path[2:]),
+                        field_data,
                         filter_value.get('min'), filter_value.get('max'),
                         field_name in array_fields
                     )
@@ -757,7 +823,12 @@ def extract_data(filenames, filters, fields, aux_type):
                 # possibly subset data to the output
                 for field_name in requested_frequency_fields:
                     path = locations[field_name]
-                    field_data = cf.fetch(path[0], calibration_id, *path[2:])
+                    if callable(path):
+                        field_data = access_location(cf, path)[calibration_id]
+                    else:
+                        field_data = access_location(
+                            cf, [path[0], calibration_id] + path[2:]
+                        )
 
                     if frequency_ids is not None:
                         field_data = field_data[frequency_ids]
