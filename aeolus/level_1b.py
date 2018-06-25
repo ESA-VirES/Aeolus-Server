@@ -38,7 +38,75 @@ from aeolus.albedo import sample_offnadir
 
 
 def location_for_observation(location, observation_id):
+    if location[1] == observation_id:
+        return location
     return [location[0], observation_id] + location[2:]
+
+
+def calc_rayleigh_signal_intensity(cf, observation_id=None):
+    if observation_id is not None:
+        channel_A_intensity = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_A_intensity'],
+                observation_id,
+            )
+        )
+
+        channel_B_intensity = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_B_intensity'],
+                observation_id,
+            )
+        )
+        if observation_id == -1:
+            channel_A_intensity = np.vstack(channel_A_intensity)
+            channel_B_intensity = np.vstack(channel_B_intensity)
+    else:
+        channel_A_intensity = access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_signal_channel_A_intensity'],
+        )
+        channel_B_intensity = access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_signal_channel_B_intensity'],
+        )
+
+    return channel_A_intensity + channel_B_intensity
+
+
+def calc_rayleigh_signal_intensity_measurement(cf, observation_id=-1):
+    return calc_rayleigh_signal_intensity(cf, observation_id)
+
+
+def calc_rayleigh_SNR(cf, observation_id=None):
+    if observation_id is not None:
+        channel_A_SNR = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_A_SNR'],
+                observation_id,
+            )
+        )
+
+        channel_B_SNR = access_location(cf,
+            location_for_observation(
+                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_B_SNR'],
+                observation_id,
+            )
+        )
+        if observation_id == -1:
+            channel_A_SNR = np.vstack(channel_A_SNR)
+            channel_B_SNR = np.vstack(channel_B_SNR)
+    else:
+        channel_A_SNR = access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_signal_channel_A_SNR'],
+        )
+        channel_B_SNR = access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_signal_channel_B_SNR'],
+        )
+
+    return channel_A_SNR + channel_B_SNR
+
+
+def calc_rayleigh_SNR_measurement(cf, observation_id=-1):
+    return calc_rayleigh_SNR(cf, observation_id)
 
 
 def calculate_albedo_off_nadir(cf, observation_id=None):
@@ -117,7 +185,7 @@ OBSERVATION_LOCATIONS = {
     'mie_signal_intensity':                     ['/useful_signal', -1, 'observation_useful_signals/mie_altitude_bin_useful_signal_info', -1, 'useful_signal'],
     'rayleigh_signal_channel_A_intensity':      ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'],
     'rayleigh_signal_channel_B_intensity':      ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
-    # 'rayleigh_signal_intensity: '),
+    'rayleigh_signal_intensity':                calc_rayleigh_signal_intensity,
     'mie_ground_velocity':                      ['/ground_wind_detection', -1, 'mie_ground_correction_velocity'],
     'rayleigh_ground_velocity':                 ['/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'],
     'mie_HBE_ground_velocity':                  ['/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'],
@@ -128,7 +196,7 @@ OBSERVATION_LOCATIONS = {
     'mie_SNR':                                  ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
     'rayleigh_channel_A_SNR':                   ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
     'rayleigh_channel_B_SNR':                   ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'],
-    # 'rayleigh_SNR: '),
+    'rayleigh_SNR':                             calc_rayleigh_SNR,
     'mie_error_quantifier':                     ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_mie'],
     'rayleigh_error_quantifier':                ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_rayleigh'],
     'average_laser_energy':                     ['/product_confidence_data', -1, 'observation_pcd/avg_uv_energy'],
@@ -164,12 +232,14 @@ MEASUREMENT_LOCATIONS = {
     'mie_signal_intensity':                     ['/useful_signal', -1, 'measurement_useful_signal', -1, 'mie_altitude_bin_useful_signal_info', -1, 'useful_signal'],
     'rayleigh_signal_channel_A_intensity':      ['/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'],
     'rayleigh_signal_channel_B_intensity':      ['/useful_signal', -1, 'measurement_useful_signal', -1, 'rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
+    'rayleigh_signal_intensity':                calc_rayleigh_signal_intensity_measurement,
     'mie_ground_velocity':                      ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_ground_wind_velocity'],
     'rayleigh_ground_velocity':                 ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_ground_wind_velocity'],
     'mie_scattering_ratio':                     ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'],
     'mie_SNR':                                  ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
     'rayleigh_channel_A_SNR':                   ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
     'rayleigh_channel_B_SNR':                   ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_b'],
+    'rayleigh_SNR':                             calc_rayleigh_SNR_measurement,
     'average_laser_energy':                     ['/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_uv_energy'],
     'laser_frequency':                          ['/product_confidence_data', -1, 'measurement_pcd', -1, 'avg_laser_frequency_offset'],
     'rayleigh_bin_quality_flag':                ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_altitude_bin_wind_info', -1, 'bin_quality_flag'],
@@ -281,11 +351,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                     simple_observation_filters:
                 observation_iterator = filtered_observation_ids[0]
             else:
-                observation_iterator = np.array(
-                    xrange(
-                        cf.get_size('/geolocation')[0]
-                    )
-                )
+                observation_iterator = np.arange(cf.get_size('/geolocation')[0])
 
             # collect measurement data
             out_measurement_data.update(
@@ -295,7 +361,7 @@ def extract_data(filenames, filters, observation_fields, measurement_fields,
                 )
             )
 
-    return out_observation_data, out_measurement_data
+    return out_observation_data, out_measurement_data, filenames
 
 
 def _read_measurements(cf, measurement_fields, filters, observation_ids,
@@ -334,13 +400,15 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
         # when a measurement mask was built, iterate over all measurement groups
         # plus their mask respectively, and apply it to get a filtered list
         if measurement_mask is not None:
-            data = [
+            tmp_data = [
                 (
                     _array_to_list(measurement[mask])
                     if convert_arrays else measurement[mask]
                 )
                 for measurement, mask in izip(data, measurement_mask)
             ]
+            data = np.empty(len(tmp_data), dtype=np.object)
+            data[:] = tmp_data
 
         # convert to simple list instead of numpy array if requested
         if convert_arrays and isinstance(data, np.ndarray):
