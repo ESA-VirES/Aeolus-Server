@@ -45,13 +45,13 @@ from eoxserver.services.ows.wps.parameters import (
 from aeolus import models
 
 
-class Level1BAUXExctract(Component):
-    """ This process extracts Observations and Measurements from the ADM-Aeolus
-        Level1B products of the specified collections.
+class RawDownloadProcess(Component):
+    """ This process allows to download raw data files from registered Products
+        in ZIP/TAR archives
     """
     implements(ProcessInterface)
 
-    identifier = "aeolus:raw"
+    identifier = "aeolus:download:raw"
     metadata = {}
     profiles = ["vires-util"]
 
@@ -124,7 +124,7 @@ class Level1BAUXExctract(Component):
 
         if mime_type == 'application/zip':
             extension = '.zip'
-            archive = zipfile.ZipFile(outpath, 'w')
+            archive = zipfile.ZipFile(outpath, 'w', zipfile.ZIP_DEFLATED)
             add_func = archive.write
 
         elif mime_type.startswith('application/tar'):
@@ -142,15 +142,16 @@ class Level1BAUXExctract(Component):
 
         with archive:
             for collection, products_iter in collection_iter:
-                for product, filename in products_iter:
-                    add_func(
-                        filename,
-                        arcname=os.path.join(
-                            collection.identifier,
-                            product.identifier,
-                            os.path.basename(filename)
+                for product, filenames in products_iter:
+                    for filename in filenames:
+                        add_func(
+                            filename,
+                            arcname=os.path.join(
+                                collection.identifier,
+                                product.identifier,
+                                os.path.basename(filename)
+                            )
                         )
-                    )
 
         return CDFile(
             outpath, filename='download%s' % extension,
