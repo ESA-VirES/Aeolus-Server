@@ -187,66 +187,72 @@ class Level1BExctract(Component):
             return CDObject(
                 encoded, filename="level_1B_data.mp", **output
             )
+
         elif mime_type == 'application/netcdf':
             outpath = os.path.join(tempfile.gettempdir(), uuid4().hex) + '.nc'
-            with Dataset(outpath, "w", format="NETCDF4") as ds:
-                for collection, data in out_data.items():
-                    observation_data, measurement_data, files = data
 
-                    if observation_data:
-                        num_observations = len(observation_data.values()[0])
-                    elif measurement_data:
-                        num_observations = len(measurement_data.values()[0][0])
+            try:
+                with Dataset(outpath, "w", format="NETCDF4") as ds:
+                    for collection, data in out_data.items():
+                        observation_data, measurement_data, _ = data
 
-                    ds.createDimension('observation', num_observations)
-                    ds.createDimension('measurements_per_observation', 30)
-                    ds.createDimension('array', 25)
+                        if observation_data:
+                            num_observations = len(observation_data.values()[0])
+                        elif measurement_data:
+                            num_observations = len(measurement_data.values()[0][0])
 
-                    if observation_data:
-                        ds.createGroup('observations')
-                    if measurement_data:
-                        ds.createGroup('measurements')
+                        ds.createDimension('observation', num_observations)
+                        ds.createDimension('measurements_per_observation', 30)
+                        ds.createDimension('array', 25)
 
-                    for field, data in observation_data.items():
-                        isscalar = data[0].ndim == 0
-                        data = np.hstack(data) if isscalar else np.vstack(data)
-                        variable = ds.createVariable(
-                            '/observations/%s' % field, '%s%i' % (
-                                data.dtype.kind, data.dtype.itemsize
-                            ), (
-                                'observation'
-                            ) if isscalar else (
-                                'observation', 'array',
+                        if observation_data:
+                            ds.createGroup('observations')
+                        if measurement_data:
+                            ds.createGroup('measurements')
+
+                        for field, data in observation_data.items():
+                            isscalar = data[0].ndim == 0
+                            data = np.hstack(data) if isscalar else np.vstack(data)
+                            variable = ds.createVariable(
+                                '/observations/%s' % field, '%s%i' % (
+                                    data.dtype.kind, data.dtype.itemsize
+                                ), (
+                                    'observation'
+                                ) if isscalar else (
+                                    'observation', 'array',
+                                )
                             )
-                        )
-                        variable[:] = data
+                            variable[:] = data
 
-                    for field, data in measurement_data.items():
-                        isscalar = data[0][0][0].ndim == 0
+                        for field, data in measurement_data.items():
+                            isscalar = data[0][0][0].ndim == 0
 
-                        if isscalar:
-                            data = np.vstack(np.hstack(data))
-                        else:
-                            data = [
-                                np.vstack([
-                                    np.vstack(o)
-                                    for o in f
-                                ])
-                                for f in data
-                            ]
+                            if isscalar:
+                                data = np.vstack(np.hstack(data))
+                            else:
+                                data = [
+                                    np.vstack([
+                                        np.vstack(o)
+                                        for o in f
+                                    ])
+                                    for f in data
+                                ]
 
-                        variable = ds.createVariable(
-                            '/measurements/%s' % field, '%s%i' % (
-                                data[0].dtype.kind, data[0].dtype.itemsize
-                            ), (
-                                'observation', 'measurements_per_observation'
-                            ) if isscalar else (
-                                'observation',
-                                'measurements_per_observation',
-                                'array',
+                            variable = ds.createVariable(
+                                '/measurements/%s' % field, '%s%i' % (
+                                    data[0].dtype.kind, data[0].dtype.itemsize
+                                ), (
+                                    'observation', 'measurements_per_observation'
+                                ) if isscalar else (
+                                    'observation',
+                                    'measurements_per_observation',
+                                    'array',
+                                )
                             )
-                        )
-                        variable[:] = data
+                            variable[:] = data
+            except:
+                os.remove(outpath)
+                raise
 
             return CDFile(
                 outpath, filename='level_1B_data.nc',
