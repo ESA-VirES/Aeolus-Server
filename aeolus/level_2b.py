@@ -27,13 +27,11 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from collections import defaultdict
-
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, access_location
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.coda_utils import access_location
 from aeolus.albedo import sample_offnadir
+from aeolus.extraction.accumulated import AccumulatedDataExtractor
 
 
 def _make_profile_from_wind_calc(id_field, value_field):
@@ -393,193 +391,29 @@ MEASUREMENT_FIELDS = set([
     'optical_prop_crosstalk_detected',
 ])
 
+ARRAY_FIELDS = set([
+    'mie_measurement_map',
+    'rayleigh_measurement_map',
+    'mie_wind_profile_wind_result_id',
+    'rayleigh_wind_profile_wind_result_id',
+    'mie_measurement_map',
+    'rayleigh_measurement_map',
+])
 
-def extract_data(filenames, filters,
-                 mie_grouping_fields, rayleigh_grouping_fields,
-                 mie_profile_fields, rayleigh_profile_fields,
-                 mie_wind_fields, rayleigh_wind_fields, measurement_fields,
-                 convert_arrays=False):
+extractor = AccumulatedDataExtractor(
+    locations=locations,
+    mie_grouping_fields_defs=MIE_GROUPING_FIELDS,
+    rayleigh_grouping_fields_defs=RAYLEIGH_GROUPING_FIELDS,
+    mie_profile_fields_defs=MIE_PROFILE_FIELDS,
+    rayleigh_profile_fields_defs=RAYLEIGH_PROFILE_FIELDS,
+    mie_wind_fields_defs=MIE_WIND_FIELDS,
+    rayleigh_wind_fields_defs=RAYLEIGH_WIND_FIELDS,
+    measurement_fields_defs=MEASUREMENT_FIELDS,
+    array_fields=ARRAY_FIELDS,
+)
 
-    filenames = [filenames] if isinstance(filenames, basestring) else filenames
-
-    mie_grouping_data = defaultdict(list)
-    mie_grouping_filters = {
-        name: value
-        for name, value in filters.items() if name in MIE_GROUPING_FIELDS
-    }
-
-    rayleigh_grouping_data = defaultdict(list)
-    rayleigh_grouping_filters = {
-        name: value
-        for name, value in filters.items() if name in RAYLEIGH_GROUPING_FIELDS
-    }
-
-    mie_profile_data = defaultdict(list)
-    mie_profile_filters = {
-        name: value
-        for name, value in filters.items() if name in MIE_PROFILE_FIELDS
-    }
-
-    rayleigh_profile_data = defaultdict(list)
-    rayleigh_profile_filters = {
-        name: value
-        for name, value in filters.items() if name in RAYLEIGH_PROFILE_FIELDS
-    }
-
-    mie_wind_data = defaultdict(list)
-    mie_wind_filters = {
-        name: value
-        for name, value in filters.items() if name in MIE_WIND_FIELDS
-    }
-
-    rayleigh_wind_data = defaultdict(list)
-    rayleigh_wind_filters = {
-        name: value
-        for name, value in filters.items() if name in RAYLEIGH_WIND_FIELDS
-    }
-
-    measurement_data = defaultdict(list)
-    measurement_filters = {
-        name: value
-        for name, value in filters.items() if name in MEASUREMENT_FIELDS
-    }
-
-    for cf in [CODAFile(filename) for filename in filenames]:
-        with cf:
-            mie_grouping_mask = create_type_mask(cf, mie_grouping_filters)
-            mie_profile_mask = create_type_mask(cf, mie_profile_filters)
-            mie_wind_mask = create_type_mask(cf, mie_wind_filters)
-            rayleigh_grouping_mask = create_type_mask(cf, rayleigh_grouping_filters)
-            rayleigh_profile_mask = create_type_mask(cf, rayleigh_profile_filters)
-            rayleigh_wind_mask = create_type_mask(cf, rayleigh_wind_filters)
-            measurement_mask = create_type_mask(cf, measurement_filters)
-
-            # mie profile to mie wind mask
-            if mie_profile_mask is not None:
-                mie_wind_mask = join_mask(cf,
-                    'mie_wind_profile_wind_result_id',
-                    '/sph/NumMieWindResults',
-                    mie_profile_mask,
-                    mie_wind_mask
-                )
-
-            # measurement to mie wind mask
-            if measurement_mask is not None:
-                mie_wind_mask = join_mask(cf,
-                    'mie_measurement_map',
-                    '/sph/NumMieWindResults',
-                    measurement_mask,
-                    mie_wind_mask
-                )
-
-            # rayleigh profile to rayleigh wind mask
-            if rayleigh_profile_mask is not None:
-                rayleigh_wind_mask = join_mask(cf,
-                    'rayleigh_wind_profile_wind_result_id',
-                    '/sph/NumRayleighWindResults',
-                    rayleigh_profile_mask,
-                    rayleigh_wind_mask
-                )
-
-            # measurement to rayleigh wind mask
-            if measurement_mask is not None:
-                rayleigh_wind_mask = join_mask(cf,
-                    'rayleigh_measurement_map',
-                    '/sph/NumRayleighWindResults',
-                    measurement_mask,
-                    rayleigh_wind_mask
-                )
-
-            make_outputs(
-                cf, mie_grouping_fields,
-                mie_grouping_data, mie_grouping_mask
-            )
-            make_outputs(
-                cf, mie_profile_fields,
-                mie_profile_data, mie_profile_mask
-            )
-            make_outputs(
-                cf, mie_wind_fields,
-                mie_wind_data, mie_wind_mask
-            )
-            make_outputs(
-                cf, rayleigh_grouping_fields,
-                rayleigh_grouping_data, rayleigh_grouping_mask
-            )
-            make_outputs(
-                cf, rayleigh_profile_fields,
-                rayleigh_profile_data, rayleigh_profile_mask
-            )
-            make_outputs(
-                cf, rayleigh_wind_fields,
-                rayleigh_wind_data, rayleigh_wind_mask
-            )
-            make_outputs(
-                cf, measurement_fields,
-                measurement_data, measurement_mask
-            )
-
-    return (
-        mie_grouping_data,
-        rayleigh_grouping_data,
-        mie_profile_data,
-        rayleigh_profile_data,
-        mie_wind_data,
-        rayleigh_wind_data,
-        measurement_data,
-    )
-
-
-def fetch_array(cf, name):
-    path = locations[name]
-    return access_location(cf, path)
-
-
-def create_type_mask(cf, filters):
-    mask = None
-    for field, filter_value in filters.items():
-        new_mask = make_mask(
-            data=fetch_array(cf, field),
-            **filter_value
-        )
-        mask = combine_mask(new_mask, mask)
-
-    return mask
-
-
-def join_mask(cf, mapping_field, length_field, related_mask, joined_mask):
-    ids = fetch_array(cf, mapping_field)
-    new_mask = np.zeros((cf.fetch(length_field),), np.bool)
-
-    filtered = ids[np.nonzero(related_mask)]
-
-    if filtered.shape[0] > 0:
-        stacked = np.hstack(filtered)
-        new_mask[stacked[stacked != 0] - 1] = True
-        new_mask = combine_mask(new_mask, joined_mask)
-
-    return new_mask
-
-
-def make_outputs(cf, fields, output, mask=None):
-    ids = np.nonzero(mask) if mask is not None else None
-    for field in fields:
-        data = fetch_array(cf, field)
-        if mask is not None:
-            data = data[ids]
-
-        output[field].extend(_array_to_list(data))
-
-
-def _array_to_list(data):
-    if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
-        data = data.tolist()
-        if isobject:
-            data = [
-                _array_to_list(obj) for obj in data
-            ]
-    return data
+# main extraction function
+extract_data = extractor.extract_data
 
 
 test_file = '/mnt/data/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001.DBL'
