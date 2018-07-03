@@ -529,13 +529,15 @@ def _read_measurements(cf, measurement_fields, filters, observation_ids,
         # when a measurement mask was built, iterate over all measurement groups
         # plus their mask respectively, and apply it to get a filtered list
         if measurement_mask is not None:
-            data = [
+            tmp_data = [
                 (
                     _array_to_list(measurement[mask])
                     if convert_arrays else measurement[mask]
                 )
                 for measurement, mask in izip(data, measurement_mask)
             ]
+            data = np.empty(len(tmp_data), dtype=np.object)
+            data[:] = tmp_data
 
         # convert to simple list instead of numpy array if requested
         if convert_arrays and isinstance(data, np.ndarray):
