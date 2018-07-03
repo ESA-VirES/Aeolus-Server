@@ -396,8 +396,8 @@ ARRAY_FIELDS = set([
     'rayleigh_measurement_map',
     'mie_wind_profile_wind_result_id',
     'rayleigh_wind_profile_wind_result_id',
-    'mie_measurement_map',
-    'rayleigh_measurement_map',
+    'mie_measurement_weight',
+    'rayleigh_measurement_weight',
 ])
 
 extractor = AccumulatedDataExtractor(
