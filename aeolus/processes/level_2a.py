@@ -29,15 +29,20 @@
 
 from datetime import datetime
 from cStringIO import StringIO
+import tempfile
+import os.path
+from uuid import uuid4
 
 from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import (
-    RequestParameter, ComplexData, FormatJSON, CDObject,
-    BoundingBoxData, LiteralData, FormatBinaryBase64, FormatBinaryRaw
+    ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
+    FormatBinaryRaw, CDFile
 )
 import msgpack
+from netCDF4 import Dataset
+import numpy as np
 
 from aeolus import models
 from aeolus.level_2a import extract_data
@@ -97,7 +102,10 @@ class Level2AExctract(Component):
     outputs = [
         ("output", ComplexData(
             "output", title="",
-            formats=[FormatBinaryRaw()],
+            formats=[
+                FormatBinaryRaw('application/msgpack'),
+                FormatBinaryRaw('application/netcdf'),
+            ],
         )),
     ]
 
@@ -163,7 +171,9 @@ class Level2AExctract(Component):
                 'max': tpl_box[3]
             }
 
-        output = {}
+        mime_type = output['mime_type']
+
+        out_data = {}
         for collection in collections:
             dbl_files = [
                 product.data_items.filter(semantic__startswith='bands')
@@ -181,15 +191,128 @@ class Level2AExctract(Component):
                 convert_arrays=True
             )
 
-            output[collection.identifier] = dict(
+            out_data[collection.identifier] = dict(
                 observation_data=observation_data,
                 measurement_data=measurement_data,
                 group_data=group_data,
             )
 
         # encode as messagepack
-        encoded = StringIO(msgpack.dumps(output))
+        if mime_type == 'application/msgpack':
+            encoded = StringIO(
+                msgpack.dumps({
+                    key: value[0:2]
+                    for key, value in out_data.items()
+                })
+            )
 
-        return CDObject(
-            encoded, filename="level_2A_data.mp", **output
-        )
+            return CDObject(
+                encoded, filename="level_2A_data.mp", **output
+            )
+
+        elif mime_type == 'application/netcdf':
+            outpath = os.path.join(tempfile.gettempdir(), uuid4().hex) + '.nc'
+
+            try:
+                with Dataset(outpath, "w", format="NETCDF4") as ds:
+                    for collection, data in out_data.items():
+                        print data
+                        observation_data = data["observation_data"]
+                        measurement_data = data["measurement_data"]
+                        group_data = data["group_data"]
+
+                        if observation_data:
+                            num_observations = len(observation_data.values()[0])
+                        elif measurement_data:
+                            num_observations = len(measurement_data.values()[0][0])
+
+                        ds.createDimension('observation', num_observations)
+                        ds.createDimension('measurements_per_observation', 30)
+                        ds.createDimension('array', 25)
+
+                        if observation_data:
+                            ds.createGroup('observations')
+                        if measurement_data:
+                            ds.createGroup('measurements')
+                        if group_data:
+                            ds.createGroup('groups')
+
+                        for field, data in observation_data.items():
+                            isscalar = data[0].ndim == 0
+                            data = np.hstack(data) if isscalar else np.vstack(data)
+                            variable = ds.createVariable(
+                                '/observations/%s' % field, '%s%i' % (
+                                    data.dtype.kind, data.dtype.itemsize
+                                ), (
+                                    'observation'
+                                ) if isscalar else (
+                                    'observation', 'array',
+                                )
+                            )
+                            variable[:] = data
+
+                        for field, data in measurement_data.items():
+                            isscalar = data[0][0][0].ndim == 0
+
+                            if isscalar:
+                                data = np.vstack(np.hstack(data))
+                            else:
+                                data = [
+                                    np.vstack([
+                                        np.vstack(o)
+                                        for o in f
+                                    ])
+                                    for f in data
+                                ]
+
+                            variable = ds.createVariable(
+                                '/measurements/%s' % field, '%s%i' % (
+                                    data[0].dtype.kind, data[0].dtype.itemsize
+                                ), (
+                                    'observation', 'measurements_per_observation'
+                                ) if isscalar else (
+                                    'observation',
+                                    'measurements_per_observation',
+                                    'array',
+                                )
+                            )
+                            variable[:] = data
+
+                        for field, data in measurement_data.items():
+                            isscalar = data[0][0][0].ndim == 0
+
+                            if isscalar:
+                                data = np.vstack(np.hstack(data))
+                            else:
+                                data = [
+                                    np.vstack([
+                                        np.vstack(o)
+                                        for o in f
+                                    ])
+                                    for f in data
+                                ]
+
+                            variable = ds.createVariable(
+                                '/measurements/%s' % field, '%s%i' % (
+                                    data[0].dtype.kind, data[0].dtype.itemsize
+                                ), (
+                                    'observation', 'measurements_per_observation'
+                                ) if isscalar else (
+                                    'observation',
+                                    'measurements_per_observation',
+                                    'array',
+                                )
+                            )
+                            variable[:] = data
+
+                        for field, data in group_data.items():
+                            pass
+
+            except:
+                os.remove(outpath)
+                raise
+
+            return CDFile(
+                outpath, filename='level_2A_data.nc',
+                remove_file=True, **output
+            )
