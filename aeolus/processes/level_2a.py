@@ -199,12 +199,7 @@ class Level2AExctract(Component):
 
         # encode as messagepack
         if mime_type == 'application/msgpack':
-            encoded = StringIO(
-                msgpack.dumps({
-                    key: value[0:2]
-                    for key, value in out_data.items()
-                })
-            )
+            encoded = StringIO(msgpack.dumps(out_data))
 
             return CDObject(
                 encoded, filename="level_2A_data.mp", **output
