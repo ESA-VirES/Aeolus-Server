@@ -29,15 +29,19 @@
 
 from datetime import datetime
 from cStringIO import StringIO
+import tempfile
+import os.path
+from uuid import uuid4
 
 from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import (
-    RequestParameter, ComplexData, FormatJSON, CDObject,
-    BoundingBoxData, LiteralData, FormatBinaryBase64, FormatBinaryRaw
+    ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
+    FormatBinaryRaw, CDFile
 )
 import msgpack
+from netCDF4 import Dataset
 
 from aeolus import models
 from aeolus.level_2c import extract_data
@@ -117,7 +121,10 @@ class Level2CExctract(Component):
     outputs = [
         ("output", ComplexData(
             "output", title="",
-            formats=[FormatBinaryRaw()],
+            formats=[
+                FormatBinaryRaw('application/msgpack'),
+                FormatBinaryRaw('application/netcdf'),
+            ],
         )),
     ]
 
@@ -224,7 +231,9 @@ class Level2CExctract(Component):
                 'max': tpl_box[3],
             }
 
-        output = {}
+        mime_type = output['mime_type']
+
+        out_data = {}
         for collection in collections:
             dbl_files = [
                 product.data_items.filter(semantic__startswith='bands')
@@ -254,7 +263,7 @@ class Level2CExctract(Component):
                 measurement_fields=measurement_fields,
             )
 
-            output[collection.identifier] = dict(
+            out_data[collection.identifier] = dict(
                 mie_grouping_data=mie_grouping_data,
                 rayleigh_grouping_data=rayleigh_grouping_data,
                 mie_profile_data=mie_profile_data,
@@ -265,8 +274,39 @@ class Level2CExctract(Component):
             )
 
         # encode as messagepack
-        encoded = StringIO(msgpack.dumps(output))
+        if mime_type == 'application/msgpack':
+            encoded = StringIO(msgpack.dumps(out_data))
 
-        return CDObject(
-            encoded, filename="level_2C_data.mp", **output
-        )
+            return CDObject(
+                encoded, filename="level_2C_data.mp", **output
+            )
+
+        elif mime_type == 'application/netcdf':
+            outpath = os.path.join(tempfile.gettempdir(), uuid4().hex) + '.nc'
+
+            try:
+                with Dataset(outpath, "w", format="NETCDF4") as ds:
+                    for collection, collection_data in out_data.items():
+                        for kind_name, kind in collection_data.items():
+                            if not kind:
+                                continue
+
+                            # get or create the group and a simple dimension
+                            # for the data kind
+                            group = ds.createGroup(kind_name)
+                            group.createDimension(kind_name, None)
+
+                            # iterate over the actual data from each kind
+                            for name, values in kind.items():
+                                group.createVariable(
+                                    name, 'f8', kind_name
+                                )[:] = values
+
+            except:
+                os.remove(outpath)
+                raise
+
+            return CDFile(
+                outpath, filename="level_2C_data.nc",
+                remove_file=True, **output
+            )
