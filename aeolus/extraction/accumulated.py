@@ -62,49 +62,42 @@ class AccumulatedDataExtractor(object):
             filenames
         ] if isinstance(filenames, basestring) else filenames
 
-        mie_grouping_data = defaultdict(list)
         mie_grouping_filters = {
             name: value
             for name, value in filters.items()
             if name in self.mie_grouping_fields_defs
         }
 
-        rayleigh_grouping_data = defaultdict(list)
         rayleigh_grouping_filters = {
             name: value
             for name, value in filters.items()
             if name in self.rayleigh_grouping_fields_defs
         }
 
-        mie_profile_data = defaultdict(list)
         mie_profile_filters = {
             name: value
             for name, value in filters.items()
             if name in self.mie_profile_fields_defs
         }
 
-        rayleigh_profile_data = defaultdict(list)
         rayleigh_profile_filters = {
             name: value
             for name, value in filters.items()
             if name in self.rayleigh_profile_fields_defs
         }
 
-        mie_wind_data = defaultdict(list)
         mie_wind_filters = {
             name: value
             for name, value in filters.items()
             if name in self.mie_wind_fields_defs
         }
 
-        rayleigh_wind_data = defaultdict(list)
         rayleigh_wind_filters = {
             name: value
             for name, value in filters.items()
             if name in self.rayleigh_wind_fields_defs
         }
 
-        measurement_data = defaultdict(list)
         measurement_filters = {
             name: value
             for name, value in filters.items()
@@ -112,6 +105,14 @@ class AccumulatedDataExtractor(object):
         }
 
         for cf in [CODAFile(filename) for filename in filenames]:
+            mie_grouping_data = defaultdict(list)
+            rayleigh_grouping_data = defaultdict(list)
+            mie_profile_data = defaultdict(list)
+            rayleigh_profile_data = defaultdict(list)
+            mie_wind_data = defaultdict(list)
+            rayleigh_wind_data = defaultdict(list)
+            measurement_data = defaultdict(list)
+
             with cf:
                 mie_grouping_mask = self._create_type_mask(
                     cf, mie_grouping_filters
@@ -173,42 +174,49 @@ class AccumulatedDataExtractor(object):
 
                 self._make_outputs(
                     cf, mie_grouping_fields,
-                    mie_grouping_data, mie_grouping_mask
+                    mie_grouping_data, mie_grouping_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, mie_profile_fields,
-                    mie_profile_data, mie_profile_mask
+                    mie_profile_data, mie_profile_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, mie_wind_fields,
-                    mie_wind_data, mie_wind_mask
+                    mie_wind_data, mie_wind_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, rayleigh_grouping_fields,
-                    rayleigh_grouping_data, rayleigh_grouping_mask
+                    rayleigh_grouping_data, rayleigh_grouping_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, rayleigh_profile_fields,
-                    rayleigh_profile_data, rayleigh_profile_mask
+                    rayleigh_profile_data, rayleigh_profile_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, rayleigh_wind_fields,
-                    rayleigh_wind_data, rayleigh_wind_mask
+                    rayleigh_wind_data, rayleigh_wind_mask,
+                    convert_arrays
                 )
                 self._make_outputs(
                     cf, measurement_fields,
-                    measurement_data, measurement_mask
+                    measurement_data, measurement_mask,
+                    convert_arrays
                 )
 
-        return (
-            mie_grouping_data,
-            rayleigh_grouping_data,
-            mie_profile_data,
-            rayleigh_profile_data,
-            mie_wind_data,
-            rayleigh_wind_data,
-            measurement_data,
-        )
+            yield (
+                mie_grouping_data,
+                rayleigh_grouping_data,
+                mie_profile_data,
+                rayleigh_profile_data,
+                mie_wind_data,
+                rayleigh_wind_data,
+                measurement_data,
+            )
 
     def _fetch_array(self, cf, name):
         path = self.locations[name]
@@ -227,7 +235,7 @@ class AccumulatedDataExtractor(object):
         return mask
 
     def _join_mask(self, cf, mapping_field, length_field, related_mask,
-                  joined_mask):
+                   joined_mask):
         ids = self._fetch_array(cf, mapping_field)
         new_mask = np.zeros((cf.fetch(length_field),), np.bool)
 
@@ -240,14 +248,20 @@ class AccumulatedDataExtractor(object):
 
         return new_mask
 
-    def _make_outputs(self, cf, fields, output, mask=None):
+    def _make_outputs(self, cf, fields, output, mask=None, convert_arrays=False):
         ids = np.nonzero(mask) if mask is not None else None
         for field in fields:
             data = self._fetch_array(cf, field)
             if mask is not None:
                 data = data[ids]
 
-            output[field].extend(self._array_to_list(data))
+            if convert_arrays:
+                output[field].extend(self._array_to_list(data))
+            else:
+                if field in output:
+                    output[field] = np.stack((output[field], data))
+                else:
+                    output[field] = data
 
     def _array_to_list(self, data):
         if isinstance(data, np.ndarray):
