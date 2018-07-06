@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------
 #
-#  Data extraction from Level 1B ADM-Aeolus products
+#  Data extraction from Level 1B AUX ADM-Aeolus products
 #
 # Project: VirES-Aeolus
 # Authors: Fabian Schindler <fabian.schindler@eox.at>
@@ -27,23 +27,18 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from datetime import datetime
-from cStringIO import StringIO
+from collections import defaultdict
 
-from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
-from eoxserver.services.ows.wps.parameters import (
-    RequestParameter, ComplexData, FormatJSON, CDObject,
-    BoundingBoxData, LiteralData, FormatBinaryBase64, FormatBinaryRaw
-)
-import msgpack
+from eoxserver.services.ows.wps.parameters import LiteralData
+import numpy as np
 
-from aeolus import models
 from aeolus.aux import extract_data
+from aeolus.processes.util.base import ExtractionProcessBase
 
 
-class Level1BAUXExctract(Component):
+class Level1BAUXExctract(ExtractionProcessBase, Component):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
         Level1B products of the specified collections.
     """
@@ -53,29 +48,7 @@ class Level1BAUXExctract(Component):
     metadata = {}
     profiles = ["vires-util"]
 
-    inputs = [
-        ("collection_ids", ComplexData(
-            'collection_ids', title="Collection identifiers", abstract=(
-                ""
-            ), formats=FormatJSON()
-        )),
-        ("begin_time", LiteralData(
-            'begin_time', datetime, optional=False, title="Begin time",
-            abstract="Start of the selection time interval",
-        )),
-        ("end_time", LiteralData(
-            'end_time', datetime, optional=False, title="End time",
-            abstract="End of the selection time interval",
-        )),
-        ("bbox", BoundingBoxData(
-            "bbox", crss=(4326, 3857), optional=True, title="Bounding box",
-            abstract="Optional selection bounding box.", default=None,
-        )),
-        ("filters", ComplexData(
-            'filters', title="Filters", abstract=(
-                "JSON Object to set specific data filters."
-            ), formats=FormatJSON(), optional=True
-        )),
+    inputs = ExtractionProcessBase.inputs + [
         ("fields", LiteralData(
             'fields', str, optional=True, default=None,
             title="Data variables",
@@ -88,58 +61,77 @@ class Level1BAUXExctract(Component):
         )),
     ]
 
-    outputs = [
-        ("output", ComplexData(
-            "output", title="",
-            formats=[FormatBinaryRaw()],
-        )),
-    ]
-
-    def execute(self, collection_ids, begin_time, end_time, bbox, filters,
-                fields, aux_type, output, **kwargs):
-        # input parsing
-        if fields:
-            fields = fields.split(',')
-        else:
-            fields = []
-
-        # TODO: optimize this to make this in a single query
-        collections = [
-            models.ProductCollection.objects.get(identifier=identifier)
-            for identifier in collection_ids.data
-        ]
-
-        db_filters = dict(
-            begin_time__lte=end_time,
-            end_time__gte=begin_time,
-        )
-
-        if bbox:
-            box = Polygon.from_bbox(
-                (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
+    def get_data_filters(self, begin_time, end_time, bbox, filters, aux_type,
+                         **kwargs):
+        # TODO: data filters for time for other aux types
+        # TODO: use bbox too?
+        if aux_type in ("MRC", "RRC"):
+            return dict(
+                time_freq_step={
+                    "min": begin_time,
+                    "max": end_time,
+                },
+                **filters
             )
+        return filters
 
-            db_filters['ground_path__intersects'] = box
-
-        data_filters = filters.data if filters else {}
-
-        output = {}
-        for collection in collections:
-            dbl_files = [
+    def extract_data(self, collection_products, data_filters, fields, aux_type,
+                     mime_type, **kw):
+        return (
+            (collection, extract_data([
                 product.data_items.filter(semantic__startswith='bands')
                 .first().location
-                for product in models.Product.objects.filter(
-                    collections=collection,
-                    **db_filters
-                ).order_by('begin_time')
-            ]
-            output[collection.identifier] = extract_data(
-                dbl_files, data_filters, fields, aux_type
-            )
-
-        # encode as messagepack
-        encoded = StringIO(msgpack.dumps(output))
-
-        return CDObject(
-            encoded, filename="aux_data.mp", **output
+                for product in products
+            ],
+                data_filters, fields.split(','), aux_type,
+                convert_arrays=(mime_type == 'application/msgpack'),
+            ))
+            for collection, products in collection_products
         )
+
+    def accumulate_for_messagepack(self, out_data_iterator):
+        out_data = {}
+        for collection, data_iterator in out_data_iterator:
+            accumulated_data = defaultdict(list)
+            for file_data in data_iterator:
+                for field_name, values in file_data.items():
+                    accumulated_data[field_name].extend(values)
+
+            out_data[collection.identifier] = accumulated_data
+
+        return out_data
+
+    def write_product_data_to_netcdf(self, ds, file_data):
+        for field_name, data in file_data.items():
+            data = data[0]
+            isscalar = (data[0].ndim == 0)
+            arrsize = data[0].shape[0] if not isscalar else 0
+            data = np.hstack(data) if isscalar else np.vstack(data)
+
+            # create new variable (+ dimensions)
+            if field_name not in ds.dimensions:
+                ds.createDimension(field_name, None)
+                if not isscalar:
+                    ds.createDimension(field_name + '_array', arrsize)
+
+                ds.createVariable(
+                    field_name, '%s%i' % (
+                        data.dtype.kind, data.dtype.itemsize
+                    ), (
+                        field_name
+                    ) if isscalar else (
+                        field_name, field_name + '_array',
+                    )
+                )[:] = data
+
+            # append to existing variable
+            else:
+                var = ds[field_name]
+                offset = var.shape[0]
+                end = offset + data.shape[0]
+                var[offset:end] = data
+
+        # import pdb; pdb.set_trace()
+
+    def get_out_filename(self, extension):
+        return "aux_data.%s" % extension
