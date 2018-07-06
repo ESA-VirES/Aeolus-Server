@@ -63,11 +63,18 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, aux_type,
                          **kwargs):
-        # TODO: data filters for time for other aux types
         # TODO: use bbox too?
         if aux_type in ("MRC", "RRC"):
             return dict(
                 time_freq_step={
+                    "min": begin_time,
+                    "max": end_time,
+                },
+                **filters
+            )
+        elif aux_type in ("ISR", "ZWC"):
+            return dict(
+                time={
                     "min": begin_time,
                     "max": end_time,
                 },
@@ -130,8 +137,6 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 offset = var.shape[0]
                 end = offset + data.shape[0]
                 var[offset:end] = data
-
-        # import pdb; pdb.set_trace()
 
     def get_out_filename(self, extension):
         return "aux_data.%s" % extension

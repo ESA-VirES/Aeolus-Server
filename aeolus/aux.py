@@ -74,6 +74,7 @@ def _make_calc_albedo_nadir_aux_mrc_rrc(lon_location, lat_location):
 # ------------------------------------------------------------------------------
 
 AUX_ISR_LOCATIONS = {
+    'time':                                                 ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'First_Start_of_Observation_Time'],
     'freq_mie_USR_closest_to_rayleigh_filter_centre':       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Mie_USR_Closest_to_Rayleigh_Filter_Centre'],
     'frequency_rayleigh_filter_centre':                     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'Freq_Rayleigh_Filter_Centre'],
     'num_of_valid_mie_results':                             ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ISR/List_of_Data_Set_Records/Data_Set_Record', -1, 'List_of_ISR_Results/ISR_Result', -1, 'Data_Stat/Num_Mie_Used'],
@@ -110,6 +111,7 @@ AUX_ISR_LOCATIONS = {
 }
 
 AUX_ISR_CALIBRATION_FIELDS = set([
+    'time',
     'freq_mie_USR_closest_to_rayleigh_filter_centre',
     'frequency_rayleigh_filter_centre',
 ])
@@ -510,6 +512,7 @@ AUX_RRC_ARRAY_FIELDS = set([
 # ------------------------------------------------------------------------------
 
 AUX_ZWC_LOCATIONS = {
+    'time':                                                 ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Start_of_Observation_Time'],
     'lat_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Observation_Info/Latitude_of_DEM_Intersection'],
     'lon_of_DEM_intersection':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Observation_Info/Longitude_of_DEM_Intersection'],
     'roll_angle':                                           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Observation_Info/Roll_Angle'],
@@ -547,6 +550,7 @@ AUX_ZWC_LOCATIONS = {
 
 
 AUX_ZWC_CALIBRATION_FIELDS = set([
+    'time',
     'lat_of_DEM_intersection',
     'lon_of_DEM_intersection',
     'roll_angle',
