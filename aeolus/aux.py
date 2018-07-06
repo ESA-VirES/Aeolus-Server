@@ -714,16 +714,19 @@ def _array_to_list(data):
     return data
 
 
-def extract_data(filenames, filters, fields, aux_type):
+def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
     """
     """
     aux_type = str(aux_type)  # to convert unicode to str
     filenames = [filenames] if isinstance(filenames, basestring) else filenames
-    data = defaultdict(list)
 
-    locations, calibration_fields, calibration_array_fields, scalar_fields, array_fields = TYPE_TO_FIELDS[
-        aux_type
-    ]
+    (
+        locations,
+        calibration_fields,
+        calibration_array_fields,
+        scalar_fields,
+        array_fields
+    ) = TYPE_TO_FIELDS[aux_type]
 
     calibration_filters = {
         name: filter_value
@@ -750,6 +753,7 @@ def extract_data(filenames, filters, fields, aux_type):
     ]
 
     for filename in filenames:
+        data = defaultdict(list)
         with CODAFile(filename) as cf:
             # make a mask of all calibrations to be included, by only looking at
             # the fields for whole calibrations
@@ -788,8 +792,11 @@ def extract_data(filenames, filters, fields, aux_type):
                 if calibration_nonzero_ids is not None:
                     field_data = field_data[calibration_nonzero_ids]
 
+                if convert_arrays:
+                    field_data = _array_to_list(field_data)
+
                 # write out data
-                data[field_name].extend(_array_to_list(field_data))
+                data[field_name].extend(field_data)
 
             print frequency_filters
 
@@ -833,9 +840,13 @@ def extract_data(filenames, filters, fields, aux_type):
                     if frequency_ids is not None:
                         field_data = field_data[frequency_ids]
 
-                    data[field_name].append(_array_to_list(field_data))
+                    if convert_arrays:
+                        field_data = _array_to_list(field_data)
 
-    return data
+                    # write out data
+                    data[field_name].append(field_data)
+
+        yield data
 
 
 # test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF'
