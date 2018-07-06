@@ -36,7 +36,7 @@ from eoxserver.services.ows.wps.parameters import (
     RequestParameter, LiteralData,
 )
 from eoxserver.services.ows.wps.exceptions import InvalidInputValueError
-from vires.models import Job
+from aeolus.models import Job
 
 
 class _AsyncBackendProvider(Component):

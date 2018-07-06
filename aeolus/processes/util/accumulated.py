@@ -34,22 +34,26 @@ import os.path
 from uuid import uuid4
 from collections import defaultdict
 
+from django.conf import settings
+from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
-    FormatBinaryRaw, CDFile, Reference
+    FormatBinaryRaw, CDFile, Reference, RequestParameter
+)
+from eoxserver.services.ows.wps.exceptions import (
+    ServerBusy,
 )
 import msgpack
 from netCDF4 import Dataset
-from django.conf import settings
 
 from aeolus import models
 from aeolus.processes.util.bbox import translate_bbox
+from aeolus.processes.util.context import DummyContext
+from aeolus.processes.util.auth import get_user, get_username
 
 
-class DummyContext():
-    def update_progress(self, *args, **kwargs):
-        pass
+MAX_ACTIVE_JOBS = 2
 
 
 class AccumulatedDataExctractProcessBase(object):
@@ -66,6 +70,7 @@ class AccumulatedDataExctractProcessBase(object):
 
     # common inputs/outputs to satisfy ProcessInterface
     inputs = [
+        ("username", RequestParameter(get_username)),
         ("collection_ids", ComplexData(
             'collection_ids', title="Collection identifiers", abstract=(
                 ""
@@ -134,6 +139,69 @@ class AccumulatedDataExctractProcessBase(object):
             ],
         )),
     ]
+
+    @staticmethod
+    def on_started(context, progress, message):
+        """ Callback executed when an asynchronous Job gets started. """
+        job = models.Job.objects.get(identifier=context.identifier)
+        job.status = models.Job.STARTED
+        job.started = datetime.now(utc)
+        job.save()
+        context.logger.info(
+            "Job started after %.3gs waiting.",
+            (job.started - job.created).total_seconds()
+        )
+
+    @staticmethod
+    def on_succeeded(context, outputs):
+        """ Callback executed when an asynchronous Job finishes. """
+        job = models.Job.objects.get(identifier=context.identifier)
+        job.status = models.Job.SUCCEEDED
+        job.stopped = datetime.now(utc)
+        job.save()
+        context.logger.info(
+            "Job finished after %.3gs running.",
+            (job.stopped - job.started).total_seconds()
+        )
+
+    @staticmethod
+    def on_failed(context, exception):
+        """ Callback executed when an asynchronous Job fails. """
+        job = models.Job.objects.get(identifier=context.identifier)
+        job.status = models.Job.FAILED
+        job.stopped = datetime.now(utc)
+        job.save()
+        context.logger.info(
+            "Job failed after %.3gs running.",
+            (job.stopped - job.started).total_seconds()
+        )
+
+    def initialize(self, context, inputs, outputs, parts):
+        """ Asynchronous process initialization. """
+        context.logger.info(
+            "Received %s WPS request from %s.",
+            self.identifier, inputs['\\username'] or "an anonymous user"
+        )
+
+        user = get_user(inputs['\\username'])
+        active_jobs_count = models.Job.objects.filter(
+            owner=user, status__in=(models.Job.ACCEPTED, models.Job.STARTED)
+        ).count()
+
+        if active_jobs_count >= MAX_ACTIVE_JOBS:
+            raise ServerBusy(
+                "Maximum number of allowed active asynchronous download "
+                "requests exceeded!"
+            )
+
+        # create DB record for this WPS job
+        job = models.Job()
+        job.status = models.Job.ACCEPTED
+        job.owner = user
+        job.process_id = self.identifier
+        job.identifier = context.identifier
+        job.response_url = context.status_location
+        job.save()
 
     def execute(self, collection_ids, begin_time, end_time, bbox, filters,
                 output, context=None, **kwargs):
