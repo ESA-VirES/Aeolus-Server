@@ -27,7 +27,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from itertools import chain
+from itertools import chain, izip
 from collections import defaultdict
 
 import numpy as np
@@ -803,23 +803,37 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 data[field_name].extend(field_data)
 
             # build a mask of all frequencies within a specific calibration
-            frequency_mask = None
+            frequency_masks = None
             for field_name, filter_value in frequency_filters.items():
                 path = locations[field_name]
 
                 field_data = access_location(cf, path)[calibration_ids]
 
-                new_mask = make_mask(
-                    field_data,
-                    filter_value.get('min'), filter_value.get('max'),
-                    field_name in array_fields
-                )
-                frequency_mask = combine_mask(new_mask, frequency_mask)
+                new_masks = [
+                    make_mask(
+                        frequency_data,
+                        filter_value.get('min'), filter_value.get('max'),
+                        field_name in array_fields
+                    )
+                    for frequency_data in field_data
+                ]
+
+                if frequency_masks:
+                    frequency_masks = [
+                        combine_mask(new_mask, frequency_mask)
+                        for new_mask, frequency_mask
+                        in izip(new_masks, frequency_masks)
+                    ]
+                else:
+                    frequency_masks = new_masks
 
             # make an array of all indices to be included
             frequency_ids = None
-            if frequency_mask is not None:
-                frequency_ids = np.nonzero(frequency_mask)
+            if frequency_masks is not None:
+                frequency_ids = [
+                    np.nonzero(frequency_mask)
+                    for frequency_mask in frequency_masks
+                ]
 
             # iterate over all requested frequency fields and write the
             # possibly subset data to the output
@@ -829,10 +843,20 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 field_data = access_location(cf, path)[calibration_ids]
 
                 if frequency_ids is not None:
-                    field_data = field_data[frequency_ids]
+                    field_data = [
+                        frequency_data[mask]
+                        for frequency_data, mask
+                        in izip(field_data, frequency_ids)
+                    ]
 
                 if convert_arrays:
-                    field_data = _array_to_list(field_data)
+                    field_data = [
+                        _array_to_list(frequency_data)
+                        for frequency_data in field_data
+                    ]
+                else:
+                    # TODO: steck as object array!
+                    pass
 
                 # write out data
                 data[field_name].extend(field_data)
