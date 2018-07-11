@@ -835,7 +835,7 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                     field_data = _array_to_list(field_data)
 
                 # write out data
-                data[field_name].append(field_data)
+                data[field_name].extend(field_data)
 
         yield data
 
