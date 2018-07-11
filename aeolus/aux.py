@@ -802,53 +802,40 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 # write out data
                 data[field_name].extend(field_data)
 
-            print frequency_filters
+            # build a mask of all frequencies within a specific calibration
+            frequency_mask = None
+            for field_name, filter_value in frequency_filters.items():
+                path = locations[field_name]
 
-            # iterate over all calibrations
-            for calibration_id in calibration_ids:
-                # build a mask of all frequencies within a specific calibration
-                frequency_mask = None
-                for field_name, filter_value in frequency_filters.items():
-                    path = locations[field_name]
+                field_data = access_location(cf, path)[calibration_ids]
 
-                    if callable(path):
-                        field_data = access_location(cf, path)[calibration_id]
-                    else:
-                        field_data = access_location(
-                            cf, [path[0], calibration_id] + path[2:]
-                        )
+                new_mask = make_mask(
+                    field_data,
+                    filter_value.get('min'), filter_value.get('max'),
+                    field_name in array_fields
+                )
+                frequency_mask = combine_mask(new_mask, frequency_mask)
 
-                    new_mask = make_mask(
-                        field_data,
-                        filter_value.get('min'), filter_value.get('max'),
-                        field_name in array_fields
-                    )
-                    frequency_mask = combine_mask(new_mask, frequency_mask)
+            # make an array of all indices to be included
+            frequency_ids = None
+            if frequency_mask is not None:
+                frequency_ids = np.nonzero(frequency_mask)
 
-                # make an array of all indices to be included
-                frequency_ids = None
-                if frequency_mask is not None:
-                    frequency_ids = np.nonzero(frequency_mask)
+            # iterate over all requested frequency fields and write the
+            # possibly subset data to the output
+            for field_name in requested_frequency_fields:
+                path = locations[field_name]
 
-                # iterate over all requested frequency fields and write the
-                # possibly subset data to the output
-                for field_name in requested_frequency_fields:
-                    path = locations[field_name]
-                    if callable(path):
-                        field_data = access_location(cf, path)[calibration_id]
-                    else:
-                        field_data = access_location(
-                            cf, [path[0], calibration_id] + path[2:]
-                        )
+                field_data = access_location(cf, path)[calibration_ids]
 
-                    if frequency_ids is not None:
-                        field_data = field_data[frequency_ids]
+                if frequency_ids is not None:
+                    field_data = field_data[frequency_ids]
 
-                    if convert_arrays:
-                        field_data = _array_to_list(field_data)
+                if convert_arrays:
+                    field_data = _array_to_list(field_data)
 
-                    # write out data
-                    data[field_name].append(field_data)
+                # write out data
+                data[field_name].append(field_data)
 
         yield data
 
