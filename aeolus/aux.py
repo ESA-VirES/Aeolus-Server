@@ -465,6 +465,12 @@ AUX_RRC_CALIBRATION_FIELDS = set([
     'ground_measurement_data_monotonic',
 ])
 
+AUX_RRC_CALIBRATION_ARRAY_FIELDS = set([
+    'measurement_error_fit_coefficient',
+    'reference_pulse_error_fit_coefficient',
+    'ground_measurement_error_fit_coefficient',
+])
+
 AUX_RRC_SCALAR_FIELDS = set([
     'lat_of_DEM_intersection',
     'lon_of_DEM_intersection',
@@ -485,9 +491,6 @@ AUX_RRC_SCALAR_FIELDS = set([
     'num_valid_measurements',
     'num_reference_pulses_usable',
     'num_measurements_valid_ground',
-    'measurement_error_fit_coefficient',
-    'reference_pulse_error_fit_coefficient',
-    'ground_measurement_error_fit_coefficient',
     'rayleigh_spectrometer_temperature_9',
     'rayleigh_spectrometer_temperature_10',
     'rayleigh_spectrometer_temperature_11',
@@ -618,7 +621,7 @@ TYPE_TO_FIELDS = {
     'RRC': (
         AUX_RRC_LOCATIONS,
         AUX_RRC_CALIBRATION_FIELDS,
-        set([]),
+        AUX_RRC_CALIBRATION_ARRAY_FIELDS,
         AUX_RRC_SCALAR_FIELDS,
         AUX_RRC_ARRAY_FIELDS
     ),
@@ -721,6 +724,7 @@ def _array_to_list(data):
 def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
     """
     """
+
     aux_type = str(aux_type)  # to convert unicode to str
     filenames = [filenames] if isinstance(filenames, basestring) else filenames
 
@@ -873,70 +877,77 @@ test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.E
 
 
 def main():
-    from pprint import pprint
 
-    data = extract_data('/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF', {
-        # 'freq_mie_USR_closest_to_rayleigh_filter_centre': {
-        #     'max': 1,
-        # },
-        # 'mie_response': {
-        #     'min': 10,
-        #     'max': 12,
-        # }
-    }, [
-        'mie_valid',
-        # 'freq_mie_USR_closest_to_rayleigh_filter_centre',
-    ], 'ISR')
-
-    # data = extract_data(
-    #     '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF',
-    #     {
-    #         'lat_of_DEM_intersection': {
-    #             'max': 0,
-    #         },
-    #         'altitude': {
-    #             'min': 25000,
-    #             # 'max': 12,
-    #         }
-    #     }, [
-    #         'measurement_mean_sensitivity',
-    #         'lat_of_DEM_intersection',
-    #         'altitude',
-    #     ], 'MRC'
-    # )
-
-    pprint(dict(data))
+    from django.utils.timezone import utc
+    import datetime
+    fields=[u'lat_of_DEM_intersection', u'lon_of_DEM_intersection', u'mie_ground_correction_velocity', u'rayleigh_ground_correction_velocity', u'roll_angle', u'pitch_angle', u'yaw_angle', u'num_of_mie_ground_bins', u'rayleigh_avg_ground_echo_bin_thickness', u'mie_avg_ground_echo_bin_thickness_above_DEM', u'rayleigh_avg_ground_echo_bin_thickness_above_DEM', u'rayleigh_channel_A_ground_SNR_meas', u'mie_DEM_ground_bin', u'ZWC_result_type']
+    filters={'time': {'max': datetime.datetime(2007, 11, 2, 0, 0, 8, tzinfo=utc), 'min': datetime.datetime(2007, 11, 1, 20, 26, 8, tzinfo=utc)}}
+    next(extract_data("/mnt/data/AE_OPER_AUX_ZWC_1B_20071101T202641_20071102T000841_0001.EEF", filters, fields, "ZWC", True))
 
     # from pprint import pprint
-    # import contextlib
-    # import time
-    # from aeolus.coda_utils import CODAFile, datetime_to_coda_time
-    # import numpy as np
 
-    # @contextlib.contextmanager
-    # def timed(name):
-    #     start = time.time()
-    #     yield
-    #     print str(int((time.time() - start) * 1000)) + 'ms', name
+    # data = extract_data('/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF', {
+    #     # 'freq_mie_USR_closest_to_rayleigh_filter_centre': {
+    #     #     'max': 1,
+    #     # },
+    #     # 'mie_response': {
+    #     #     'min': 10,
+    #     #     'max': 12,
+    #     # }
+    # }, [
+    #     'mie_valid',
+    #     # 'freq_mie_USR_closest_to_rayleigh_filter_centre',
+    # ], 'ISR')
 
-    # # locations = AUX_ISR_LOCATIONS
-    # locations = AUX_MRC_LOCATIONS
-    # # locations = AUX_RRC_LOCATIONS
-    # # locations = AUX_ZWC_LOCATIONS
+    # # data = extract_data(
+    # #     '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF',
+    # #     {
+    # #         'lat_of_DEM_intersection': {
+    # #             'max': 0,
+    # #         },
+    # #         'altitude': {
+    # #             'min': 25000,
+    # #             # 'max': 12,
+    # #         }
+    # #     }, [
+    # #         'measurement_mean_sensitivity',
+    # #         'lat_of_DEM_intersection',
+    # #         'altitude',
+    # #     ], 'MRC'
+    # # )
 
-    # with CODAFile(test_file) as cf:
-    #     for name, path in locations.items():
-    #         #with timed(name):
-    #         value = cf.fetch(*path)
-    #         if isinstance(value, np.ndarray):
-    #             shape = []
-    #             while value.dtype == np.object:
-    #                 value = np.stack(value)
-    #                 shape.extend(value.shape)
+    # pprint(dict(data))
 
-    #             print "shape", shape, value.shape
-    #         # print cf.get_size(*path)
-    #         print name, value.shape if not isinstance(value, (int, float)) else 0
+    # # from pprint import pprint
+    # # import contextlib
+    # # import time
+    # # from aeolus.coda_utils import CODAFile, datetime_to_coda_time
+    # # import numpy as np
+
+    # # @contextlib.contextmanager
+    # # def timed(name):
+    # #     start = time.time()
+    # #     yield
+    # #     print str(int((time.time() - start) * 1000)) + 'ms', name
+
+    # # # locations = AUX_ISR_LOCATIONS
+    # # locations = AUX_MRC_LOCATIONS
+    # # # locations = AUX_RRC_LOCATIONS
+    # # # locations = AUX_ZWC_LOCATIONS
+
+    # # with CODAFile(test_file) as cf:
+    # #     for name, path in locations.items():
+    # #         #with timed(name):
+    # #         value = cf.fetch(*path)
+    # #         if isinstance(value, np.ndarray):
+    # #             shape = []
+    # #             while value.dtype == np.object:
+    # #                 value = np.stack(value)
+    # #                 shape.extend(value.shape)
+
+    # #             print "shape", shape, value.shape
+    # #         # print cf.get_size(*path)
+    # #         print name, value.shape if not isinstance(value, (int, float)) else 0
 
 
 
