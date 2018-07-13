@@ -100,7 +100,9 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
         out_data = {}
         for collection, data_iterator in out_data_iterator:
             accumulated_data = defaultdict(list)
-            for file_data in data_iterator:
+            for calibration_data, frequency_data in data_iterator:
+                file_data = dict(**calibration_data)
+                file_data.update(frequency_data)
                 for field_name, values in file_data.items():
                     accumulated_data[field_name].extend(values)
 
@@ -109,31 +111,73 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
         return out_data
 
     def write_product_data_to_netcdf(self, ds, file_data):
-        for field_name, data in file_data.items():
-            data = data[0]
+        calibration_data, frequency_data = file_data
+        if 'calibration' not in ds.dimensions:
+            ds.createDimension('calibration', None)
+        if 'frequency' not in ds.dimensions:
+            ds.createDimension('frequency', None)
+
+        for field_name, data in calibration_data.items():
+            group = ds.createGroup('calibration_data')
+
             isscalar = (data[0].ndim == 0)
             arrsize = data[0].shape[0] if not isscalar else 0
+            array_dim = 'array_%d' % arrsize
             data = np.hstack(data) if isscalar else np.vstack(data)
 
-            # create new variable (+ dimensions)
-            if field_name not in ds.dimensions:
-                ds.createDimension(field_name, None)
-                if not isscalar:
-                    ds.createDimension(field_name + '_array', arrsize)
+            if arrsize and array_dim not in ds.dimensions:
+                ds.createDimension(array_dim, arrsize)
 
-                ds.createVariable(
+            # create new variable (+ dimensions)
+            if field_name not in group.dimensions:
+                group.createVariable(
                     field_name, '%s%i' % (
                         data.dtype.kind, data.dtype.itemsize
-                    ), (
-                        field_name
+                    ),
+                    ('calibration') if isscalar else ('calibration', array_dim)
+                )[:] = data
+
+            # append to existing variable
+            else:
+                var = group[field_name]
+                offset = var.shape[0]
+                end = offset + data.shape[0]
+                var[offset:end] = data
+
+        for field_name, data in frequency_data.items():
+            group = ds.createGroup('frequency_data')
+
+            isscalar = (data[0][0].ndim == 0)
+            arrsize = data[0][0].shape[0] if not isscalar else 0
+            array_dim = 'array_%d' % arrsize
+
+            dtype = data[0][0].dtype
+            if not isscalar:
+                data = [
+                    np.vstack(item) for item in data
+                ]
+
+            # print data.shape, data.dtype
+
+            if arrsize and array_dim not in ds.dimensions:
+                ds.createDimension(array_dim, arrsize)
+
+            # create new variable (+ dimensions)
+            if field_name not in group.dimensions:
+                group.createVariable(
+                    field_name, '%s%i' % (
+                        dtype.kind, dtype.itemsize
+                    ),
+                    (
+                        'calibration', 'frequency'
                     ) if isscalar else (
-                        field_name, field_name + '_array',
+                        'calibration', 'frequency', array_dim
                     )
                 )[:] = data
 
             # append to existing variable
             else:
-                var = ds[field_name]
+                var = group[field_name]
                 offset = var.shape[0]
                 end = offset + data.shape[0]
                 var[offset:end] = data

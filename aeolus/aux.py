@@ -757,7 +757,9 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
     ]
 
     for filename in filenames:
-        data = defaultdict(list)
+        calibration_data = {}
+        frequency_data = {}
+
         with CODAFile(filename) as cf:
             # make a mask of all calibrations to be included, by only looking at
             # the fields for whole calibrations
@@ -800,7 +802,7 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                     field_data = _array_to_list(field_data)
 
                 # write out data
-                data[field_name].extend(field_data)
+                calibration_data[field_name] = field_data
 
             # build a mask of all frequencies within a specific calibration
             frequency_masks = None
@@ -811,11 +813,11 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
 
                 new_masks = [
                     make_mask(
-                        frequency_data,
+                        frequency_field_data,
                         filter_value.get('min'), filter_value.get('max'),
                         field_name in array_fields
                     )
-                    for frequency_data in field_data
+                    for frequency_field_data in field_data
                 ]
 
                 if frequency_masks:
@@ -844,24 +846,24 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
 
                 if frequency_ids is not None:
                     field_data = [
-                        frequency_data[mask]
-                        for frequency_data, mask
+                        frequency_field_data[mask]
+                        for frequency_field_data, mask
                         in izip(field_data, frequency_ids)
                     ]
 
                 if convert_arrays:
                     field_data = [
-                        _array_to_list(frequency_data)
-                        for frequency_data in field_data
+                        _array_to_list(frequency_field_data)
+                        for frequency_field_data in field_data
                     ]
                 else:
                     # TODO: steck as object array!
                     pass
 
                 # write out data
-                data[field_name].extend(field_data)
+                frequency_data[field_name] = field_data
 
-        yield data
+        yield calibration_data, frequency_data
 
 
 # test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF'
