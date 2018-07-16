@@ -225,7 +225,7 @@ class ExtractionProcessBase(object):
 
         elif mime_type == 'application/netcdf':
             if isasync:
-                outpath = self.get_out_filename("nc"),
+                outpath = self.get_out_filename("nc")
             else:
                 uid = str(uuid4())
                 outpath = os.path.join(tempfile.gettempdir(), uid) + '.nc'
