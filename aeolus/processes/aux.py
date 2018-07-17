@@ -164,7 +164,7 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
             # create new variable (+ dimensions)
             if field_name not in group.dimensions:
-                group.createVariable(
+                var = group.createVariable(
                     field_name, '%s%i' % (
                         dtype.kind, dtype.itemsize
                     ),
@@ -173,7 +173,8 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                     ) if isscalar else (
                         'calibration', 'frequency', array_dim
                     )
-                )[:] = data
+                )
+                var[:] = np.vstack(data) if isscalar else data
 
             # append to existing variable
             else:
