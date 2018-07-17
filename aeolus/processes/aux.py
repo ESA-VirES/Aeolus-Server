@@ -119,8 +119,8 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
         for field_name, data in calibration_data.items():
             group = ds.createGroup('calibration_data')
-
-            isscalar = (data[0].ndim == 0)
+            # TODO: better scalar check
+            isscalar = (isinstance(data[0], str) or data[0].ndim == 0)
             arrsize = data[0].shape[0] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
             data = np.hstack(data) if isscalar else np.vstack(data)
@@ -146,8 +146,8 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
         for field_name, data in frequency_data.items():
             group = ds.createGroup('frequency_data')
-
-            isscalar = (data[0][0].ndim == 0)
+            # TODO: better scalar check
+            isscalar = (isinstance(data[0][0], str) or data[0][0].ndim == 0)
             arrsize = data[0][0].shape[0] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
 
