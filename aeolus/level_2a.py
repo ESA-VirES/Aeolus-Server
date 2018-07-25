@@ -35,6 +35,7 @@ import numpy as np
 from aeolus.coda_utils import CODAFile, access_location, check_fields
 from aeolus.filtering import make_mask, combine_mask
 from aeolus.albedo import sample_offnadir
+from aeolus.extraction.measurement import MeasurementDataExtractor
 
 
 def calculate_L1B_centroid_time_obs(cf):
@@ -337,246 +338,256 @@ ARRAY_FIELDS = set([
 ])
 
 
-def _array_to_list(data):
-    if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
-        data = data.tolist()
-        if isobject:
-            data = [
-                _array_to_list(obj) for obj in data
-            ]
-    return data
+extractor = MeasurementDataExtractor(
+    observation_locations=OBSERVATION_LOCATIONS,
+    measurement_locations=MEASUREMENT_LOCATIONS,
+    group_locations=GROUP_LOCATIONS,
+    array_fields=ARRAY_FIELDS,
+)
+
+extract_data = extractor.extract_data
 
 
-def check_has_groups(cf):
-    """ Test whether the codafile has groups
-    """
-    return cf.fetch('/group_pcd') is not None
+# def _array_to_list(data):
+#     if isinstance(data, np.ndarray):
+#         isobject = data.dtype == np.object
+#         data = data.tolist()
+#         if isobject:
+#             data = [
+#                 _array_to_list(obj) for obj in data
+#             ]
+#     return data
 
 
-def extract_data(filenames, filters, observation_fields, measurement_fields,
-                 group_fields, simple_observation_filters=False,
-                 convert_arrays=False):
-    """ Extract the data from the given filename(s) and apply the given filters.
-    """
-    filenames = [filenames] if isinstance(filenames, basestring) else filenames
-
-    out_observation_data = defaultdict(list)
-    out_measurement_data = defaultdict(list)
-    out_group_data = defaultdict(list)
-
-    check_fields(
-        filters.keys(),
-        OBSERVATION_LOCATIONS.keys() +
-        MEASUREMENT_LOCATIONS.keys() +
-        GROUP_LOCATIONS.keys(),
-        'filter'
-    )
-    check_fields(observation_fields, OBSERVATION_LOCATIONS.keys(), 'observation')
-    check_fields(measurement_fields, MEASUREMENT_LOCATIONS.keys(), 'measurement')
-    check_fields(group_fields, GROUP_LOCATIONS.keys(), 'group')
-
-    observation_filters = {
-        name: value
-        for name, value in filters.items()
-        if name in OBSERVATION_LOCATIONS
-    }
-
-    measurement_filters = {
-        name: value
-        for name, value in filters.items()
-        if name in MEASUREMENT_LOCATIONS
-    }
-
-    group_filters = {
-        name: value
-        for name, value in filters.items()
-        if name in GROUP_LOCATIONS
-    }
-
-    for cf in [CODAFile(filename) for filename in filenames]:
-        with cf:
-            # create a mask for observation data
-            observation_mask = None
-            for field_name, filter_value in observation_filters.items():
-                location = OBSERVATION_LOCATIONS[field_name]
-
-                data = access_location(cf, location)
-
-                new_mask = make_mask(
-                    data, filter_value.get('min'), filter_value.get('max'),
-                    field_name in ARRAY_FIELDS
-                )
-
-                observation_mask = combine_mask(new_mask, observation_mask)
-
-            if observation_mask is not None:
-                filtered_observation_ids = np.nonzero(observation_mask)
-            else:
-                filtered_observation_ids = None
-
-            # fetch the requested observation fields, filter accordingly and
-            # write to the output dict
-            for field_name in observation_fields:
-                location = OBSERVATION_LOCATIONS[field_name]
-
-                data = access_location(cf, location)
-
-                if filtered_observation_ids is not None:
-                    data = data[filtered_observation_ids]
-
-                # convert to simple list instead of numpy array if requested
-                if convert_arrays and isinstance(data, np.ndarray):
-                    data = _array_to_list(data)
-                out_observation_data[field_name].extend(data)
-
-            # if we filter the measurements by observation ID, then use the
-            # filtered observation IDs as mask for the measurements.
-            # otherwise, use the full range of observations
-            if filtered_observation_ids is not None and \
-                    simple_observation_filters:
-                observation_iterator = filtered_observation_ids[0]
-            else:
-                observation_iterator = xrange(
-                    cf.get_size('/geolocation')[0]
-                )
-
-            out_measurement_data.update(
-                _read_measurements(
-                    cf, measurement_fields, measurement_filters,
-                    observation_iterator,
-                    convert_arrays
-                )
-            )
-
-            # check whether groups are available in the product
-            if not check_has_groups(cf):
-                continue
-
-            # Handle "groups", by building a group mask for all filters related
-            # to groups
-            group_mask = None
-            for field_name, filter_value in group_filters.items():
-                location = GROUP_LOCATIONS[field_name]
-
-                data = access_location(cf, location)
-
-                new_mask = make_mask(
-                    data, filter_value.get('min'), filter_value.get('max'),
-                    field_name in ARRAY_FIELDS
-                )
-
-                group_mask = combine_mask(new_mask, group_mask)
-
-            if group_mask is not None:
-                filtered_group_ids = np.nonzero(group_mask)
-            else:
-                filtered_group_ids = None
-
-            # fetch the requested observation fields, filter accordingly and
-            # write to the output dict
-            for field_name in group_fields:
-                if field_name not in GROUP_LOCATIONS:
-                    raise KeyError('Unknown group field %s' % field_name)
-                location = GROUP_LOCATIONS[field_name]
-
-                data = access_location(location)
-
-                if filtered_group_ids is not None:
-                    data = data[filtered_group_ids]
-
-                # convert to simple list instead of numpy array if requested
-                if convert_arrays and isinstance(data, np.ndarray):
-                    data = _array_to_list(data)
-                out_group_data[field_name].extend(data)
-
-    return out_observation_data, out_measurement_data, out_group_data
+# def check_has_groups(cf):
+#     """ Test whether the codafile has groups
+#     """
+#     return cf.fetch('/group_pcd') is not None
 
 
-def _read_measurements(cf, measurement_fields, filters, observation_ids,
-                       convert_arrays):
-    out_measurement_data = defaultdict(list)
+# def extract_data(filenames, filters, observation_fields, measurement_fields,
+#                  group_fields, simple_observation_filters=False,
+#                  convert_arrays=False):
+#     """ Extract the data from the given filename(s) and apply the given filters.
+#     """
+#     filenames = [filenames] if isinstance(filenames, basestring) else filenames
 
-    # return early, when no measurement fields are actually requested
-    if not measurement_fields:
-        return out_measurement_data
+#     out_observation_data = defaultdict(list)
+#     out_measurement_data = defaultdict(list)
+#     out_group_data = defaultdict(list)
 
-    # Build a measurement mask
-    measurement_mask = None
-    for field_name, filter_value in filters.items():
-        # only apply filters for measurement fields
-        if field_name not in MEASUREMENT_LOCATIONS:
-            continue
+#     check_fields(
+#         filters.keys(),
+#         OBSERVATION_LOCATIONS.keys() +
+#         MEASUREMENT_LOCATIONS.keys() +
+#         GROUP_LOCATIONS.keys(),
+#         'filter'
+#     )
+#     check_fields(observation_fields, OBSERVATION_LOCATIONS.keys(), 'observation')
+#     check_fields(measurement_fields, MEASUREMENT_LOCATIONS.keys(), 'measurement')
+#     check_fields(group_fields, GROUP_LOCATIONS.keys(), 'group')
 
-        location = MEASUREMENT_LOCATIONS[field_name]
+#     observation_filters = {
+#         name: value
+#         for name, value in filters.items()
+#         if name in OBSERVATION_LOCATIONS
+#     }
 
-        data = np.vstack(access_location(cf, location)[observation_ids])
+#     measurement_filters = {
+#         name: value
+#         for name, value in filters.items()
+#         if name in MEASUREMENT_LOCATIONS
+#     }
 
-        new_mask = make_mask(
-            data, filter_value.get('min'), filter_value.get('max'),
-            field_name in ARRAY_FIELDS
-        )
-        # combine the masks
-        measurement_mask = combine_mask(new_mask, measurement_mask)
+#     group_filters = {
+#         name: value
+#         for name, value in filters.items()
+#         if name in GROUP_LOCATIONS
+#     }
 
-    # iterate over all requested fields
-    for field_name in measurement_fields:
-        location = MEASUREMENT_LOCATIONS[field_name]
+#     for cf in [CODAFile(filename) for filename in filenames]:
+#         with cf:
+#             # create a mask for observation data
+#             observation_mask = None
+#             for field_name, filter_value in observation_filters.items():
+#                 location = OBSERVATION_LOCATIONS[field_name]
 
-        # fetch the data, and apply the observation id mask
-        data = access_location(cf, location)[observation_ids]
+#                 data = access_location(cf, location)
 
-        # when a measurement mask was built, iterate over all measurement groups
-        # plus their mask respectively, and apply it to get a filtered list
-        if measurement_mask is not None:
-            tmp_data = [
-                (
-                    _array_to_list(measurement[mask])
-                    if convert_arrays else measurement[mask]
-                )
-                for measurement, mask in izip(data, measurement_mask)
-            ]
-            data = np.empty(len(tmp_data), dtype=np.object)
-            data[:] = tmp_data
+#                 new_mask = make_mask(
+#                     data, filter_value.get('min'), filter_value.get('max'),
+#                     field_name in ARRAY_FIELDS
+#                 )
 
-        # convert to simple list instead of numpy array if requested
-        if convert_arrays and isinstance(data, np.ndarray):
-            data = _array_to_list(data)
+#                 observation_mask = combine_mask(new_mask, observation_mask)
 
-        out_measurement_data[field_name].append(data)
+#             if observation_mask is not None:
+#                 filtered_observation_ids = np.nonzero(observation_mask)
+#             else:
+#                 filtered_observation_ids = None
 
-    return out_measurement_data
+#             # fetch the requested observation fields, filter accordingly and
+#             # write to the output dict
+#             for field_name in observation_fields:
+#                 location = OBSERVATION_LOCATIONS[field_name]
+
+#                 data = access_location(cf, location)
+
+#                 if filtered_observation_ids is not None:
+#                     data = data[filtered_observation_ids]
+
+#                 # convert to simple list instead of numpy array if requested
+#                 if convert_arrays and isinstance(data, np.ndarray):
+#                     data = _array_to_list(data)
+#                 out_observation_data[field_name].extend(data)
+
+#             # if we filter the measurements by observation ID, then use the
+#             # filtered observation IDs as mask for the measurements.
+#             # otherwise, use the full range of observations
+#             if filtered_observation_ids is not None and \
+#                     simple_observation_filters:
+#                 observation_iterator = filtered_observation_ids[0]
+#             else:
+#                 observation_iterator = xrange(
+#                     cf.get_size('/geolocation')[0]
+#                 )
+
+#             out_measurement_data.update(
+#                 _read_measurements(
+#                     cf, measurement_fields, measurement_filters,
+#                     observation_iterator,
+#                     convert_arrays
+#                 )
+#             )
+
+#             # check whether groups are available in the product
+#             if not check_has_groups(cf):
+#                 continue
+
+#             # Handle "groups", by building a group mask for all filters related
+#             # to groups
+#             group_mask = None
+#             for field_name, filter_value in group_filters.items():
+#                 location = GROUP_LOCATIONS[field_name]
+
+#                 data = access_location(cf, location)
+
+#                 new_mask = make_mask(
+#                     data, filter_value.get('min'), filter_value.get('max'),
+#                     field_name in ARRAY_FIELDS
+#                 )
+
+#                 group_mask = combine_mask(new_mask, group_mask)
+
+#             if group_mask is not None:
+#                 filtered_group_ids = np.nonzero(group_mask)
+#             else:
+#                 filtered_group_ids = None
+
+#             # fetch the requested observation fields, filter accordingly and
+#             # write to the output dict
+#             for field_name in group_fields:
+#                 if field_name not in GROUP_LOCATIONS:
+#                     raise KeyError('Unknown group field %s' % field_name)
+#                 location = GROUP_LOCATIONS[field_name]
+
+#                 data = access_location(location)
+
+#                 if filtered_group_ids is not None:
+#                     data = data[filtered_group_ids]
+
+#                 # convert to simple list instead of numpy array if requested
+#                 if convert_arrays and isinstance(data, np.ndarray):
+#                     data = _array_to_list(data)
+#                 out_group_data[field_name].extend(data)
+
+#     return out_observation_data, out_measurement_data, out_group_data
+
+
+# def _read_measurements(cf, measurement_fields, filters, observation_ids,
+#                        convert_arrays):
+#     out_measurement_data = defaultdict(list)
+
+#     # return early, when no measurement fields are actually requested
+#     if not measurement_fields:
+#         return out_measurement_data
+
+#     # Build a measurement mask
+#     measurement_mask = None
+#     for field_name, filter_value in filters.items():
+#         # only apply filters for measurement fields
+#         if field_name not in MEASUREMENT_LOCATIONS:
+#             continue
+
+#         location = MEASUREMENT_LOCATIONS[field_name]
+
+#         data = np.vstack(access_location(cf, location)[observation_ids])
+
+#         new_mask = make_mask(
+#             data, filter_value.get('min'), filter_value.get('max'),
+#             field_name in ARRAY_FIELDS
+#         )
+#         # combine the masks
+#         measurement_mask = combine_mask(new_mask, measurement_mask)
+
+#     # iterate over all requested fields
+#     for field_name in measurement_fields:
+#         location = MEASUREMENT_LOCATIONS[field_name]
+
+#         # fetch the data, and apply the observation id mask
+#         data = access_location(cf, location)[observation_ids]
+
+#         # when a measurement mask was built, iterate over all measurement groups
+#         # plus their mask respectively, and apply it to get a filtered list
+#         if measurement_mask is not None:
+#             tmp_data = [
+#                 (
+#                     _array_to_list(measurement[mask])
+#                     if convert_arrays else measurement[mask]
+#                 )
+#                 for measurement, mask in izip(data, measurement_mask)
+#             ]
+#             data = np.empty(len(tmp_data), dtype=np.object)
+#             data[:] = tmp_data
+
+#         # convert to simple list instead of numpy array if requested
+#         if convert_arrays and isinstance(data, np.ndarray):
+#             data = _array_to_list(data)
+
+#         out_measurement_data[field_name].append(data)
+
+#     return out_measurement_data
 
 
 
-# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
-test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
-
+# # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001/AE_OPER_ALD_U_N_2A_20151001T104454059_005379000_046330_0001.DBL'
 # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
 
-# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_001188000_017071_0001.DBL'
+# # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
 
-def main():
+# # test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_001188000_017071_0001.DBL'
 
-    print extract_data(
-        test_file,
-        filters={
-            # 'L1B_centroid_time_obs': {
-            #     'min': 497015823.059997
-            #     # 'max':  0.3
-            # }
-        },
-        observation_fields=[
-            # 'rayleigh_altitude_obs'
-        ],
-        measurement_fields=[
-            # 'longitude_of_DEM_intersection_meas'
-        ],
-        group_fields=[
-            # 'group_LOD_variance'
-            'group_centroid_time'
-        ],
-    )
+# def main():
 
-if __name__ == '__main__':
-    main()
+#     print extract_data(
+#         test_file,
+#         filters={
+#             # 'L1B_centroid_time_obs': {
+#             #     'min': 497015823.059997
+#             #     # 'max':  0.3
+#             # }
+#         },
+#         observation_fields=[
+#             # 'rayleigh_altitude_obs'
+#         ],
+#         measurement_fields=[
+#             # 'longitude_of_DEM_intersection_meas'
+#         ],
+#         group_fields=[
+#             # 'group_LOD_variance'
+#             'group_centroid_time'
+#         ],
+#     )
+
+# if __name__ == '__main__':
+#     main()
