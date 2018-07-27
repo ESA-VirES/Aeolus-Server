@@ -33,6 +33,7 @@ from cStringIO import StringIO
 import tempfile
 import os.path
 from uuid import uuid4
+from itertools import izip
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
@@ -43,12 +44,13 @@ from eoxserver.services.ows.wps.parameters import (
 )
 from eoxserver.services.ows.wps.exceptions import ServerBusy
 import msgpack
-from netCDF4 import Dataset
+from netCDF4 import Dataset, stringtochar
+import numpy as np
 
 from aeolus import models
-from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.context import DummyContext
 from aeolus.processes.util.auth import get_user, get_username
+from aeolus.extraction.dsd import get_dsd
 
 
 MAX_ACTIVE_JOBS = 2
@@ -84,6 +86,11 @@ class ExtractionProcessBase(object):
             'filters', title="Filters", abstract=(
                 "JSON Object to set specific data filters."
             ), formats=FormatJSON(), optional=True
+        )),
+        ("dsd_info", LiteralData(
+            'dsd_info', title="DSD Information", abstract=(
+                "Whether to include each products ancestry information"
+            ), optional=True, default=False,
         )),
     ]
 
@@ -208,6 +215,11 @@ class ExtractionProcessBase(object):
             collection_products, data_filters, mime_type=mime_type, **kwargs
         )
 
+        collection_products_dict = dict(
+            (collection, products)
+            for collection, products in collection_products
+        )
+
         # encode as messagepack
         if mime_type == 'application/msgpack':
             if isasync:
@@ -217,6 +229,14 @@ class ExtractionProcessBase(object):
                 )
 
             out_data = self.accumulate_for_messagepack(out_data_iterator)
+
+            if kwargs['dsd_info'] == 'true':
+                for collection, products in collection_products_dict.items():
+                    if collection.identifier in out_data:
+                        out_data[collection.identifier]['dsd'] = dict(
+                            (product.identifier, get_dsd(product))
+                            for product in products
+                        )
 
             encoded = StringIO(msgpack.dumps(out_data))
             return CDObject(
@@ -235,10 +255,16 @@ class ExtractionProcessBase(object):
             try:
                 with Dataset(outpath, "w", format="NETCDF4") as ds:
                     for collection, data_iterator in out_data_iterator:
-                        enumerated_data = enumerate(data_iterator, start=1)
-                        for product_idx, file_data in enumerated_data:
+                        products = collection_products_dict[collection]
+                        enumerated_data = izip(
+                            enumerate(data_iterator, start=1), products
+                        )
+                        for (product_idx, file_data), product in enumerated_data:
                             # write the product data to the netcdf file
                             self.write_product_data_to_netcdf(ds, file_data)
+
+                            if kwargs['dsd_info'] == 'true':
+                                self.add_product_dsd(ds, product)
 
                             # update progress on a per-product basis
                             context.update_progress(
@@ -309,6 +335,29 @@ class ExtractionProcessBase(object):
 
     def write_product_data_to_netcdf(self, ds, file_data):
         raise NotImplementedError
+
+    def add_product_dsd(self, ds, product):
+        dsd = get_dsd(product, strip=False)
+        if dsd:
+            grp = ds.createGroup('dsd').createGroup(product.identifier)
+            grp.createDimension('dsd', len(dsd))
+            first = dsd[0]
+
+            for name in first.keys():
+                values = [
+                    item[name]
+                    for item in dsd
+                ]
+                if isinstance(values[0], str):
+                    dimname = "%s_nchars" % name
+                    grp.createDimension(dimname, len(values[0]))
+                    var = grp.createVariable(name, 'S1', ('dsd', dimname))
+
+                    values = stringtochar(np.array(values))
+                else:
+                    var = grp.createVariable(name, 'i8', ('dsd',))
+
+                var[:] = values
 
     def get_out_filename(self, extension):
         raise NotImplementedError

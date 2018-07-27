@@ -55,11 +55,14 @@ AUX_PATHS = [
 ]
 
 
-def get_dsd(product_id, recursive=False):
-    try:
-        product = models.Product.objects.get(identifier=product_id)
-    except models.Product.DoesNotExist:
-        return None
+def get_dsd(product_or_id, recursive=False, strip=True):
+    if isinstance(product_or_id, models.Product):
+        product = product_or_id
+    else:
+        try:
+            product = models.Product.objects.get(identifier=product_or_id)
+        except models.Product.DoesNotExist:
+            return None
 
     filename = product.data_items.filter(
         semantic__startswith='bands'
@@ -71,7 +74,7 @@ def get_dsd(product_id, recursive=False):
     with CODAFile(filename) as cf:
         data = [
             [
-                item.strip() if isinstance(item, str) else item.item()
+                _convert_item(item, strip)
                 for item in cf.fetch(*path)
             ] for path in paths
         ]
@@ -84,15 +87,16 @@ def get_dsd(product_id, recursive=False):
 
         if recursive:
             for item in out:
-                sub_dsd = get_dsd(item['filename'], recursive)
+                sub_dsd = get_dsd(item['filename'], recursive, strip)
                 if sub_dsd:
                     item['sub_dsd'] = sub_dsd
 
         return out
 
-if __name__ == '__main__':
-    import sys
-    from pprint import pprint
-    x=DataExtractorBase().get_dsd(sys.argv[-1], True)
 
-    print(json.dumps(x, indent=4))
+def _convert_item(item, strip):
+    "Helper to convert values of the DSD parts for later encoding"
+    if isinstance(item, str):
+        return item.strip() if strip else item
+    else:
+        return item.item()
