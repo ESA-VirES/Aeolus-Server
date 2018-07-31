@@ -870,6 +870,14 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
         yield calibration_data, frequency_data
 
 
+def get_aux_type(collection):
+    name = collection.range_type.name
+    if not name.startswith('AUX'):
+        raise Exception("Collection %s  is not an AUX collection" % collection)
+
+    return name.split("_")[1]
+
+
 # test_file = '/mnt/data/AE_OPER_AUX_ISR_1B_20071002T103629_20071002T110541_0002.EEF'
 test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.EEF'
 # test_file = '/mnt/data/AE_OPER_AUX_RRC_1B_20071031T021229_20071031T022829_0002.EEF'

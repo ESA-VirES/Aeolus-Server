@@ -34,7 +34,7 @@ from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import LiteralData
 import numpy as np
 
-from aeolus.aux import extract_data
+from aeolus.aux import extract_data, get_aux_type
 from aeolus.processes.util.base import ExtractionProcessBase
 
 
@@ -90,7 +90,9 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 .first().location
                 for product in products
             ],
-                data_filters, fields.split(',') if fields else [], aux_type,
+                data_filters,
+                fields.split(',') if fields else [],
+                aux_type or get_aux_type(collection),
                 convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
