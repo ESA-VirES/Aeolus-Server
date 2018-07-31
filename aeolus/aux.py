@@ -773,7 +773,7 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 new_mask = make_mask(
                     access_location(cf, path),
                     filter_value.get('min'), filter_value.get('max'),
-                    field in calibration_array_fields
+                    field_name in calibration_array_fields
                 )
                 calibration_mask = combine_mask(new_mask, calibration_mask)
 
@@ -826,8 +826,8 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
 
                 if frequency_masks:
                     frequency_masks = [
-                        combine_mask(new_mask, frequency_mask)
-                        for new_mask, frequency_mask
+                        combine_mask(new_mask_, frequency_mask)
+                        for new_mask_, frequency_mask
                         in izip(new_masks, frequency_masks)
                     ]
                 else:

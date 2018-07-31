@@ -90,7 +90,7 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 .first().location
                 for product in products
             ],
-                data_filters, fields.split(','), aux_type,
+                data_filters, fields.split(',') if fields else [], aux_type,
                 convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
