@@ -144,9 +144,6 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         measurement_data = file_data[1]
         group_data = file_data[2]
 
-        if 'array' not in ds.dimensions:
-            ds.createDimension('array', 25)
-
         if 'observation' not in ds.dimensions:
             ds.createDimension('observation', None)
         if measurement_data and 'measurement' not in ds.dimensions:
@@ -161,13 +158,23 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 if name not in group.variables:
                     isscalar = values[0].ndim == 0
                     values = np.hstack(values) if isscalar else np.vstack(values)
+
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
                     variable = ds.createVariable(
                         '/observations/%s' % name, '%s%i' % (
                             values.dtype.kind, values.dtype.itemsize
                         ), (
                             'observation'
                         ) if isscalar else (
-                            'observation', 'array',
+                            'observation', array_dim_name
                         )
                     )
                     variable[:] = values
