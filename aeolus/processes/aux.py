@@ -113,12 +113,16 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
         return out_data
 
     def write_product_data_to_netcdf(self, ds, file_data):
+        num_calibrations = getattr(ds, 'num_calibrations', 0)
+        num_frequencies = getattr(ds, 'num_frequencies', 0)
+
         calibration_data, frequency_data = file_data
         if 'calibration' not in ds.dimensions:
             ds.createDimension('calibration', None)
         if 'frequency' not in ds.dimensions:
             ds.createDimension('frequency', None)
 
+        current_calibrations = 0
         for field_name, data in calibration_data.items():
             group = ds.createGroup('calibration_data')
             # TODO: better scalar check
@@ -126,6 +130,8 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
             arrsize = data[0].shape[0] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
             data = np.hstack(data) if isscalar else np.vstack(data)
+
+            current_calibrations = data.shape[0]
 
             if arrsize and array_dim not in ds.dimensions:
                 ds.createDimension(array_dim, arrsize)
@@ -142,10 +148,12 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
             # append to existing variable
             else:
                 var = group[field_name]
-                offset = var.shape[0]
-                end = offset + data.shape[0]
-                var[offset:end] = data
+                end = num_calibrations + data.shape[0]
+                var[num_calibrations:end] = data
 
+        ds.num_calibrations = num_calibrations + current_calibrations
+
+        current_frequencies = 0
         for field_name, data in frequency_data.items():
             group = ds.createGroup('frequency_data')
             # TODO: better scalar check
@@ -159,7 +167,9 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                     np.vstack(item) for item in data
                 ]
 
-            # print data.shape, data.dtype
+            data = np.hstack(data)
+
+            current_frequencies = data.shape[0]
 
             if arrsize and array_dim not in ds.dimensions:
                 ds.createDimension(array_dim, arrsize)
@@ -172,15 +182,15 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                     ),
                     ('frequency') if isscalar else ('frequency', array_dim)
                 )
-                var[:] = np.hstack(data)
+                var[:] = data
 
             # append to existing variable
             else:
-                data = np.hstack(data)
                 var = group[field_name]
-                offset = var.shape[0]
-                end = offset + data.shape[0]
-                var[offset:end] = data
+                end = num_frequencies + data.shape[0]
+                var[num_frequencies:end] = data
+
+            ds.num_frequencies = num_frequencies + current_frequencies
 
     def get_out_filename(self, extension):
         return "aux_data.%s" % extension
