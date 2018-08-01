@@ -174,6 +174,10 @@ class ExtractionProcessBase(object):
         isasync = context is not None
         context = context or DummyContext()
 
+        # lenient handling of begin/end time swapping
+        if begin_time > end_time:
+            begin_time, end_time = end_time, begin_time
+
         # TODO: time span from the actual product files?
         time_span = end_time - begin_time
 
