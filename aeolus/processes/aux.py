@@ -172,12 +172,11 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                     ),
                     ('frequency') if isscalar else ('frequency', array_dim)
                 )
-
-                var[:] = np.hstack(data) if isscalar else data
+                var[:] = np.hstack(data)
 
             # append to existing variable
             else:
-                data = np.hstack(data) if isscalar else data
+                data = np.hstack(data)
                 var = group[field_name]
                 offset = var.shape[0]
                 end = offset + data.shape[0]
