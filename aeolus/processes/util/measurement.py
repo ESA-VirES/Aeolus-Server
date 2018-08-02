@@ -146,17 +146,24 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
 
         if 'observation' not in ds.dimensions:
             ds.createDimension('observation', None)
-        if measurement_data and 'measurement' not in ds.dimensions:
+            num_observations = 0
+        else:
+            num_observations = ds.dimensions['observation'].size
+
+        if measurement_data and 'measurements_per_observation' not in ds.dimensions:
             ds.createDimension('measurements_per_observation', 30)
         if group_data and 'group' not in ds.dimensions:
             ds.createDimension('group', None)
+            num_groups = 0
+        elif group_data:
+            num_groups = ds.dimensions['group'].size
 
         if observation_data:
             group = ds.createGroup('observations')
 
             for name, values in observation_data.items():
+                isscalar = values[0].ndim == 0
                 if name not in group.variables:
-                    isscalar = values[0].ndim == 0
                     values = np.hstack(values) if isscalar else np.vstack(values)
 
                     # check if a dimension for that array was already created.
@@ -179,10 +186,10 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     )
                     variable[:] = values
                 else:
+                    values = np.hstack(values) if isscalar else np.vstack(values)
                     var = group[name]
-                    offset = var.shape[0]
-                    end = offset + values.shape[0]
-                    var[offset:end] = values
+                    end = num_observations + values.shape[0]
+                    var[num_observations:end] = values
 
         if measurement_data:
             group = ds.createGroup('measurements')
@@ -199,6 +206,15 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     )
 
                 if name not in group.variables:
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
                     var = ds.createVariable(
                         '/measurements/%s' % name, '%s%i' % (
                             values[0].dtype.kind, values[0].dtype.itemsize
@@ -207,16 +223,15 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                         ) if isscalar else (
                             'observation',
                             'measurements_per_observation',
-                            'array',
+                            array_dim_name,
                         )
                     )
                     var[:] = values
 
                 else:
                     var = group[name]
-                    offset = var.shape[0]
-                    end = offset + values.shape[0]
-                    var[offset:end] = values
+                    end = num_observations + values.shape[0]
+                    var[num_observations:end] = values
 
         # TODO: group data?
 

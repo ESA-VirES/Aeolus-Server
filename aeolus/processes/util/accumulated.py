@@ -237,6 +237,16 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
             measurement_data=file_data[6],
         )
 
+        def _get_offset_for_kind(ds, kind_name):
+            if kind_name in ds.groups:
+                return ds.groups[kind_name].dimensions[kind_name].size
+            return 0
+
+        offsets = dict(
+            (kind_name, _get_offset_for_kind(ds, kind_name))
+            for kind_name in file_data.keys()
+        )
+
         for kind_name, kind in file_data.items():
             if not kind:
                 continue
@@ -262,9 +272,8 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
                 # data to it
                 else:
                     var = group[name]
-                    offset = var.shape[0]
-                    end = offset + values.shape[0]
-                    var[offset:end] = values
+                    end = offsets[kind_name] + values.shape[0]
+                    var[offsets[kind_name]:end] = values
 
     def get_out_filename(self, extension):
         return "level_%s_data.%s" % (self.level_name, extension)
