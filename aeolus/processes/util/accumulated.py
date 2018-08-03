@@ -274,6 +274,3 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
                     var = group[name]
                     end = offsets[kind_name] + values.shape[0]
                     var[offsets[kind_name]:end] = values
-
-    def get_out_filename(self, extension):
-        return "level_%s_data.%s" % (self.level_name, extension)

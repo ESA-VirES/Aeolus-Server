@@ -224,6 +224,18 @@ class ExtractionProcessBase(object):
             for collection, products in collection_products
         )
 
+        # generate a nice filename for the output file
+        extension = None
+        if mime_type == 'application/msgpack':
+            extension = 'mp'
+        elif mime_type == 'application/netcdf':
+            extension = 'nc'
+
+        # TODO: for when multiple collections or none at all
+        out_filename = self.get_out_filename(
+            collection_products[0][0].identifier, begin_time, end_time, extension
+        )
+
         # encode as messagepack
         if mime_type == 'application/msgpack':
             if isasync:
@@ -244,20 +256,18 @@ class ExtractionProcessBase(object):
 
             encoded = StringIO(msgpack.dumps(out_data))
             return CDObject(
-                encoded, filename=self.get_out_filename("mp"), **output
+                encoded, filename=out_filename, **output
             )
 
         elif mime_type == 'application/netcdf':
-            if isasync:
-                outpath = self.get_out_filename("nc")
-            else:
+            if not isasync:
                 uid = str(uuid4())
-                outpath = os.path.join(tempfile.gettempdir(), uid) + '.nc'
+                tmppath = os.path.join(tempfile.gettempdir(), uid) + '.nc'
 
             product_count = 0
 
             try:
-                with Dataset(outpath, "w", format="NETCDF4") as ds:
+                with Dataset(tmppath, "w", format="NETCDF4") as ds:
                     for collection, data_iterator in out_data_iterator:
                         products = collection_products_dict[collection]
                         enumerated_data = izip(
@@ -285,18 +295,18 @@ class ExtractionProcessBase(object):
                 # only cleanup file in sync processes, in async the files are
                 # cleaned up seperately
                 if not isasync:
-                    os.remove(outpath)
+                    os.remove(tmppath)
                 raise
 
             # result generation. For async processes, publish the file for the
             # webserver
             if isasync:
-                return Reference(*context.publish(outpath), **output)
+                return Reference(*context.publish(out_filename), **output)
 
             # for sync cases, pass a reference to the file, which shall be
             # deleted afterwards
             return CDFile(
-                outpath, filename=self.get_out_filename("nc"),
+                tmppath, filename=out_filename,
                 remove_file=True, **output
             )
 
@@ -363,5 +373,10 @@ class ExtractionProcessBase(object):
 
                 var[:] = values
 
-    def get_out_filename(self, extension):
-        raise NotImplementedError
+    def get_out_filename(self, filetype, begin_time, end_time, extension):
+        return "AE_OPER_%s_%s_%s_vires.%s" % (
+            filetype,
+            begin_time.strftime("%Y%m%dT%H%M%S"),
+            end_time.strftime("%Y%m%dT%H%M%S"),
+            extension
+        )

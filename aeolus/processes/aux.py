@@ -185,6 +185,3 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 var = group[field_name]
                 end = num_frequencies + data.shape[0]
                 var[num_frequencies:end] = data
-
-    def get_out_filename(self, extension):
-        return "aux_data.%s" % extension

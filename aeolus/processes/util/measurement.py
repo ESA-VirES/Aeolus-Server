@@ -234,6 +234,3 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     var[num_observations:end] = values
 
         # TODO: group data?
-
-    def get_out_filename(self, extension):
-        return "level_%s_data.%s" % (self.level_name, extension)
