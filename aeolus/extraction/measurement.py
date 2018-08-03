@@ -72,6 +72,7 @@ class MeasurementDataExtractor(object):
         """ Extract the data from the given filename(s) and apply the given
             filters.
         """
+
         filenames = (
             [filenames] if isinstance(filenames, basestring) else filenames
         )
@@ -166,7 +167,8 @@ class MeasurementDataExtractor(object):
                     self._read_measurements(
                         cf, measurement_fields, measurement_filters,
                         observation_iterator,
-                        convert_arrays
+                        convert_arrays,
+                        cf.get_size('/geolocation')[0]
                     )
                 )
 
@@ -214,7 +216,8 @@ class MeasurementDataExtractor(object):
                 yield out_observation_data, out_measurement_data, out_group_data
 
     def _read_measurements(self, cf, measurement_fields, filters,
-                           observation_ids, convert_arrays):
+                           observation_ids, convert_arrays, total_observations):
+
         out_measurement_data = defaultdict(list)
 
         # return early, when no measurement fields are actually requested
@@ -230,7 +233,9 @@ class MeasurementDataExtractor(object):
 
             location = self.measurement_locations[field_name]
 
-            data = np.vstack(access_location(cf, location)[observation_ids])
+            data = access_measurements(
+                cf, location, observation_ids, total_observations
+            )
 
             new_mask = make_mask(
                 data, filter_value.get('min'), filter_value.get('max'),
@@ -244,7 +249,9 @@ class MeasurementDataExtractor(object):
             location = self.measurement_locations[field_name]
 
             # fetch the data, and apply the observation id mask
-            data = access_location(cf, location)[observation_ids]
+            data = access_measurements(
+                cf, location, observation_ids, total_observations
+            )
 
             # when a measurement mask was built, iterate over all measurement
             # groups plus their mask respectively, and apply it to get a filtered
@@ -267,3 +274,22 @@ class MeasurementDataExtractor(object):
             out_measurement_data[field_name].extend(data)
 
         return out_measurement_data
+
+
+def access_measurements(cf, location, observation_ids, total_observations):
+    """ "Smart" measurement function, using one of two methods to read from a
+        DBL file: either in one big sweep or in many smaller. When only a
+        portion (up to 90% of the total measurements) is required, then the
+        reading is done in many small portions (one for each observation)
+    """
+    used_sized = float(observation_ids.shape[0]) / float(total_observations)
+
+    # use many "single reads" when only < 90% of measurements are read
+    if used_sized < 0.9:
+        return np.vstack([
+            access_location(cf, location[:1] + [int(i)] + location[2:])
+            for i in observation_ids
+        ])
+
+    else:
+        return np.vstack(access_location(cf, location)[observation_ids])
