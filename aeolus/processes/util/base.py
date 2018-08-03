@@ -263,6 +263,8 @@ class ExtractionProcessBase(object):
             if not isasync:
                 uid = str(uuid4())
                 tmppath = os.path.join(tempfile.gettempdir(), uid) + '.nc'
+            else:
+                tmppath = out_filename
 
             product_count = 0
 
