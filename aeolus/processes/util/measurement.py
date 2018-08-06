@@ -112,6 +112,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 observation_fields=observation_fields,
                 measurement_fields=measurement_fields,
                 group_fields=group_fields,
+                simple_observation_filters=True,
                 convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
@@ -137,6 +138,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 group_data=accumulated_data[2],
             )
             out_data[collection.identifier] = collection_data
+
         return out_data
 
     def write_product_data_to_netcdf(self, ds, file_data):
