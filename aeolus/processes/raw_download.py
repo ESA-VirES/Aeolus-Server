@@ -31,7 +31,6 @@ from datetime import datetime
 import zipfile
 import tarfile
 import os.path
-from itertools import izip
 
 from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
@@ -91,6 +90,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
 
     def execute(self, collection_ids, begin_time, end_time, bbox,
                 output, context=None, **kwargs):
+
         collections = [
             models.ProductCollection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
@@ -163,10 +163,9 @@ class RawDownloadProcess(AsyncProcessBase, Component):
 
         with archive:
             product_count = 0
+
             for collection, products_iter in collection_iter:
-                enumerated_data = izip(
-                    enumerate(products_iter, start=1), products_iter
-                )
+                enumerated_data = enumerate(products_iter, start=1)
                 for product_idx, (product, filenames) in enumerated_data:
                     for filename in filenames:
                         add_func(
@@ -177,6 +176,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                                 os.path.basename(filename)
                             )
                         )
+
                     # update progress on a per-product basis
                     context.update_progress(
                         (product_count * 100) // total_product_count,

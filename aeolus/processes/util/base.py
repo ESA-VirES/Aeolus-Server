@@ -103,13 +103,6 @@ class AsyncProcessBase(object):
 
     def initialize(self, context, inputs, outputs, parts):
         """ Asynchronous process initialization. """
-        # context.logger.info(
-        #     "Received %s WPS request from %s.",
-        #     self.identifier, inputs['\\username'] or "an anonymous user"
-        # )
-
-        context.logger.info("%r" % inputs)
-
         user = get_user(inputs['\\username'])
         active_jobs_count = models.Job.objects.filter(
             owner=user, status__in=(models.Job.ACCEPTED, models.Job.STARTED)
