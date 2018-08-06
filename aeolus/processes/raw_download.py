@@ -30,32 +30,33 @@
 from datetime import datetime
 import zipfile
 import tarfile
-from uuid import uuid4
 import os.path
-import tempfile
 
 from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import (
-    ComplexData, FormatJSON, CDFile, BoundingBoxData, LiteralData,
-    FormatBinaryRaw
+    ComplexData, FormatJSON, BoundingBoxData, LiteralData,
+    FormatBinaryRaw, Reference
 )
 
 from aeolus import models
+from aeolus.processes.util.base import AsyncProcessBase
 
 
-class RawDownloadProcess(Component):
+class RawDownloadProcess(AsyncProcessBase, Component):
     """ This process allows to download raw data files from registered Products
         in ZIP/TAR archives
     """
     implements(ProcessInterface)
 
+    synchronous = False
+
     identifier = "aeolus:download:raw"
     metadata = {}
     profiles = ["vires-util"]
 
-    inputs = [
+    inputs = AsyncProcessBase.inputs + [
         ("collection_ids", ComplexData(
             'collection_ids', title="Collection identifiers", abstract=(
                 ""
@@ -88,7 +89,7 @@ class RawDownloadProcess(Component):
     ]
 
     def execute(self, collection_ids, begin_time, end_time, bbox,
-                output, **kwargs):
+                output, context=None, **kwargs):
         collections = [
             models.ProductCollection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
@@ -108,7 +109,10 @@ class RawDownloadProcess(Component):
 
         collection_iter = (
             (collection, (
-                    (product, product.data_items.values_list('location', flat=True))
+                    (
+                        product,
+                        product.data_items.values_list('location', flat=True)
+                    )
                     for product in models.Product.objects.filter(
                         collections=collection,
                         **db_filters
@@ -120,11 +124,12 @@ class RawDownloadProcess(Component):
 
         mime_type = output['mime_type']
 
-        outpath = os.path.join(tempfile.gettempdir(), uuid4().hex)
-
         if mime_type == 'application/zip':
             extension = '.zip'
-            archive = zipfile.ZipFile(outpath, 'w', zipfile.ZIP_DEFLATED)
+            out_filename = self.get_out_filename(
+                "RAW", begin_time, end_time, extension
+            )
+            archive = zipfile.ZipFile(out_filename, 'w', zipfile.ZIP_DEFLATED)
             add_func = archive.write
 
         elif mime_type.startswith('application/tar'):
@@ -137,7 +142,11 @@ class RawDownloadProcess(Component):
                 compression = ':bz2'
                 extension = '.tar.bz2'
 
-            archive = tarfile.open(outpath, 'w%s' % compression)
+            out_filename = self.get_out_filename(
+                "RAW", begin_time, end_time, extension
+            )
+
+            archive = tarfile.open(out_filename, 'w%s' % compression)
             add_func = archive.add
 
         with archive:
@@ -153,7 +162,14 @@ class RawDownloadProcess(Component):
                             )
                         )
 
-        return CDFile(
-            outpath, filename='download%s' % extension,
-            remove_file=True, **output
+        return Reference(
+            *context.publish(out_filename), **output
+        )
+
+    def get_out_filename(self, filetype, begin_time, end_time, extension):
+        return "AE_OPER_%s_%s_%s_vires%s" % (
+            filetype,
+            begin_time.strftime("%Y%m%dT%H%M%S"),
+            end_time.strftime("%Y%m%dT%H%M%S"),
+            extension
         )

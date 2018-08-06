@@ -56,52 +56,13 @@ from aeolus.extraction.dsd import get_dsd
 MAX_ACTIVE_JOBS = 2
 
 
-class ExtractionProcessBase(object):
-    """ Base class for data extraction processes
+class AsyncProcessBase(object):
     """
-
-    synchronous = True
+    """
     asynchronous = True
 
     inputs = [
         ("username", RequestParameter(get_username)),
-        ("collection_ids", ComplexData(
-            'collection_ids', title="Collection identifiers", abstract=(
-                ""
-            ), formats=FormatJSON()
-        )),
-        ("begin_time", LiteralData(
-            'begin_time', datetime, optional=False, title="Begin time",
-            abstract="Start of the selection time interval",
-        )),
-        ("end_time", LiteralData(
-            'end_time', datetime, optional=False, title="End time",
-            abstract="End of the selection time interval",
-        )),
-        ("bbox", BoundingBoxData(
-            "bbox", crss=(4326, 3857), optional=True, title="Bounding box",
-            abstract="Optional selection bounding box.", default=None,
-        )),
-        ("filters", ComplexData(
-            'filters', title="Filters", abstract=(
-                "JSON Object to set specific data filters."
-            ), formats=FormatJSON(), optional=True
-        )),
-        ("dsd_info", LiteralData(
-            'dsd_info', title="DSD Information", abstract=(
-                "Whether to include each products ancestry information"
-            ), optional=True, default=False,
-        )),
-    ]
-
-    outputs = [
-        ("output", ComplexData(
-            "output", title="",
-            formats=[
-                FormatBinaryRaw('application/msgpack'),
-                FormatBinaryRaw('application/netcdf'),
-            ],
-        )),
     ]
 
     @staticmethod
@@ -142,10 +103,12 @@ class ExtractionProcessBase(object):
 
     def initialize(self, context, inputs, outputs, parts):
         """ Asynchronous process initialization. """
-        context.logger.info(
-            "Received %s WPS request from %s.",
-            self.identifier, inputs['\\username'] or "an anonymous user"
-        )
+        # context.logger.info(
+        #     "Received %s WPS request from %s.",
+        #     self.identifier, inputs['\\username'] or "an anonymous user"
+        # )
+
+        context.logger.info("%r" % inputs)
 
         user = get_user(inputs['\\username'])
         active_jobs_count = models.Job.objects.filter(
@@ -166,6 +129,53 @@ class ExtractionProcessBase(object):
         job.identifier = context.identifier
         job.response_url = context.status_location
         job.save()
+
+
+class ExtractionProcessBase(AsyncProcessBase):
+    """ Base class for data extraction processes
+    """
+
+    synchronous = True
+
+    inputs = AsyncProcessBase.inputs + [
+        ("collection_ids", ComplexData(
+            'collection_ids', title="Collection identifiers", abstract=(
+                ""
+            ), formats=FormatJSON()
+        )),
+        ("begin_time", LiteralData(
+            'begin_time', datetime, optional=False, title="Begin time",
+            abstract="Start of the selection time interval",
+        )),
+        ("end_time", LiteralData(
+            'end_time', datetime, optional=False, title="End time",
+            abstract="End of the selection time interval",
+        )),
+        ("bbox", BoundingBoxData(
+            "bbox", crss=(4326, 3857), optional=True, title="Bounding box",
+            abstract="Optional selection bounding box.", default=None,
+        )),
+        ("filters", ComplexData(
+            'filters', title="Filters", abstract=(
+                "JSON Object to set specific data filters."
+            ), formats=FormatJSON(), optional=True
+        )),
+        ("dsd_info", LiteralData(
+            'dsd_info', title="DSD Information", abstract=(
+                "Whether to include each products ancestry information"
+            ), optional=True, default=False,
+        )),
+    ]
+
+    outputs = [
+        ("output", ComplexData(
+            "output", title="",
+            formats=[
+                FormatBinaryRaw('application/msgpack'),
+                FormatBinaryRaw('application/netcdf'),
+            ],
+        )),
+    ]
 
     def execute(self, collection_ids, begin_time, end_time, bbox, filters,
                 output, context=None, **kwargs):
