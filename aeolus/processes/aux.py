@@ -35,6 +35,7 @@ from eoxserver.services.ows.wps.parameters import LiteralData
 import numpy as np
 
 from aeolus.aux import extract_data, get_aux_type
+from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.base import ExtractionProcessBase
 
 
@@ -63,23 +64,49 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, aux_type,
                          **kwargs):
-        # TODO: use bbox too?
+        if bbox:
+            tpl_box = translate_bbox(
+                (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
+            )
+
         if aux_type in ("MRC", "RRC"):
-            return dict(
+            data_filters = dict(
                 time_freq_step={
                     "min": begin_time,
                     "max": end_time,
                 },
                 **filters
             )
+            if bbox:
+                data_filters['lon_of_DEM_intersection'] = {
+                    'min': tpl_box[0],
+                    'max': tpl_box[2]
+                }
+                data_filters['lat_of_DEM_intersection'] = {
+                    'min': tpl_box[1],
+                    'max': tpl_box[3]
+                }
+            return data_filters
+
         elif aux_type in ("ISR", "ZWC"):
-            return dict(
+            data_filters = dict(
                 time={
                     "min": begin_time,
                     "max": end_time,
                 },
                 **filters
             )
+            if bbox and aux_type == "ZWC":
+                data_filters['lon_of_DEM_intersection'] = {
+                    'min': tpl_box[0],
+                    'max': tpl_box[2]
+                }
+                data_filters['lat_of_DEM_intersection'] = {
+                    'min': tpl_box[1],
+                    'max': tpl_box[3]
+                }
+            return data_filters
+
         return filters
 
     def extract_data(self, collection_products, data_filters, fields, aux_type,
