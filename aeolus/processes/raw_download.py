@@ -31,6 +31,7 @@ from datetime import datetime
 import zipfile
 import tarfile
 import os.path
+from itertools import izip
 
 from django.contrib.gis.geos import Polygon
 from eoxserver.core import Component, implements
@@ -107,20 +108,31 @@ class RawDownloadProcess(AsyncProcessBase, Component):
 
             db_filters['ground_path__intersects'] = box
 
+        collection_products = [
+            (collection, models.Product.objects.filter(
+                collections=collection,
+                **db_filters
+            ).order_by('begin_time'))
+            for collection in collections
+        ]
+
         collection_iter = (
             (collection, (
                     (
                         product,
                         product.data_items.values_list('location', flat=True)
                     )
-                    for product in models.Product.objects.filter(
-                        collections=collection,
-                        **db_filters
-                    ).order_by('begin_time')
+                    for product in products
                 )
             )
-            for collection in collections
+            for collection, products in collection_products
         )
+
+        collection_product_counts = dict(
+            (collection.identifier, products.count())
+            for collection, products in collection_products
+        )
+        total_product_count = sum(collection_product_counts.values())
 
         mime_type = output['mime_type']
 
@@ -150,8 +162,12 @@ class RawDownloadProcess(AsyncProcessBase, Component):
             add_func = archive.add
 
         with archive:
+            product_count = 0
             for collection, products_iter in collection_iter:
-                for product, filenames in products_iter:
+                enumerated_data = izip(
+                    enumerate(products_iter, start=1), products_iter
+                )
+                for product_idx, (product, filenames) in enumerated_data:
                     for filename in filenames:
                         add_func(
                             filename,
@@ -161,6 +177,17 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                                 os.path.basename(filename)
                             )
                         )
+                    # update progress on a per-product basis
+                    context.update_progress(
+                        (product_count * 100) // total_product_count,
+                        "Filtering collection %s, product %d of %d." % (
+                            collection.identifier, product_idx,
+                            collection_product_counts[
+                                collection.identifier
+                            ]
+                        )
+                    )
+                    product_count += 1
 
         return Reference(
             *context.publish(out_filename), **output
