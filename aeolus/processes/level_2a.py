@@ -49,6 +49,8 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
     extraction_function = extract_data
     level_name = "2A"
 
+    range_type_name = "ALD_U_N_2A"
+
     inputs = MeasurementDataExtractProcessBase.inputs + [
         ("group_fields", LiteralData(
             'group_fields', str, optional=True, default=None,

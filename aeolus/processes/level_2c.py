@@ -46,3 +46,5 @@ class Level2CExctract(AccumulatedDataExctractProcessBase, Component):
 
     extraction_function = extract_data
     level_name = "2C"
+
+    range_type_name = "ALD_U_N_2C"

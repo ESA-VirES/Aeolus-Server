@@ -46,3 +46,5 @@ class Level1BExtract(MeasurementDataExtractProcessBase, Component):
 
     extraction_function = extract_data
     level_name = "1B"
+
+    range_type_name = "ALD_U_N_1B"

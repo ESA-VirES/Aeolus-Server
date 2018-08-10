@@ -130,6 +130,8 @@ class ExtractionProcessBase(AsyncProcessBase):
 
     synchronous = True
 
+    range_type_name = None
+
     inputs = AsyncProcessBase.inputs + [
         ("collection_ids", ComplexData(
             'collection_ids', title="Collection identifiers", abstract=(
@@ -170,8 +172,8 @@ class ExtractionProcessBase(AsyncProcessBase):
         )),
     ]
 
-    def execute(self, collection_ids, begin_time, end_time, bbox, filters,
-                output, context=None, **kwargs):
+    def execute(self, collection_ids, begin_time, end_time, bbox,
+                filters, output, context=None, **kwargs):
         """ The execution function of the process.
         """
         isasync = context is not None
@@ -202,7 +204,7 @@ class ExtractionProcessBase(AsyncProcessBase):
         )
 
         collection_products = self.get_collection_products(
-            collection_ids, db_filters
+            collection_ids, db_filters, kwargs["username"]
         )
 
         collection_product_counts = dict(
@@ -211,8 +213,14 @@ class ExtractionProcessBase(AsyncProcessBase):
         )
         total_product_count = sum(collection_product_counts.values())
 
+        collection_products_dict = dict(
+            (collection, products)
+            for collection, products in collection_products
+        )
+
         data_filters = self.get_data_filters(
-            begin_time, end_time, bbox, filters.data if filters else {}, **kwargs
+            begin_time, end_time, bbox, filters.data if filters else {},
+            **kwargs
         )
 
         mime_type = output['mime_type']
@@ -220,11 +228,6 @@ class ExtractionProcessBase(AsyncProcessBase):
         # call the actual data extrction function
         out_data_iterator = self.extract_data(
             collection_products, data_filters, mime_type=mime_type, **kwargs
-        )
-
-        collection_products_dict = dict(
-            (collection, products)
-            for collection, products in collection_products
         )
 
         # generate a nice filename for the output file
@@ -327,16 +330,25 @@ class ExtractionProcessBase(AsyncProcessBase):
 
             db_filters['ground_path__intersects'] = box
 
+        if self.range_type_name:
+            db_filters['range_type__name'] = self.range_type_name
+
         return db_filters
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
         return filters
 
-    def get_collection_products(self, collection_ids, db_filters):
+    def get_collection_products(self, collection_ids, db_filters, username):
         collections = [
             models.ProductCollection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
         ]
+
+        for collection in collections:
+            if collection.user and collection.user.username != username:
+                raise Exception(
+                    "No access to '%s' permitted" % collection.identifier
+                )
 
         return [
             (collection, models.Product.objects.filter(
