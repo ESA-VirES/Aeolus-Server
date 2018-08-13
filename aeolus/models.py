@@ -134,19 +134,30 @@ EO_OBJECT_TYPE_REGISTRY[310] = ProductCollection
 
 
 def get_or_create_user_product_collection(user):
-    range_type, _ = RangeType.objects.get_or_create(name="user_range_type")
-    collection, _ = ProductCollection.objects.get_or_create(
-        user=user,
-        identifier="user_collection_%s" % user.username,
-        min_x=-180,
-        min_y=-90,
-        max_x=180,
-        max_y=90,
-        srid=4326,
-        size_x=0,
-        size_y=1,
-        range_type=range_type,
-    )
+    identifier = "user_collection_%s" % user.username
+
+    try:
+        collection = ProductCollection.objects.get(identifier=identifier)
+    except ProductCollection.DoesNotExist:
+        range_type, _ = RangeType.objects.get_or_create(name="user_range_type")
+
+        collection = ProductCollection()
+        collection.identifier = identifier
+        collection.range_type = range_type
+
+        collection.srid = 4326
+        collection.min_x = -180
+        collection.min_y = -90
+        collection.max_x = 180
+        collection.max_y = 90
+        collection.size_x = 0
+        collection.size_y = 1
+
+        collection.user = user
+
+        collection.full_clean()
+        collection.save()
+
     return collection
 
 

@@ -1,3 +1,33 @@
+# ------------------------------------------------------------------------------
+#
+#  View functions and utilities to upload user generated files
+#
+# Project: VirES-Aeolus
+# Authors: Fabian Schindler <fabian.schindler@eox.at>
+#
+# ------------------------------------------------------------------------------
+# Copyright (C) 2018 EOX IT Services GmbH
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies of this Software or works derived from this Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+# ------------------------------------------------------------------------------
+
+
 import os
 from os.path import basename, join, dirname
 import errno
@@ -6,9 +36,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django import forms
 from django.conf import settings
-from eoxserver.core import env
-from eoxserver.backends.models import Storage, Package, DataItem
-from eoxserver.backends.component import BackendComponent
+from django.contrib.auth.decorators import login_required
 from eoxserver.resources.coverages.management.commands import (
     nested_commit_on_success
 )
@@ -24,6 +52,7 @@ class UploadFileForm(forms.Form):
 # from somewhere import handle_uploaded_file
 
 
+@login_required
 def upload_user_file(request):
     user = request.user
 
@@ -60,45 +89,13 @@ def handle_uploaded_file(uploaded_file, user):
     # ingest the file into the users collection
     identifier = get_identifier(out_path, user)
 
-    if product_is_registered(identifier):
-        product_deregister(identifier)
+    existing_product = Product.objects.filter(identifier=identifier).first()
+    if existing_product:
+        existing_product.cast().delete()
 
     collection = get_or_create_user_product_collection(user)
-    product = product_register(identifier, out_path)
-    collection_link_product(collection, product)
-
-
-@nested_commit_on_success
-def collection_link_product(collection, product):
-    """ Link product to a collection """
+    product = register_product(out_path, overrides={'identifier': identifier})
     collection.insert(product)
-
-
-def product_is_registered(identifier):
-    """ Return True if the product is already registered. """
-    return Product.objects.filter(identifier=identifier).exists()
-
-
-@nested_commit_on_success
-def product_register(identifier, data_file):
-    """ Register product. """
-
-    product = register_product(data_file, overrides={'identifier': identifier})
-    return product
-
-
-@nested_commit_on_success
-def product_deregister(identifier):
-    """ De-register product. """
-    product = Product.objects.get(identifier=identifier).cast()
-    product.delete()
-
-
-@nested_commit_on_success
-def product_update(identifier, *args, **kwargs):
-    """ Update existing product. """
-    product_deregister(identifier)
-    return product_register(identifier, *args, **kwargs)
 
 
 def get_identifier(data_file, user):
@@ -107,49 +104,3 @@ def get_identifier(data_file, user):
         user.username,
         basename(data_file).partition(".")[0]
     )
-
-
-def _split_location(item):
-    """ Splits string as follows: <format>:<location> where format can be
-        None.
-    """
-    idx = item.find(":")
-    return (None, item) if idx == -1 else (item[:idx], item[idx + 1:])
-
-
-def _get_location_chain(items):
-    """ Returns the tuple
-    """
-    component = BackendComponent(env)
-    storage = None
-    package = None
-
-    storage_type, url = _split_location(items[0])
-    if storage_type:
-        storage_component = component.get_storage_component(storage_type)
-    else:
-        storage_component = None
-
-    if storage_component:
-        storage, _ = Storage.objects.get_or_create(
-            url=url, storage_type=storage_type
-        )
-
-    # packages
-    for item in items[1 if storage else 0:-1]:
-        type_or_format, location = _split_location(item)
-        package_component = component.get_package_component(type_or_format)
-        if package_component:
-            package, _ = Package.objects.get_or_create(
-                location=location, format=format,
-                storage=storage, package=package
-            )
-            storage = None  # override here
-        else:
-            raise Exception(
-                "Could not find package component for format '%s'"
-                % type_or_format
-            )
-
-    format_, location = _split_location(items[-1])
-    return storage, package, format_, location
