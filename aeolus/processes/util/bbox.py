@@ -1,12 +1,12 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-#  Process Utilities - cache backend wrapper
+#  BBox manipulation routines
 #
-# Project: VirES
-# Authors: Martin Paces <martin.paces@eox.at>
+# Project: VirES-Aeolus
+# Authors: Fabian Schindler <fabian.schindler@eox.at>
 #
-#-------------------------------------------------------------------------------
-# Copyright (C) 2017 EOX IT Services GmbH
+# ------------------------------------------------------------------------------
+# Copyright (C) 2018 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,19 +25,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-from functools import wraps
-from eoxserver.backends.cache import setup_cache_session, shutdown_cache_session
 
-def with_cache_session(func):
-    """ Decorator setting up the EOxServer cache session. """
-    @wraps(func)
-    def __wrapper__(*args, **kwargs):
-        setup_cache_session()
-        try:
-            response = func(*args, **kwargs)
-        finally:
-            shutdown_cache_session()
-        return response
-    return __wrapper__
+def translate_bbox(bbox):
+    """ Assure that a BBox is within [0;360]
+    """
+
+    minx, miny, maxx, maxy = bbox
+    while minx < 0:
+        minx += 360
+    while maxx < 0:
+        maxx += 360
+
+    while minx > 360:
+        minx -= 360
+    while maxx > 360:
+        maxx -= 360
+
+    return (minx, miny, maxx, maxy)

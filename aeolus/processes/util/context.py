@@ -1,12 +1,12 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-# Data Source - model base class
+#  Asynchronous processing context utilities
 #
-# Project: VirES
-# Authors: Martin Paces <martin.paces@eox.at>
+# Project: VirES-Aeolus
+# Authors: Fabian Schindler <fabian.schindler@eox.at>
 #
-#-------------------------------------------------------------------------------
-# Copyright (C) 2016 EOX IT Services GmbH
+# ------------------------------------------------------------------------------
+# Copyright (C) 2018 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,25 +25,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-class Model(object):
-    """ Base model source class. """
 
-    @property
-    def variables(self):
-        """ Get list of the provided variables. """
-        raise NotImplementedError
-
-    @property
-    def required_variables(self):
-        """ Get list of the required input dataset variables. """
-        raise NotImplementedError
-
-    def eval(self, dataset, variables=None, **kwargs):
-        """ Evaluate model for the given dataset.
-        Optionally the content of the output dataset can be controlled
-        by the list of the output variables.
-        Specific models can define additional keyword parameters.
-        """
-        raise NotImplementedError
+class DummyContext():
+    def update_progress(self, *args, **kwargs):
+        pass

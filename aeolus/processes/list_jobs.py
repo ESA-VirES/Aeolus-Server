@@ -33,7 +33,7 @@ from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import (
     RequestParameter, ComplexData, FormatJSON, CDObject,
 )
-from vires.models import Job
+from aeolus.models import Job
 
 STATUS_TO_STRING = dict(Job.STATUS_CHOICES)
 

@@ -38,12 +38,15 @@ from django.db.models import (
 )
 from django.contrib.gis import geos
 from django.contrib.gis.db.models import (
-    GeoManager, MultiLineStringField,
+    GeoManager, MultiLineStringField, OneToOneField
 )
 from django.contrib.auth.models import User
+from django.dispatch import receiver
+from django.db.models.signals import post_save, post_migrate
 
 from eoxserver.resources.coverages.models import (
-    collect_eo_metadata, Collection, Coverage, EO_OBJECT_TYPE_REGISTRY
+    collect_eo_metadata, Collection, Coverage, RangeType,
+    EO_OBJECT_TYPE_REGISTRY
 )
 
 
@@ -97,6 +100,8 @@ EO_OBJECT_TYPE_REGISTRY[301] = Product
 class ProductCollection(Product, Collection):
     objects = GeoManager()
 
+    user = OneToOneField(User, null=True, blank=True, default=None, related_name="user_collection")
+
     class Meta:
         verbose_name = "Product Collection"
         verbose_name_plural = "Product Collections"
@@ -126,3 +131,43 @@ class ProductCollection(Product, Collection):
         self.save()
 
 EO_OBJECT_TYPE_REGISTRY[310] = ProductCollection
+
+
+def get_or_create_user_product_collection(user):
+    identifier = "user_collection_%s" % user.username
+
+    try:
+        collection = ProductCollection.objects.get(identifier=identifier)
+    except ProductCollection.DoesNotExist:
+        range_type, _ = RangeType.objects.get_or_create(name="user_range_type")
+
+        collection = ProductCollection()
+        collection.identifier = identifier
+        collection.range_type = range_type
+
+        collection.srid = 4326
+        collection.min_x = -180
+        collection.min_y = -90
+        collection.max_x = 180
+        collection.max_y = 90
+        collection.size_x = 0
+        collection.size_y = 1
+
+        collection.user = user
+
+        collection.full_clean()
+        collection.save()
+
+    return collection
+
+
+@receiver(post_migrate)
+def post_migrate_receiver(*args, **kwargs):
+    for user in User.objects.all():
+        get_or_create_user_product_collection(user)
+
+
+@receiver(post_save)
+def post_save_receiver(sender, instance, created, *args, **kwargs):
+    if issubclass(sender, User) and created:
+        get_or_create_user_product_collection(instance)
