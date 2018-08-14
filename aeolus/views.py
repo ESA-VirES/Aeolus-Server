@@ -37,6 +37,7 @@ from django.shortcuts import render_to_response
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from eoxserver.resources.coverages.management.commands import (
     nested_commit_on_success
 )
@@ -52,6 +53,7 @@ class UploadFileForm(forms.Form):
 # from somewhere import handle_uploaded_file
 
 
+@csrf_exempt
 @login_required
 def upload_user_file(request):
     user = request.user
