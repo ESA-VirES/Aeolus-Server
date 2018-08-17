@@ -40,6 +40,7 @@ class CODAFile(object):
     def __init__(self, filename):
         """ Initializes a new :class:`CODAFile` with the given filename.
         """
+        self._handle = None  # in case the coda.open fails initialize
         self._handle = coda.open(filename.encode('ascii'))
         self.filename = filename
 
