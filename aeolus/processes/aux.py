@@ -34,20 +34,15 @@ from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import LiteralData
 import numpy as np
 
-from aeolus.aux import extract_data, get_aux_type
+from aeolus.aux import extract_data
 from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.base import ExtractionProcessBase
 
 
-class Level1BAUXExctract(ExtractionProcessBase, Component):
+class Level1BAUXExtractBase(ExtractionProcessBase):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
         Level1B products of the specified collections.
     """
-    implements(ProcessInterface)
-
-    identifier = "aeolus:level1B:AUX"
-    metadata = {}
-    profiles = ["vires-util"]
 
     inputs = ExtractionProcessBase.inputs + [
         ("fields", LiteralData(
@@ -55,21 +50,17 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
-        ("aux_type", LiteralData(
-            'aux_type', str, optional=True, default=None,
-            title="AUX type to query",
-            abstract="The AUX type to query data from."
-        )),
     ]
 
-    def get_data_filters(self, begin_time, end_time, bbox, filters, aux_type,
-                         **kwargs):
+    aux_type = None
+
+    def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
         if bbox:
             tpl_box = translate_bbox(
                 (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             )
 
-        if aux_type in ("MRC", "RRC"):
+        if self.aux_type in ("MRC", "RRC"):
             data_filters = dict(
                 time_freq_step={
                     "min": begin_time,
@@ -88,7 +79,7 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 }
             return data_filters
 
-        elif aux_type in ("ISR", "ZWC"):
+        elif self.aux_type in ("ISR", "ZWC"):
             data_filters = dict(
                 time={
                     "min": begin_time,
@@ -96,7 +87,7 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 },
                 **filters
             )
-            if bbox and aux_type == "ZWC":
+            if bbox and self.aux_type == "ZWC":
                 data_filters['lon_of_DEM_intersection'] = {
                     'min': tpl_box[0],
                     'max': tpl_box[2]
@@ -109,8 +100,8 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
 
         return filters
 
-    def extract_data(self, collection_products, data_filters, fields, aux_type,
-                     mime_type, **kw):
+    def extract_data(self, collection_products, data_filters, fields, mime_type,
+                     **kwargs):
         return (
             (collection, extract_data([
                 product.data_items.filter(semantic__startswith='bands')
@@ -119,7 +110,7 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
             ],
                 data_filters,
                 fields.split(',') if fields else [],
-                aux_type or get_aux_type(collection),
+                self.aux_type,
                 convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
@@ -212,3 +203,59 @@ class Level1BAUXExctract(ExtractionProcessBase, Component):
                 var = group[field_name]
                 end = num_frequencies + data.shape[0]
                 var[num_frequencies:end] = data
+
+
+class Level1BAUXISRExtract(Level1BAUXExtractBase, Component):
+    """ This process extracts data from the ADM-Aeolus
+        Level1B AUX_ISR products of the specified collections.
+    """
+    implements(ProcessInterface)
+
+    identifier = "aeolus:level1B:AUX:ISR"
+    metadata = {}
+    profiles = ["vires-util"]
+
+    range_type_name = "AUX_ISR"
+    aux_type = "ISR"
+
+
+class Level1BAUXMRCExtract(Level1BAUXExtractBase, Component):
+    """ This process extracts data from the ADM-Aeolus
+        Level1B AUX_MRC products of the specified collections.
+    """
+    implements(ProcessInterface)
+
+    identifier = "aeolus:level1B:AUX:MRC"
+    metadata = {}
+    profiles = ["vires-util"]
+
+    range_type_name = "AUX_MRC"
+    aux_type = "MRC"
+
+
+class Level1BAUXRRCExtract(Level1BAUXExtractBase, Component):
+    """ This process extracts data from the ADM-Aeolus
+        Level1B AUX_RRC products of the specified collections.
+    """
+    implements(ProcessInterface)
+
+    identifier = "aeolus:level1B:AUX:RRC"
+    metadata = {}
+    profiles = ["vires-util"]
+
+    range_type_name = "AUX_RRC"
+    aux_type = "RRC"
+
+
+class Level1BAUXZWCExtract(Level1BAUXExtractBase, Component):
+    """ This process extracts data from the ADM-Aeolus
+        Level1B AUX_ZWC products of the specified collections.
+    """
+    implements(ProcessInterface)
+
+    identifier = "aeolus:level1B:AUX:ZWC"
+    metadata = {}
+    profiles = ["vires-util"]
+
+    range_type_name = "AUX_ZWC"
+    aux_type = "ZWC"
