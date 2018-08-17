@@ -215,7 +215,7 @@ class Level1BAUXISRExtract(Level1BAUXExtractBase, Component):
     metadata = {}
     profiles = ["vires-util"]
 
-    range_type_name = "AUX_ISR"
+    range_type_name = "AUX_ISR_1B"
     aux_type = "ISR"
 
 
@@ -229,7 +229,7 @@ class Level1BAUXMRCExtract(Level1BAUXExtractBase, Component):
     metadata = {}
     profiles = ["vires-util"]
 
-    range_type_name = "AUX_MRC"
+    range_type_name = "AUX_MRC_1B"
     aux_type = "MRC"
 
 
@@ -243,7 +243,7 @@ class Level1BAUXRRCExtract(Level1BAUXExtractBase, Component):
     metadata = {}
     profiles = ["vires-util"]
 
-    range_type_name = "AUX_RRC"
+    range_type_name = "AUX_RRC_1B"
     aux_type = "RRC"
 
 
@@ -257,5 +257,5 @@ class Level1BAUXZWCExtract(Level1BAUXExtractBase, Component):
     metadata = {}
     profiles = ["vires-util"]
 
-    range_type_name = "AUX_ZWC"
+    range_type_name = "AUX_ZWC_1B"
     aux_type = "ZWC"
