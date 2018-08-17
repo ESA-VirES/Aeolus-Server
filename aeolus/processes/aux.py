@@ -219,6 +219,20 @@ class Level1BAUXISRExtract(Level1BAUXExtractBase, Component):
     aux_type = "ISR"
 
 
+class Level1BAUXMETExtract(Level1BAUXExtractBase, Component):
+    """ This process extracts data from the ADM-Aeolus
+        Level1B AUX_ISR products of the specified collections.
+    """
+    implements(ProcessInterface)
+
+    identifier = "aeolus:level1B:AUX:MET"
+    metadata = {}
+    profiles = ["vires-util"]
+
+    range_type_name = "AUX_MET_12"
+    aux_type = "MET"
+
+
 class Level1BAUXMRCExtract(Level1BAUXExtractBase, Component):
     """ This process extracts data from the ADM-Aeolus
         Level1B AUX_MRC products of the specified collections.
