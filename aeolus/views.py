@@ -142,7 +142,10 @@ def handle_uploaded_file(uploaded_file, user):
         )
 
         # delete the first n products
-        for eo_object in collection.eo_objects.all()[:num_to_delete]:
+        to_delete = collection.eo_objects.exclude(
+            identifier=identifier
+        )[:num_to_delete]
+        for eo_object in to_delete:
             existing_product = eo_object.cast()
             filename = existing_product.data_items.filter(
                 semantic__startswith='bands'
