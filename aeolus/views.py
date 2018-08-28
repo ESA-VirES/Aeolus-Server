@@ -31,18 +31,21 @@
 import os
 from os.path import basename, join, dirname
 import errno
+import logging
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from eoxserver.resources.coverages.management.commands import (
-    nested_commit_on_success
-)
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 
 from aeolus.models import get_or_create_user_product_collection, Product
 from aeolus.registration import register_product
+
+
+logger = logging.getLogger(__name__)
 
 
 class UploadFileForm(forms.Form):
@@ -52,13 +55,13 @@ class UploadFileForm(forms.Form):
 # from somewhere import handle_uploaded_file
 
 
+@csrf_exempt
 @login_required
 def upload_user_file(request):
     user = request.user
 
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
-        print request.POST, request.FILES
         if form.is_valid():
             handle_uploaded_file(request.FILES['file'], user)
             return HttpResponseRedirect(request.path)
@@ -67,10 +70,15 @@ def upload_user_file(request):
     return render_to_response('aeolus/upload_user_file.html', {'form': form})
 
 
-@nested_commit_on_success
 def handle_uploaded_file(uploaded_file, user):
     out_path = join(settings.USER_UPLOAD_DIR, user.username, uploaded_file.name)
+    user_file_limit = getattr(settings, 'USER_UPLOAD_FILE_LIMIT', 1)
 
+    logger.info(
+        "User '%s' uploaded file '%s'." % (user.username, uploaded_file.name)
+    )
+
+    # ensure that the upload directories are there
     try:
         os.makedirs(dirname(out_path))
     except OSError as e:
@@ -79,23 +87,73 @@ def handle_uploaded_file(uploaded_file, user):
         else:
             raise
 
+    # get the identifier for the uploaded product
+    identifier = get_identifier(out_path, user)
+
+    with transaction.atomic():
+        existing_product = Product.objects.filter(identifier=identifier).first()
+        if existing_product:
+            existing_product = existing_product.cast()
+            filename = existing_product.data_items.filter(
+                    semantic__startswith='bands'
+            ).first().location
+            logger.debug(
+                "Product '%s' already registered. "
+                "Deleting old product and file %s"
+                % (identifier, filename)
+            )
+            os.unlink(filename)
+            existing_product.delete()
+
     # actually upload and store file
     with open(out_path, 'wb+') as destination:
         for chunk in uploaded_file.chunks():
             destination.write(chunk)
 
-    # TODO: upload/file limit
+    # register the newly created file and insert it into the user collection
+    with transaction.atomic():
+        collection = get_or_create_user_product_collection(user)
 
-    # ingest the file into the users collection
-    identifier = get_identifier(out_path, user)
+        try:
+            product = register_product(
+                out_path, overrides={'identifier': identifier}
+            )
+            collection.insert(product)
+        except:
+            logger.error(
+                "Failed to register/insert file %s. Deleting it." % out_path
+            )
+            os.unlink(out_path)
+            raise
 
-    existing_product = Product.objects.filter(identifier=identifier).first()
-    if existing_product:
-        existing_product.cast().delete()
+    # check whether we have reached the upload limit
+    current_count = collection.eo_objects.all().count()
+    if current_count > user_file_limit:
+        num_to_delete = current_count - user_file_limit
+        logger.info(
+            "User upload limit reached for user '%s': "
+            "%d allowed, %d currently registered (with uploaded file). "
+            "Deleting %d product%s." % (
+                user.username,
+                user_file_limit, current_count,
+                num_to_delete,
+                "" if num_to_delete == 1 else "s"
+            )
+        )
 
-    collection = get_or_create_user_product_collection(user)
-    product = register_product(out_path, overrides={'identifier': identifier})
-    collection.insert(product)
+        # delete the first n products
+        to_delete = collection.eo_objects.exclude(
+            identifier=identifier
+        )[:num_to_delete]
+        for eo_object in to_delete:
+            existing_product = eo_object.cast()
+            filename = existing_product.data_items.filter(
+                semantic__startswith='bands'
+            ).first().location
+
+            logger.debug("Deleting user uploaded file %s" % filename)
+            os.unlink(filename)
+            existing_product.delete()
 
 
 def get_identifier(data_file, user):

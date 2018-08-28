@@ -37,7 +37,10 @@ setup(
     packages=find_packages(),
     data_files=DATA_FILES,
     include_package_data=True,
-    package_data={'aeolus': ['data/*.json']},
+    package_data={'aeolus': [
+        'data/*.json',
+        'templates/aeolus/*.html',
+    ]},
     scripts=[],
     install_requires=['EOxServer'],
     zip_safe=False,
