@@ -66,11 +66,16 @@ def make_mask(data, min_value=None, max_value=None, is_array=False, **kwargs):
     # special treatment when we get an epsilon value for accuracy
     elif eps is not None:
         if min_value is not None and max_value is not None:
-            mask = np.logical_or(
-                (data - max_value) <= eps,
-                (data - min_value) >= -eps,
-            )
-
+            if min_value > max_value:
+                mask = np.logical_or(
+                    (data - max_value) <= eps,
+                    (data - min_value) >= -eps,
+                )
+            else:
+                mask = np.logical_and(
+                    (data - max_value) <= eps,
+                    (data - min_value) >= -eps,
+                )
         elif min_value is not None:
             mask = (data - min_value) >= -eps
         elif max_value is not None:
