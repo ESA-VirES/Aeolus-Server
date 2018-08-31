@@ -146,14 +146,18 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         measurement_data = file_data[1]
         group_data = file_data[2]
 
-        if 'observation' not in ds.dimensions:
+        if observation_data and 'observation' not in ds.dimensions:
             ds.createDimension('observation', None)
             num_observations = 0
-        else:
+        elif observation_data:
             num_observations = ds.dimensions['observation'].size
 
-        if measurement_data and 'measurements_per_observation' not in ds.dimensions:
-            ds.createDimension('measurements_per_observation', 30)
+        if measurement_data and 'measurement' not in ds.dimensions:
+            ds.createDimension('measurement', None)
+            num_measurements = 0
+        elif measurement_data:
+            num_measurements = ds.dimensions['measurement'].size
+
         if group_data and 'group' not in ds.dimensions:
             ds.createDimension('group', None)
             num_groups = 0
@@ -200,11 +204,11 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 isscalar = values[0][0].ndim == 0
 
                 if isscalar:
-                    values = np.vstack(values)
+                    values = np.hstack(values)
+
                 else:
-                    values = np.rollaxis(
-                        np.dstack([np.vstack(obs) for obs in values]),
-                        2, 0
+                    values = np.vstack(
+                        np.hstack(values)
                     )
 
                 if name not in group.variables:
@@ -221,10 +225,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                         '/measurements/%s' % name, '%s%i' % (
                             values[0].dtype.kind, values[0].dtype.itemsize
                         ), (
-                            'observation', 'measurements_per_observation'
+                            'measurement',
                         ) if isscalar else (
-                            'observation',
-                            'measurements_per_observation',
+                            'measurement',
                             array_dim_name,
                         )
                     )
@@ -232,7 +235,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
 
                 else:
                     var = group[name]
-                    end = num_observations + values.shape[0]
-                    var[num_observations:end] = values
+                    end = num_measurements + values.shape[0]
+                    var[num_measurements:end] = values
 
         # TODO: group data?
