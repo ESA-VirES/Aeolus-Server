@@ -527,6 +527,7 @@ AUX_ZWC_LOCATIONS = {
     'mie_ground_correction_velocity':                       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Mie_Ground_Correction_Velocity'],
     'rayleigh_ground_correction_velocity':                  ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Rayleigh_Ground_Correction_Velocity'],
     'num_of_mie_ground_bins':                               ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Number_of_Mie_Ground_Bins'],
+    'num_of_rayleigh_ground_bins':                          ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Number_of_Rayleigh_Ground_Bins'],
     'mie_avg_ground_echo_bin_thickness':                    ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Mie_Average_Ground_Echo_Bin_Thickness'],
     'rayleigh_avg_ground_echo_bin_thickness':               ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Rayleigh_Average_Ground_Echo_Bin_Thickness'],
     'mie_avg_ground_echo_bin_thickness_above_DEM':          ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Mie_Average_Ground_Echo_Bin_Thickness_Above_DEM'],
@@ -540,14 +541,26 @@ AUX_ZWC_LOCATIONS = {
     'mie_bottom_ground_bin_meas':                           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Bottom_Ground_Bin'],
     'mie_DEM_ground_bin':                                   ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Expected_Ground_Bin_Index'],
     'mie_height_difference_top_to_DEM_ground_bin':          ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Height_Difference_Top_to_Expected'],
+    'mie_height_difference_bottom_to_DEM_ground_bin':       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Height_Difference_Bottom_to_Expected'],
     'mie_ground_bin_SNR_meas':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Mean_Ground_Bin_SNR'],
+    'mie_topocentric_elevation_expected_ground_bin':        ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Expected_Ground_Bin'],
+    'mie_topocentric_elevation_top_ground_bin':             ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Top_Ground_Bin'],
+    'mie_topocentric_elevation_bottom_ground_bin':          ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Bottom_Ground_Bin'],
+    'mie_num_top_ground_bins_discarded':                    ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Num_Top_Ground_Bins_Discarded'],
+    'mie_num_bottom_ground_bins_discarded':                 ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Mie_Measurement_Validity_Indicators/Mie_Measurement_Validity_Indicators', -1, 'Num_Bottom_Ground_Bins_Discarded'],
     'rayleigh_measurements_used':                           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Measurement_Used'],
     'rayleigh_top_ground_bin_meas':                         ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Top_Ground_Bin'],
     'rayleigh_bottom_ground_bin_meas':                      ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Bottom_Ground_Bin'],
     'rayleigh_DEM_ground_bin':                              ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Expected_Ground_Bin_Index'],
     'rayleigh_height_difference_top_to_DEM_ground_bin':     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Height_Difference_Top_to_Expected'],
+    'rayleigh_height_difference_bottom_to_DEM_ground_bin':  ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Height_Difference_Bottom_to_Expected'],
     'rayleigh_channel_A_ground_SNR_meas':                   ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Channel_A_Mean_Ground_Bin_SNR'],
     'rayleigh_channel_B_ground_SNR_meas':                   ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Channel_B_Mean_Ground_Bin_SNR'],
+    'rayleigh_topocentric_elevation_expected_ground_bin':   ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Expected_Ground_Bin'],
+    'rayleigh_topocentric_elevation_top_ground_bin':        ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Top_Ground_Bin'],
+    'rayleigh_topocentric_elevation_bottom_ground_bin':     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Topocentric_Elevation_Bottom_Ground_Bin'],
+    'rayleigh_num_top_ground_bins_discarded':               ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Num_Top_Ground_Bins_Discarded'],
+    'rayleigh_num_bottom_ground_bins_discarded':            ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Num_Bottom_Ground_Bins_Discarded'],
     'DEM_height':                                           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Measurement_Info/DEM_Height', -1],
 }
 
@@ -563,7 +576,13 @@ AUX_ZWC_CALIBRATION_FIELDS = set([
     'mie_ground_correction_velocity',
     'rayleigh_ground_correction_velocity',
     'num_of_mie_ground_bins',
+    num_of_rayleigh_ground_bins,
     'mie_avg_ground_echo_bin_thickness',
+    mie_topocentric_elevation_expected_ground_bin
+    mie_topocentric_elevation_top_ground_bin
+    mie_topocentric_elevation_bottom_ground_bin
+    mie_num_top_ground_bins_discarded
+    mie_num_bottom_ground_bins_discarded
     'rayleigh_avg_ground_echo_bin_thickness',
     'mie_avg_ground_echo_bin_thickness_above_DEM',
     'rayleigh_avg_ground_echo_bin_thickness_above_DEM',
@@ -571,6 +590,11 @@ AUX_ZWC_CALIBRATION_FIELDS = set([
     'rayleigh_top_ground_bin_obs',
     'mie_bottom_ground_bin_obs',
     'rayleigh_bottom_ground_bin_obs',
+    rayleigh_topocentric_elevation_expected_ground_bin
+    rayleigh_topocentric_elevation_top_ground_bin
+    rayleigh_topocentric_elevation_bottom_ground_bin
+    rayleigh_num_top_ground_bins_discarded
+    rayleigh_num_bottom_ground_bins_discarded
 ])
 
 AUX_ZWC_CALIBRATION_ARRAY_FIELDS = set([
@@ -585,12 +609,14 @@ AUX_ZWC_SCALAR_FIELDS = set([
     'mie_bottom_ground_bin_meas',
     'mie_DEM_ground_bin',
     'mie_height_difference_top_to_DEM_ground_bin',
+    'mie_height_difference_bottom_to_DEM_ground_bin',
     'mie_ground_bin_SNR_meas',
     'rayleigh_measurements_used',
     'rayleigh_top_ground_bin_meas',
     'rayleigh_bottom_ground_bin_meas',
     'rayleigh_DEM_ground_bin',
     'rayleigh_height_difference_top_to_DEM_ground_bin',
+    rayleigh_height_difference_bottom_to_DEM_ground_bin
     'rayleigh_channel_A_ground_SNR_meas',
     'rayleigh_channel_B_ground_SNR_meas',
 ])
