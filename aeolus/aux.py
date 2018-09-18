@@ -576,13 +576,13 @@ AUX_ZWC_CALIBRATION_FIELDS = set([
     'mie_ground_correction_velocity',
     'rayleigh_ground_correction_velocity',
     'num_of_mie_ground_bins',
-    num_of_rayleigh_ground_bins,
+    'num_of_rayleigh_ground_bins',
     'mie_avg_ground_echo_bin_thickness',
-    mie_topocentric_elevation_expected_ground_bin
-    mie_topocentric_elevation_top_ground_bin
-    mie_topocentric_elevation_bottom_ground_bin
-    mie_num_top_ground_bins_discarded
-    mie_num_bottom_ground_bins_discarded
+    'mie_topocentric_elevation_expected_ground_bin',
+    'mie_topocentric_elevation_top_ground_bin',
+    'mie_topocentric_elevation_bottom_ground_bin',
+    'mie_num_top_ground_bins_discarded',
+    'mie_num_bottom_ground_bins_discarded',
     'rayleigh_avg_ground_echo_bin_thickness',
     'mie_avg_ground_echo_bin_thickness_above_DEM',
     'rayleigh_avg_ground_echo_bin_thickness_above_DEM',
@@ -590,11 +590,11 @@ AUX_ZWC_CALIBRATION_FIELDS = set([
     'rayleigh_top_ground_bin_obs',
     'mie_bottom_ground_bin_obs',
     'rayleigh_bottom_ground_bin_obs',
-    rayleigh_topocentric_elevation_expected_ground_bin
-    rayleigh_topocentric_elevation_top_ground_bin
-    rayleigh_topocentric_elevation_bottom_ground_bin
-    rayleigh_num_top_ground_bins_discarded
-    rayleigh_num_bottom_ground_bins_discarded
+    'rayleigh_topocentric_elevation_expected_ground_bin',
+    'rayleigh_topocentric_elevation_top_ground_bin',
+    'rayleigh_topocentric_elevation_bottom_ground_bin',
+    'rayleigh_num_top_ground_bins_discarded',
+    'rayleigh_num_bottom_ground_bins_discarded',
 ])
 
 AUX_ZWC_CALIBRATION_ARRAY_FIELDS = set([
@@ -616,7 +616,7 @@ AUX_ZWC_SCALAR_FIELDS = set([
     'rayleigh_bottom_ground_bin_meas',
     'rayleigh_DEM_ground_bin',
     'rayleigh_height_difference_top_to_DEM_ground_bin',
-    rayleigh_height_difference_bottom_to_DEM_ground_bin
+    'rayleigh_height_difference_bottom_to_DEM_ground_bin',
     'rayleigh_channel_A_ground_SNR_meas',
     'rayleigh_channel_B_ground_SNR_meas',
 ])
