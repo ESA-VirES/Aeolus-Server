@@ -220,7 +220,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             begin_time.isoformat("T"), end_time.isoformat("T"),
             [bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]] if bbox else None,
             ", ".join(collection_ids.data),
-            json.dumps(filters.data),
+            json.dumps(filters.data) if filters else "None",
             "async" if isasync else "sync"
         )
 
