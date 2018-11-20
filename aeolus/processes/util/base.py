@@ -34,6 +34,8 @@ import tempfile
 import os.path
 from uuid import uuid4
 from itertools import izip
+from logging import getLogger
+import json
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
@@ -51,6 +53,7 @@ from aeolus import models
 from aeolus.processes.util.context import DummyContext
 from aeolus.processes.util.auth import get_user, get_username
 from aeolus.extraction.dsd import get_dsd
+from aeolus.util import cached_property
 
 
 MAX_ACTIVE_JOBS = 2
@@ -99,6 +102,13 @@ class AsyncProcessBase(object):
         context.logger.info(
             "Job failed after %.3gs running.",
             (job.stopped - job.started).total_seconds()
+        )
+
+    @cached_property
+    def access_logger(self):
+        """ Get access logger. """
+        return getLogger(
+            "access.wps.%s" % self.__class__.__module__.split(".")[-1]
         )
 
     def initialize(self, context, inputs, outputs, parts):
@@ -194,9 +204,25 @@ class ExtractionProcessBase(AsyncProcessBase):
         )
 
         if isasync and async_span and time_span > async_span:
-            raise Exception('Exceeding maximum allowed time span.')
+            message = 'Exceeding maximum allowed time span.'
+            self.access_logger.error(message)
+            raise Exception(message)
         elif not isasync and time_span > sync_span:
-            raise Exception('Exceeding maximum allowed time span.')
+            message = 'Exceeding maximum allowed time span.'
+            self.access_logger.error(message)
+            raise Exception(message)
+
+        # log the request
+        self.access_logger.info(
+            "request parameters: user: %s, toi: (%s, %s), bbox: %s, "
+            "collections: (%s), filters: %s, type: %s",
+            kwargs["username"],
+            begin_time.isoformat("T"), end_time.isoformat("T"),
+            [bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]] if bbox else None,
+            ", ".join(collection_ids.data),
+            json.dumps(filters.data) if filters else "None",
+            "async" if isasync else "sync"
+        )
 
         # gather database filters
         db_filters = self.get_db_filters(
@@ -242,6 +268,14 @@ class ExtractionProcessBase(AsyncProcessBase):
             collection_products[0][0].identifier, begin_time, end_time, extension
         )
 
+        # TODO: get selected fields
+        # some result logging
+        fields_for_logging = dict(
+            (arg_name, value)
+            for arg_name, value in kwargs.items()
+            if arg_name.endswith('fields')
+        )
+
         # encode as messagepack
         if mime_type == 'application/msgpack':
             if isasync:
@@ -261,6 +295,13 @@ class ExtractionProcessBase(AsyncProcessBase):
                         )
 
             encoded = StringIO(msgpack.dumps(out_data))
+
+            # some result logging
+            self.access_logger.info(
+                "response: count: %d files, mime-type: %s, fields: %s",
+                total_product_count, mime_type, json.dumps(fields_for_logging)
+            )
+
             return CDObject(
                 encoded, filename=out_filename, **output
             )
@@ -305,6 +346,12 @@ class ExtractionProcessBase(AsyncProcessBase):
                 if not isasync:
                     os.remove(tmppath)
                 raise
+
+            # some result logging
+            self.access_logger.info(
+                "response: count: %d files, mime-type: %s, fields: %s",
+                total_product_count, mime_type, json.dumps(fields_for_logging)
+            )
 
             # result generation. For async processes, publish the file for the
             # webserver
