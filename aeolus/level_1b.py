@@ -236,6 +236,12 @@ MEASUREMENT_LOCATIONS = {
     'rayleigh_signal_intensity':                calc_rayleigh_signal_intensity_measurement,
     'mie_ground_velocity':                      ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'mie_ground_wind_velocity'],
     'rayleigh_ground_velocity':                 ['/wind_velocity', -1, 'measurement_wind_profile', -1, 'rayleigh_ground_wind_velocity'],
+
+    'mie_mean_emitted_frequency':               ['/product_confidence_data', -1, 'measurement_pcd', -1, 'mie_mean_emitted_frequency'],
+    'rayleigh_mean_emitted_frequency':          ['/product_confidence_data', -1, 'measurement_pcd', -1, 'rayleigh_mean_emitted_frequency'],
+    'mie_emitted_frequency_std_dev':            ['/product_confidence_data', -1, 'measurement_pcd', -1, 'mie_emitted_frequency_std_dev'],
+    'rayleigh_emitted_frequency_std_dev':       ['/product_confidence_data', -1, 'measurement_pcd', -1, 'rayleigh_emitted_frequency_std_dev'],
+    
     'mie_scattering_ratio':                     ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'],
     'mie_SNR':                                  ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
     'rayleigh_channel_A_SNR':                   ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
