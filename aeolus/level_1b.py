@@ -81,14 +81,14 @@ def calc_rayleigh_SNR(cf, observation_id=None):
     if observation_id is not None:
         channel_A_SNR = access_location(cf,
             location_for_observation(
-                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_A_SNR'],
+                MEASUREMENT_LOCATIONS['rayleigh_channel_A_SNR'],
                 observation_id,
             )
         )
 
         channel_B_SNR = access_location(cf,
             location_for_observation(
-                MEASUREMENT_LOCATIONS['rayleigh_signal_channel_B_SNR'],
+                MEASUREMENT_LOCATIONS['rayleigh_channel_B_SNR'],
                 observation_id,
             )
         )
@@ -97,10 +97,10 @@ def calc_rayleigh_SNR(cf, observation_id=None):
             channel_B_SNR = np.vstack(channel_B_SNR)
     else:
         channel_A_SNR = access_location(cf,
-            OBSERVATION_LOCATIONS['rayleigh_signal_channel_A_SNR'],
+            OBSERVATION_LOCATIONS['rayleigh_channel_A_SNR'],
         )
         channel_B_SNR = access_location(cf,
-            OBSERVATION_LOCATIONS['rayleigh_signal_channel_B_SNR'],
+            OBSERVATION_LOCATIONS['rayleigh_channel_B_SNR'],
         )
 
     return channel_A_SNR + channel_B_SNR
