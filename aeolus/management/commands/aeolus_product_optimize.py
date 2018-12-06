@@ -63,7 +63,7 @@ class Command(CommandOutputMixIn, BaseCommand):
             help="Only delete the optimised image, if it exists"
         ),
         make_option(
-            "-o", "--output", default=None,
+            "-o", "--output", "--output-file", dest="output_file", default=None,
             help="Speficy an output file."
         )
     )
@@ -73,7 +73,7 @@ class Command(CommandOutputMixIn, BaseCommand):
     """
 
     @transaction.atomic
-    def handle(self, identifier, mode, output, **kwargs):
+    def handle(self, identifier, mode, output_file, **kwargs):
         if not identifier:
             raise CommandError("Missing manadatory --identifier")
         try:
@@ -90,6 +90,20 @@ class Command(CommandOutputMixIn, BaseCommand):
         except backends.DataItem.DoesNotExist:
             data_item = None
 
+        # get an output filename
+
+        optimized_dir = getattr(settings, 'AEOLUS_OPTIMIZED_DIR', None)
+        if not output_file and optimized_dir:
+            output_file = os.path.join(
+                optimized_dir, product.range_type.name, identifier + '.nc'
+            )
+
+        if not output_file:
+            raise CommandError(
+                "No output path specified and no AEOLUS_OPTIMIZED_DIR "
+                "setting provided."
+            )
+
         if mode in ("delete", "refresh"):
             if data_item:
                 self.print_msg(
@@ -103,50 +117,56 @@ class Command(CommandOutputMixIn, BaseCommand):
                         % (data_item.location, e)
                     )
                 data_item.delete()
+
             else:
                 self.print_wrn(
                     "Product '%s' did not have an optimized file"
                     % identifier
                 )
 
+            if os.path.exists(output_file):
+                self.print_msg(
+                    "Deleting orphaned optimized file %s" % output_file
+                )
+                try:
+                    os.remove(output_file)
+                except OSError as e:
+                    raise CommandError(
+                        "Failed to delete optimized file '%s', error was: %s"
+                        % (output_file, e)
+                    )
+
         elif mode == "create":
             if data_item:
                 raise CommandError(
-                    "Product '%s' already has an optimized file. Used "
+                    "Product '%s' already has an optimized file. Use "
                     "'--delete' to remove it or '--refresh' to re-generate it."
                     % identifier
                 )
+            elif os.path.exists(output_file):
+                raise CommandError(
+                    "Orphaned optimized file '%s' already exists file. Use "
+                    "'--delete' to remove it or '--refresh' to re-generate it."
+                    % output_file
+                )
 
         if mode in ("create", "refresh"):
-            self._create_optimized_file(product, output)
+            # create the output directory structure
+
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise CommandError(
+                        "Failed to create the output directory, error was: %s"
+                        % e
+                    )
+
+            self._create_optimized_file(product, output_file)
 
     def _create_optimized_file(self, product, output_file):
         identifier = product.identifier
         range_type = product.range_type
-
-        # get an output filename
-
-        optimized_dir = getattr(settings, 'AEOLUS_OPTIMIZED_DIR', None)
-        if not output_file and optimized_dir:
-            output_file = os.path.join(
-                optimized_dir, range_type.name, identifier + '.nc'
-            )
-
-        if not output_file:
-            raise CommandError(
-                "No output path specified and no AEOLUS_OPTIMIZED_DIR "
-                "setting provided."
-            )
-
-        # create the output directory structure
-
-        try:
-            os.makedirs(os.path.dirname(output_file))
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise CommandError(
-                    "Failed to create the output directory, error was: %s" % e
-                )
 
         # get the filename for the data file
 
