@@ -110,7 +110,8 @@ def create_optimized_file(input_file, range_type_name, output_path):
                     group = out_ds.createGroup(group_name)
 
                     for name, location in locations.items():
-                        logger.info("Optimizing %s/%s" % (group, name))
+                        logger.info("Optimizing %s/%s" % (group_name, name))
+                        yield (group_name, name)
 
                         values = access_location(in_cf, location)
 
@@ -122,10 +123,10 @@ def create_optimized_file(input_file, range_type_name, output_path):
                             init_num = values.shape[0]
                             values = np.vstack(np.hstack(values))
                             values = values.reshape(
-                                init_num,
                                 values.shape[0] / init_num,
+                                init_num,
                                 values.shape[1]
-                            )
+                            ).swapaxes(0, 1)
                         elif dimensionality == 2:
                             values = np.vstack(values)
 
@@ -154,8 +155,6 @@ def create_optimized_file(input_file, range_type_name, output_path):
         except OSError:
             pass
         raise
-
-    return output_path
 
 
 def get_dimensionality(values):

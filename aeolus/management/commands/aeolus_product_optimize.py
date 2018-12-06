@@ -81,6 +81,8 @@ class Command(CommandOutputMixIn, BaseCommand):
         except Product.DoesNotExist:
             raise CommandError("No such product '%s'" % identifier)
 
+        self.verbosity = kwargs.get('verbosity', 1)
+
         try:
             data_item = product.data_items.get(
                 semantic__startswith="optimized"
@@ -169,7 +171,12 @@ class Command(CommandOutputMixIn, BaseCommand):
         data_item.save()
 
         try:
-            create_optimized_file(input_file, range_type.name, output_file)
+            group_fields = create_optimized_file(
+                input_file, range_type.name, output_file
+            )
+            for group, field_name in group_fields:
+                self.print_msg("Optimizing %s/%s" % (group, field_name), 2)
+
             self.print_msg(
                 "Successfully generated optimized file '%s'" % output_file
             )
