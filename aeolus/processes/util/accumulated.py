@@ -28,11 +28,16 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
+import logging
 
 from eoxserver.services.ows.wps.parameters import LiteralData
 
 from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.base import ExtractionProcessBase
+from aeolus.perf_util import ElapsedTimeLogger
+
+
+logger = logging.getLogger(__name__)
 
 
 class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
@@ -180,9 +185,22 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
         # and filtered fields
         return (
             (collection, self.extraction_function([
-                product.data_items.filter(semantic__startswith='bands')
-                .first().location
-                for product in products
+                (
+                    band_data_item.location,
+                    optimized_data_item.location if optimized_data_item else None
+                )
+                for band_data_item, optimized_data_item in (
+                    (
+                        product.data_items.filter(
+                            semantic__startswith='bands'
+                        ).first(),
+                        product.data_items.filter(
+                            semantic__startswith='optimized'
+                        ).first(),
+
+                    )
+                    for product in products
+                )
             ], data_filters,
                 mie_grouping_fields=mie_grouping_fields,
                 mie_profile_fields=mie_profile_fields,
@@ -262,15 +280,18 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
                 # if the variable does not yet exist,
                 # create it
                 if name not in group.variables:
-                    group.createVariable(
-                        name, '%s%i' % (
-                            values.dtype.kind,
-                            values.dtype.itemsize
-                        ), kind_name
-                    )[:] = values
+                    with ElapsedTimeLogger("creating var %s" % name, logger):
+                        group.createVariable(
+                            name, '%s%i' % (
+                                values.dtype.kind,
+                                values.dtype.itemsize
+                            ), kind_name
+                        )[:] = values
                 # if the variable already exists, append
                 # data to it
                 else:
                     var = group[name]
                     end = offsets[kind_name] + values.shape[0]
-                    var[offsets[kind_name]:end] = values
+
+                    with ElapsedTimeLogger("adding to var %s" % name, logger):
+                        var[offsets[kind_name]:end] = values

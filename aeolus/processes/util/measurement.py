@@ -105,9 +105,22 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         # and filtered fields
         return (
             (collection, self.extraction_function([
-                product.data_items.filter(semantic__startswith='bands')
-                .first().location
-                for product in products
+                (
+                    band_data_item.location,
+                    optimized_data_item.location if optimized_data_item else None
+                )
+                for band_data_item, optimized_data_item in (
+                    (
+                        product.data_items.filter(
+                            semantic__startswith='bands'
+                        ).first(),
+                        product.data_items.filter(
+                            semantic__startswith='optimized'
+                        ).first(),
+
+                    )
+                    for product in products
+                )
             ], data_filters,
                 observation_fields=observation_fields,
                 measurement_fields=measurement_fields,
@@ -169,9 +182,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
 
             for name, values in observation_data.items():
                 isscalar = values[0].ndim == 0
-                if name not in group.variables:
-                    values = np.hstack(values) if isscalar else np.vstack(values)
+                values = np.hstack(values) if isscalar else np.vstack(values)
 
+                if name not in group.variables:
                     # check if a dimension for that array was already created.
                     # Create one, if it not yet existed
                     array_dim_name = None
@@ -192,7 +205,6 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     )
                     variable[:] = values
                 else:
-                    values = np.hstack(values) if isscalar else np.vstack(values)
                     var = group[name]
                     end = num_observations + values.shape[0]
                     var[num_observations:end] = values
@@ -207,9 +219,13 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     values = np.hstack(values)
 
                 else:
-                    values = np.vstack(
-                        np.hstack(values)
-                    )
+                    # import pdb; pdb.set_trace()
+                    if values[0].dtype.kind == 'O':
+                        values = np.vstack(
+                            np.hstack(values)
+                        )
+                    else:
+                        values = np.vstack(values)
 
                 if name not in group.variables:
                     # check if a dimension for that array was already created.

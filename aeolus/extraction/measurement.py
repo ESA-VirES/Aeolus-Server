@@ -32,6 +32,7 @@ from itertools import izip
 
 import numpy as np
 import coda
+from netCDF4 import Dataset
 
 from aeolus.coda_utils import CODAFile, access_location, check_fields
 from aeolus.filtering import make_mask, combine_mask
@@ -73,9 +74,9 @@ class MeasurementDataExtractor(object):
             filters.
         """
 
-        filenames = (
-            [filenames] if isinstance(filenames, basestring) else filenames
-        )
+        # filenames = (
+        #     [filenames] if isinstance(filenames, basestring) else filenames
+        # )
 
         check_fields(
             filters.keys(),
@@ -112,7 +113,16 @@ class MeasurementDataExtractor(object):
             if name in self.group_locations
         }
 
-        for cf in [CODAFile(filename) for filename in filenames]:
+        files = [
+            (
+                CODAFile(coda_filename),
+                Dataset(netcdf_filename) if netcdf_filename else None
+
+            )
+            for (coda_filename, netcdf_filename) in filenames
+        ]
+
+        for cf, ds in files:
             out_observation_data = defaultdict(list)
             out_measurement_data = defaultdict(list)
             out_group_data = defaultdict(list)
@@ -123,7 +133,9 @@ class MeasurementDataExtractor(object):
                 for field_name, filter_value in observation_filters.items():
                     location = self.observation_locations[field_name]
 
-                    data = access_location(cf, location)
+                    data = optimized_access(
+                        cf, ds, 'OBSERVATION_DATA', field_name, location
+                    )
 
                     new_mask = make_mask(
                         data, filter_value.get('min'), filter_value.get('max'),
@@ -142,7 +154,9 @@ class MeasurementDataExtractor(object):
                 for field_name in observation_fields:
                     location = self.observation_locations[field_name]
 
-                    data = access_location(cf, location)
+                    data = optimized_access(
+                        cf, ds, 'OBSERVATION_DATA', field_name, location
+                    )
 
                     if filtered_observation_ids is not None:
                         data = data[filtered_observation_ids]
@@ -165,7 +179,7 @@ class MeasurementDataExtractor(object):
 
                 out_measurement_data.update(
                     self._read_measurements(
-                        cf, measurement_fields, measurement_filters,
+                        cf, ds, measurement_fields, measurement_filters,
                         observation_iterator,
                         convert_arrays,
                         cf.get_size('/geolocation')[0]
@@ -180,7 +194,9 @@ class MeasurementDataExtractor(object):
                     for field_name, filter_value in group_filters.items():
                         location = self.group_locations[field_name]
 
-                        data = access_location(cf, location)
+                        data = optimized_access(
+                            cf, ds, 'OBSERVATION_DATA', field_name, location
+                        )
 
                         new_mask = make_mask(
                             data, filter_value.get('min'),
@@ -202,7 +218,9 @@ class MeasurementDataExtractor(object):
                             raise KeyError('Unknown group field %s' % field_name)
                         location = self.group_locations[field_name]
 
-                        data = access_location(location)
+                        data = optimized_access(
+                            cf, ds, 'GROUP_DATA', field_name, location
+                        )
 
                         if filtered_group_ids is not None:
                             data = data[filtered_group_ids]
@@ -215,7 +233,7 @@ class MeasurementDataExtractor(object):
 
                 yield out_observation_data, out_measurement_data, out_group_data
 
-    def _read_measurements(self, cf, measurement_fields, filters,
+    def _read_measurements(self, cf, ds, measurement_fields, filters,
                            observation_ids, convert_arrays, total_observations):
 
         out_measurement_data = defaultdict(list)
@@ -234,7 +252,7 @@ class MeasurementDataExtractor(object):
             location = self.measurement_locations[field_name]
 
             data = access_measurements(
-                cf, location, observation_ids, total_observations
+                cf, ds, field_name, location, observation_ids, total_observations
             )
 
             new_mask = make_mask(
@@ -250,7 +268,7 @@ class MeasurementDataExtractor(object):
 
             # fetch the data, and apply the observation id mask
             data = access_measurements(
-                cf, location, observation_ids, total_observations
+                cf, ds, field_name, location, observation_ids, total_observations
             )
 
             # when a measurement mask was built, iterate over all measurement
@@ -269,19 +287,35 @@ class MeasurementDataExtractor(object):
 
             # convert to simple list instead of numpy array if requested
             if convert_arrays and isinstance(data, np.ndarray):
+
                 data = _array_to_list(data)
+                print field_name, len(data), len(data[0]), len(data[0][0]) if isinstance(data[0][0], list) else None
 
             out_measurement_data[field_name].extend(data)
 
         return out_measurement_data
 
 
-def access_measurements(cf, location, observation_ids, total_observations):
+def access_measurements(cf, ds, field_name, location, observation_ids,
+                        total_observations):
     """ "Smart" measurement function, using one of two methods to read from a
         DBL file: either in one big sweep or in many smaller. When only a
         portion (up to 90% of the total measurements) is required, then the
         reading is done in many small portions (one for each observation)
     """
+
+    if ds:
+        group_name = "MEASUREMENT_DATA"
+        group = ds.groups.get(group_name)
+        if group:
+            variable = group.variables.get(field_name)
+            if variable:
+                data = variable[observation_ids]
+                print "returning optimized measurement data", field_name, data.shape
+                return data
+
+
+    print "returning un-optimized measurement data", field_name
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
     # use many "single reads" when only < 90% of measurements are read
@@ -293,3 +327,20 @@ def access_measurements(cf, location, observation_ids, total_observations):
 
     else:
         return np.vstack(access_location(cf, location)[observation_ids])
+
+
+def optimized_access(cf, ds, group_name, field_name, location):
+    # print cf, ds, group_name, field_name, location
+    if ds:
+        # import pdb; pdb.set_trace()
+        group = ds.groups.get(group_name)
+        if group:
+            variable = group.variables.get(field_name)
+            if variable:
+                print "returning optimized observation data", field_name
+                return variable[:]
+        # if group_name in ds.groups and field_name in ds.groups[group_name].variables:
+        #     return ds[group_name][field_name]
+
+    print "returning un-optimized observation data", field_name
+    return access_location(cf, location)
