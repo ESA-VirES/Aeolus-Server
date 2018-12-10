@@ -72,7 +72,7 @@ class Command(CommandOutputMixIn, BaseCommand):
     Create (or delete) an optimized file for a specific product file.
     """
 
-    @transaction.atomic
+    @transaction.atomic()
     def handle(self, identifier, mode, output_file, **kwargs):
         if not identifier:
             raise CommandError("Missing manadatory --identifier")
@@ -112,7 +112,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                 try:
                     os.remove(data_item.location)
                 except OSError as e:
-                    raise CommandError(
+                    self.print_wrn(
                         "Failed to delete optimized file '%s', error was: %s"
                         % (data_item.location, e)
                     )

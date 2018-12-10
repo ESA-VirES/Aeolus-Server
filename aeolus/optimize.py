@@ -39,6 +39,7 @@ from aeolus import level_2a
 from aeolus import level_2b
 from aeolus import level_2c
 from aeolus import aux
+from aeolus import aux_met
 
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,6 @@ LOCATIONS = {
     'AUX_ISR_1B': {
         'DATA': aux.AUX_ISR_LOCATIONS,
     },
-    'AUX_MET_12': {
-        'DATA': aux.AUX_MET_LOCATIONS,
-    },
     'AUX_MRC_1B': {
         'DATA': aux.AUX_MRC_LOCATIONS,
     },
@@ -74,6 +72,9 @@ LOCATIONS = {
     'AUX_ZWC_1B': {
         'DATA': aux.AUX_ZWC_LOCATIONS,
     },
+    'AUX_MET_12': {
+        'DATA': aux_met.LOCATIONS,
+    }
 }
 
 
@@ -113,39 +114,67 @@ def create_optimized_file(input_file, range_type_name, output_path):
                         logger.info("Optimizing %s/%s" % (group_name, name))
                         yield (group_name, name)
 
-                        values = access_location(in_cf, location)
+                        if range_type_name == 'AUX_MET_12' and len(location) > 3:
+                            first = location[:1] + [0] + location[2:]
+                            first_values = access_location(in_cf, first)
 
-                        # get the correct dimensionality for the values and
-                        # reshape if necessary
-                        dimensionality = get_dimensionality(values)
+                            shape = (
+                                in_cf.get_size(location[0])[0],
+                                first_values.shape[0]
+                            )
 
-                        if dimensionality == 3:
-                            init_num = values.shape[0]
-                            values = np.vstack(np.hstack(values))
-                            values = values.reshape(
-                                values.shape[0] / init_num,
-                                init_num,
-                                values.shape[1]
-                            ).swapaxes(0, 1)
-                        elif dimensionality == 2:
-                            values = np.vstack(values)
+                            # make a list of all dimension names and check if
+                            # they, are already available, otherwise create them
+                            dimnames = [
+                                "arr_%d" % v for v in shape
+                            ]
+                            for dimname, size in zip(dimnames, shape):
+                                if dimname not in out_ds.dimensions:
+                                    out_ds.createDimension(dimname, size)
 
-                        # make a list of all dimension names and check if they
-                        # are already available, otherwise create them
-                        dimnames = [
-                            "arr_%d" % v for v in values.shape
-                        ]
-                        for dimname, size in zip(dimnames, values.shape):
-                            if dimname not in out_ds.dimensions:
-                                out_ds.createDimension(dimname, size)
+                            variable = group.createVariable(name, '%s%i' % (
+                                first_values.dtype.kind,
+                                first_values.dtype.itemsize
+                            ), dimensions=dimnames)
 
-                        # create a variable and store the data in it
-                        var = group.createVariable(name, '%s%i' % (
-                            values.dtype.kind,
-                            values.dtype.itemsize
-                        ), dimensions=dimnames)
+                            data = access_location(in_cf, location)
+                            for i, item in enumerate(data):
+                                variable[i] = item
 
-                        var[:] = np.hstack(np.hstack(values))
+                        else:
+                            values = access_location(in_cf, location)
+
+                            # get the correct dimensionality for the values and
+                            # reshape if necessary
+                            dimensionality = get_dimensionality(values)
+
+                            if dimensionality == 3:
+                                init_num = values.shape[0]
+                                values = np.vstack(np.hstack(values))
+                                values = values.reshape(
+                                    values.shape[0] / init_num,
+                                    init_num,
+                                    values.shape[1]
+                                ).swapaxes(0, 1)
+                            elif dimensionality == 2:
+                                values = np.vstack(values)
+
+                            # make a list of all dimension names and check if
+                            # they, are already available, otherwise create them
+                            dimnames = [
+                                "arr_%d" % v for v in values.shape
+                            ]
+                            for dimname, size in zip(dimnames, values.shape):
+                                if dimname not in out_ds.dimensions:
+                                    out_ds.createDimension(dimname, size)
+
+                            # create a variable and store the data in it
+                            var = group.createVariable(name, '%s%i' % (
+                                values.dtype.kind,
+                                values.dtype.itemsize
+                            ), dimensions=dimnames)
+
+                            var[:] = np.hstack(np.hstack(values))
     except:
         try:
             logger.error(
