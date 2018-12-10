@@ -30,8 +30,9 @@
 from collections import defaultdict
 
 import numpy as np
+from netCDF4 import Dataset
 
-from aeolus.coda_utils import CODAFile
+from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, combine_mask
 
 
@@ -208,8 +209,19 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
         )
     ]
 
-    for filename in filenames:
-        with CODAFile(filename) as cf:
+    import os.path
+
+    files = [
+        (
+            CODAFile(coda_filename),
+            Dataset(netcdf_filename) if netcdf_filename and os.path.exists(netcdf_filename) else None
+
+        )
+        for (coda_filename, netcdf_filename) in filenames
+    ]
+
+    for cf, ds in files:
+        with cf:
             for t_name, typed_fields, filters in typed_fields_and_filters:
                 data = defaultdict(list)
 
@@ -219,7 +231,7 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                 for field_name, filter_value in filters.items():
                     path = LOCATIONS[field_name][:]
                     new_mask = make_mask(
-                        cf.fetch(*path),
+                        access_optimized(cf, ds, field_name, path),
                         filter_value.get('min'), filter_value.get('max'),
                         field_name in CALIBRATION_ARRAY_FIELDS
                     )
@@ -234,7 +246,7 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                 # load all desired values for the requested calibrations
                 for field_name in fields:
                     path = LOCATIONS[field_name]
-                    field_data = cf.fetch(*path)
+                    field_data = access_optimized(cf, ds, field_name, path)
 
                     if calibration_nonzero_ids is not None:
                         field_data = field_data[calibration_nonzero_ids]
@@ -246,3 +258,34 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                         data[field_name] = field_data
 
                 yield t_name, data
+
+
+# def access_optimized(cf, ds, name):
+#     if ds:
+#         group = ds.groups.get('DATA')
+#         if group and name in group.variables:
+#             print "Returning optimized data", name
+#             return group.variables[name][:]
+
+#     path = self.locations[name]
+
+#     print "Returning un-optimized data", name, ds
+#     return access_location(cf, path)
+
+
+
+def access_optimized(cf, ds, field_name, location):
+    # print cf, ds, group_name, field_name, location
+    if ds:
+        # import pdb; pdb.set_trace()
+        group = ds.groups.get('DATA')
+        if group:
+            variable = group.variables.get(field_name)
+            if variable:
+                print "returning optimized observation data", field_name
+                return variable[:]
+        # if group_name in ds.groups and field_name in ds.groups[group_name].variables:
+        #     return ds[group_name][field_name]
+
+    print "returning un-optimized observation data", field_name
+    return access_location(cf, location)

@@ -98,11 +98,25 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
 
     def extract_data(self, collection_products, data_filters, fields, mime_type,
                      **kwargs):
+
         return (
             (collection, extract_data([
-                product.data_items.filter(semantic__startswith='bands')
-                .first().location
-                for product in products
+                (
+                    band_data_item.location,
+                    optimized_data_item.location if optimized_data_item else None
+                )
+                for band_data_item, optimized_data_item in (
+                    (
+                        product.data_items.filter(
+                            semantic__startswith='bands'
+                        ).first(),
+                        product.data_items.filter(
+                            semantic__startswith='optimized'
+                        ).first(),
+
+                    )
+                    for product in products
+                )
             ],
                 data_filters,
                 fields.split(',') if fields else [],
