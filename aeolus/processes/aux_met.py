@@ -94,7 +94,7 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
                 'max': tpl_box[3]
             }
 
-        return filters
+        return data_filters
 
     def extract_data(self, collection_products, data_filters, fields, mime_type,
                      **kwargs):

@@ -191,8 +191,8 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                 for field_name in fields
                 if field_name in OFF_NADIR_FIELDS
             ], dict([
-                field_name
-                for field_name, value in filters
+                (field_name, value)
+                for field_name, value in filters.items()
                 if field_name in OFF_NADIR_FIELDS
             ]),
         ), (
@@ -202,8 +202,8 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                 for field_name in fields
                 if field_name in NADIR_FIELDS
             ], dict([
-                field_name
-                for field_name, value in filters
+                (field_name, value)
+                for field_name, value in filters.items()
                 if field_name in NADIR_FIELDS
             ]),
         )
