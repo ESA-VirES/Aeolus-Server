@@ -27,6 +27,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import os.path
 from collections import defaultdict
 
 import numpy as np
@@ -209,8 +210,6 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
             ]),
         )
     ]
-
-    import os.path
 
     files = [
         (
