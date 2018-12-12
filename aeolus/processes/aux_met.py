@@ -57,6 +57,11 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
+        ("scalefactor", LiteralData(
+            'scalefactor', float, optional=True, default=1,
+            title="Scalefactor",
+            abstract="Scalefactor for data variables."
+        )),
     ]
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
@@ -96,8 +101,8 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
 
         return data_filters
 
-    def extract_data(self, collection_products, data_filters, fields, mime_type,
-                     **kwargs):
+    def extract_data(self, collection_products, data_filters, fields,
+                     scalefactor, mime_type, **kwargs):
 
         return (
             (collection, extract_data([
@@ -120,6 +125,7 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
             ],
                 data_filters,
                 fields.split(',') if fields else [],
+                scalefactor=scalefactor,
                 convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products

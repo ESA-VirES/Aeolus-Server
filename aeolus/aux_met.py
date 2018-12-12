@@ -31,6 +31,7 @@ from collections import defaultdict
 
 import numpy as np
 from netCDF4 import Dataset
+from scipy.interpolate import interp1d
 
 from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, combine_mask
@@ -180,7 +181,7 @@ def _array_to_list(data):
     return data
 
 
-def extract_data(filenames, filters, fields, convert_arrays=False):
+def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
     """
     """
 
@@ -214,7 +215,9 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
     files = [
         (
             CODAFile(coda_filename),
-            Dataset(netcdf_filename) if netcdf_filename and os.path.exists(netcdf_filename) else None
+            Dataset(netcdf_filename)
+            if netcdf_filename and os.path.exists(netcdf_filename)
+            else None
 
         )
         for (coda_filename, netcdf_filename) in filenames
@@ -227,29 +230,35 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
 
                 # make a mask of all calibrations to be included, by only
                 # looking at the fields for whole calibrations
-                calibration_mask = None
+                mask = None
                 for field_name, filter_value in filters.items():
                     path = LOCATIONS[field_name][:]
+
+                    mask_data = access_optimized(cf, ds, field_name, path)
+                    mask_data = scale_data(mask_data, scalefactor)
+
                     new_mask = make_mask(
-                        access_optimized(cf, ds, field_name, path),
+                        mask_data,
                         filter_value.get('min'), filter_value.get('max'),
                         field_name in CALIBRATION_ARRAY_FIELDS
                     )
-                    calibration_mask = combine_mask(new_mask, calibration_mask)
+                    mask = combine_mask(new_mask, mask)
 
                 # when the mask is done, create an array of indices for
                 # calibrations to be included
-                calibration_nonzero_ids = None
-                if calibration_mask is not None:
-                    calibration_nonzero_ids = np.nonzero(calibration_mask)
+                nonzero_ids = None
+                if mask is not None:
+                    nonzero_ids = np.nonzero(mask)
 
                 # load all desired values for the requested calibrations
                 for field_name in fields:
                     path = LOCATIONS[field_name]
-                    field_data = access_optimized(cf, ds, field_name, path)
 
-                    if calibration_nonzero_ids is not None:
-                        field_data = field_data[calibration_nonzero_ids]
+                    field_data = access_optimized(cf, ds, field_name, path)
+                    field_data = scale_data(field_data, scalefactor)
+
+                    if nonzero_ids is not None:
+                        field_data = field_data[nonzero_ids]
 
                     # write out data
                     if convert_arrays:
@@ -260,32 +269,23 @@ def extract_data(filenames, filters, fields, convert_arrays=False):
                 yield t_name, data
 
 
-# def access_optimized(cf, ds, name):
-#     if ds:
-#         group = ds.groups.get('DATA')
-#         if group and name in group.variables:
-#             print "Returning optimized data", name
-#             return group.variables[name][:]
-
-#     path = self.locations[name]
-
-#     print "Returning un-optimized data", name, ds
-#     return access_location(cf, path)
-
-
-
 def access_optimized(cf, ds, field_name, location):
-    # print cf, ds, group_name, field_name, location
     if ds:
-        # import pdb; pdb.set_trace()
         group = ds.groups.get('DATA')
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                print "returning optimized observation data", field_name
                 return variable[:]
-        # if group_name in ds.groups and field_name in ds.groups[group_name].variables:
-        #     return ds[group_name][field_name]
-
-    print "returning un-optimized observation data", field_name
     return access_location(cf, location)
+
+
+def scale_data(data, scalefactor):
+    if scalefactor == 1:
+        return data
+
+    cur_size = int(data.shape[0])
+    new_size = int(float(cur_size) * scalefactor)
+    old_x = np.linspace(0, 1, cur_size)
+    new_x = np.linspace(0, 1, new_size)
+
+    return interp1d(old_x, data, kind='nearest', axis=0)(new_x)
