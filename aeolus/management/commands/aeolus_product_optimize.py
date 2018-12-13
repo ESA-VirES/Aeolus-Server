@@ -49,18 +49,18 @@ class Command(CommandOutputMixIn, BaseCommand):
             "-i", "--identifier", "--coverage-id", dest="identifier",
             action="store", default=None,
             help=(
-                "The identifier to create the optimised cache for."
+                "The identifier to create the optimized file for."
             )
         ),
         make_option(
             "-r", "--refresh",
             action="store_const", const="refresh", dest="mode", default="create",
-            help="Refresh the optimised image if it already exists."
+            help="Refresh the optimized file if it already exists."
         ),
         make_option(
             "-d", "--delete",
             action="store_const", const="delete", dest="mode", default="create",
-            help="Only delete the optimised image, if it exists"
+            help="Only delete the optimized file, if it exists"
         ),
         make_option(
             "-l", "--link",
@@ -77,7 +77,11 @@ class Command(CommandOutputMixIn, BaseCommand):
         ),
         make_option(
             "-o", "--output", "--output-file", dest="output_file", default=None,
-            help="Speficy an output file."
+            help=(
+                "Specify an output file. By default, the `AEOLUS_OPTIMIZED_DIR` "
+                "setting is used to generate the filename in the following way: "
+                "$AEOLUS_OPTIMIZED_DIR/{range_type.name}/{product.identifier}.nc"
+            )
         )
     )
 
