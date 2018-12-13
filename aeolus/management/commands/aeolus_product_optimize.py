@@ -63,6 +63,19 @@ class Command(CommandOutputMixIn, BaseCommand):
             help="Only delete the optimised image, if it exists"
         ),
         make_option(
+            "-l", "--link",
+            action="store_const", const="link", dest="mode", default="create",
+            help="Link an already existing optimized file to the product."
+        ),
+        make_option(
+            "-u", "--unlink",
+            action="store_const", const="unlink", dest="mode", default="create",
+            help=(
+                "Unlink an optimized file: remove the reference in the "
+                "database, but leave the optimized file on the disk."
+            )
+        ),
+        make_option(
             "-o", "--output", "--output-file", dest="output_file", default=None,
             help="Speficy an output file."
         )
@@ -150,6 +163,52 @@ class Command(CommandOutputMixIn, BaseCommand):
                     % output_file
                 )
 
+        elif mode == "link":
+            if not os.path.exists(output_file):
+                raise CommandError(
+                    "Cannot link optimized file to product '%s' as the file "
+                    "'%s' does not exist" % (identifier, output_file)
+                )
+
+            # check if there is already a data item associated with the product
+            if data_item:
+                if data_item.location == output_file:
+                    self.print_wrn(
+                        "File '%s' is already registered for the product '%s'"
+                        % (output_file, identifier)
+                    )
+                else:
+                    raise CommandError(
+                        "Cannot link optimized file to product '%s' as another "
+                        "optimized file ('%s') is already registered for the "
+                        "product" % (identifier, data_item.location)
+                    )
+            else:
+                self.print_msg(
+                    "Linking optimized file '%s' to product '%s'"
+                    % (output_file, identifier)
+                )
+                self._link_optimized_file(product, output_file)
+
+        elif mode == "unlink":
+            if not data_item:
+                raise CommandError(
+                    "Cannot unlink optimized file: no optimized file was "
+                    "registered for the product '%s'" % identifier
+                )
+            else:
+                if os.path.exists(data_item.location):
+                    self.print_msg(
+                        "Unlinking optimized file '%s' from product '%s'"
+                        % (data_item.location, identifier)
+                    )
+                else:
+                    self.print_wrn(
+                        "Removing reference to non-existing optimized file '%s' "
+                        "from product '%s'" % (data_item.location, identifier)
+                    )
+                data_item.delete()
+
         if mode in ("create", "refresh"):
             # create the output directory structure
 
@@ -179,16 +238,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "No data file for product '%s' found" % product.identifier
             )
 
-        # create a data item for the optimized file
-
-        data_item = backends.DataItem(
-            location=output_file, format="application/netcdf",
-            semantic="optimized[1:%d]" % len(range_type),
-            storage=None, package=None
-        )
-        data_item.dataset = product
-        data_item.full_clean()
-        data_item.save()
+        self._link_optimized_file(product, output_file)
 
         try:
             group_fields = create_optimized_file(
@@ -205,3 +255,22 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "Failed to create the optimized file for product '%s'. "
                 "Error was: %s" % (identifier, e)
             )
+
+    def _link_optimized_file(self, product, output_file):
+        self.print_msg(
+            "Creating data item for optimized file '%s'" % output_file,
+            2
+        )
+
+        range_type = product.range_type
+
+        # create a data item for the optimized file
+
+        data_item = backends.DataItem(
+            location=output_file, format="application/netcdf",
+            semantic="optimized[1:%d]" % len(range_type),
+            storage=None, package=None
+        )
+        data_item.dataset = product
+        data_item.full_clean()
+        data_item.save()
