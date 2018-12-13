@@ -40,6 +40,7 @@ import json
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
+from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
     FormatBinaryRaw, CDFile, Reference, RequestParameter
@@ -314,6 +315,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                 tmppath = out_filename
 
             product_count = 0
+            identifiers = []
 
             try:
                 with Dataset(tmppath, "w", format="NETCDF4") as ds:
@@ -325,6 +327,8 @@ class ExtractionProcessBase(AsyncProcessBase):
                         for (product_idx, file_data), product in enumerated_data:
                             # write the product data to the netcdf file
                             self.write_product_data_to_netcdf(ds, file_data)
+
+                            identifiers.append(product.identifier)
 
                             if kwargs['dsd_info'] == 'true':
                                 self.add_product_dsd(ds, product)
@@ -340,6 +344,18 @@ class ExtractionProcessBase(AsyncProcessBase):
                                 )
                             )
                             product_count += 1
+
+                    ds.history = json.dumps({
+                        'inputFiles': identifiers,
+                        'filters': filters,
+                        'beginTime': isoformat(begin_time) if begin_time else None,
+                        'endTime': isoformat(end_time) if end_time else None,
+                        'bbox': [
+                            bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]
+                        ] if bbox else None,
+                        'created': isoformat(datetime.now()),
+                    })
+
             except:
                 # only cleanup file in sync processes, in async the files are
                 # cleaned up seperately
