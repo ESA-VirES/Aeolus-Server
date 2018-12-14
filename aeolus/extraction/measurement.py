@@ -29,6 +29,7 @@
 
 from collections import defaultdict
 from itertools import izip
+from copy import deepcopy
 
 import numpy as np
 import coda
@@ -95,23 +96,7 @@ class MeasurementDataExtractor(object):
             group_fields, self.group_locations.keys(), 'group'
         )
 
-        observation_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.observation_locations
-        }
-
-        measurement_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.measurement_locations
-        }
-
-        group_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.group_locations
-        }
+        orig_filters = filters
 
         files = [
             (
@@ -122,10 +107,35 @@ class MeasurementDataExtractor(object):
             for (coda_filename, netcdf_filename) in filenames
         ]
 
-        for cf, ds in files:
+        for i, (cf, ds) in enumerate(files):
             out_observation_data = defaultdict(list)
             out_measurement_data = defaultdict(list)
             out_group_data = defaultdict(list)
+
+            next_cf = files[i + 1][0] if (i + 1) < len(files) else None
+
+            if next_cf and self.overlaps(cf, next_cf):
+                filters = self.adjust_overlap(
+                    cf, next_cf, deepcopy(orig_filters)
+                )
+
+            observation_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.observation_locations
+            }
+
+            measurement_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.measurement_locations
+            }
+
+            group_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.group_locations
+            }
 
             with cf:
                 # create a mask for observation data
@@ -287,13 +297,17 @@ class MeasurementDataExtractor(object):
 
             # convert to simple list instead of numpy array if requested
             if convert_arrays and isinstance(data, np.ndarray):
-
                 data = _array_to_list(data)
-                print field_name, len(data), len(data[0]), len(data[0][0]) if isinstance(data[0][0], list) else None
 
             out_measurement_data[field_name].extend(data)
 
         return out_measurement_data
+
+    def overlaps(self, cf, next_cf):
+        pass
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        pass
 
 
 def access_measurements(cf, ds, field_name, location, observation_ids,
