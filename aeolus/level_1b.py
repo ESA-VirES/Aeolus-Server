@@ -286,6 +286,11 @@ ARRAY_FIELDS = set([
 
 class L1BMeasurementDataExtractor(MeasurementDataExtractor):
 
+    observation_locations = OBSERVATION_LOCATIONS
+    measurement_locations = MEASUREMENT_LOCATIONS
+    group_locations = None
+    array_fields = ARRAY_FIELDS
+
     def overlaps(self, cf, next_cf):
         location = MEASUREMENT_LOCATIONS['time']
 
@@ -323,12 +328,7 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
         return filters
 
 
-extractor = L1BMeasurementDataExtractor(
-    observation_locations=OBSERVATION_LOCATIONS,
-    measurement_locations=MEASUREMENT_LOCATIONS,
-    group_locations=None,
-    array_fields=ARRAY_FIELDS,
-)
+extractor = L1BMeasurementDataExtractor()
 
 extract_data = extractor.extract_data
 

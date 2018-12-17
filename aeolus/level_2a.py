@@ -338,12 +338,64 @@ ARRAY_FIELDS = set([
 ])
 
 
-extractor = MeasurementDataExtractor(
-    observation_locations=OBSERVATION_LOCATIONS,
-    measurement_locations=MEASUREMENT_LOCATIONS,
-    group_locations=GROUP_LOCATIONS,
-    array_fields=ARRAY_FIELDS,
-)
+class L2AMeasurementDataExtractor(MeasurementDataExtractor):
+
+    observation_locations = OBSERVATION_LOCATIONS
+    measurement_locations = MEASUREMENT_LOCATIONS
+    group_locations = GROUP_LOCATIONS
+    array_fields = ARRAY_FIELDS
+
+    def overlaps(self, cf, next_cf):
+        location = MEASUREMENT_LOCATIONS['L1B_time_meas']
+
+        end = cf.fetch_date(
+            location[0],
+            cf.get_size(location[0])[0] - 1,
+            location[2],
+            29,
+            *location[4:]
+        )
+        begin = next_cf.fetch_date(
+            location[0],
+            0,
+            location[2],
+            0,
+            *location[4:]
+        )
+
+        return begin < end
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        location = MEASUREMENT_LOCATIONS['L1B_time_meas']
+        stop_time = next_cf.fetch_date(
+            location[0], 0, location[2], 0, *location[4:]
+        )
+
+        if 'L1B_time_meas' not in filters:
+            filters['L1B_time_meas'] = {'max': stop_time}
+
+        elif 'max' not in filters['L1B_time_meas']:
+            filters['L1B_time_meas']['max'] = stop_time
+
+        else:
+            filters['L1B_time_meas']['max'] = min(
+                stop_time, filters['L1B_time_meas']['max']
+            )
+
+        if 'L1B_time_obs' not in filters:
+            filters['L1B_time_obs'] = {'max': stop_time}
+
+        elif 'max' not in filters['L1B_time_obs']:
+            filters['L1B_time_obs']['max'] = stop_time
+
+        else:
+            filters['L1B_time_obs']['max'] = min(
+                stop_time, filters['L1B_time_obs']['max']
+            )
+
+        return filters
+
+extractor = L2AMeasurementDataExtractor()
 
 extract_data = extractor.extract_data
 

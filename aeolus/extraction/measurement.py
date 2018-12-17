@@ -60,12 +60,12 @@ def _array_to_list(data):
 
 
 class MeasurementDataExtractor(object):
-    def __init__(self, observation_locations, measurement_locations,
-                 group_locations, array_fields):
-        self.observation_locations = observation_locations
-        self.measurement_locations = measurement_locations
-        self.group_locations = group_locations or {}
-        self.array_fields = array_fields
+    # def __init__(self, observation_locations, measurement_locations,
+    #              group_locations, array_fields):
+    #     self.observation_locations = observation_locations
+    #     self.measurement_locations = measurement_locations
+    #     self.group_locations = group_locations or {}
+    #     self.array_fields = array_fields
 
     def extract_data(self, filenames, filters,
                      observation_fields, measurement_fields, group_fields,
