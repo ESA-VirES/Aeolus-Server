@@ -114,10 +114,14 @@ class MeasurementDataExtractor(object):
 
             next_cf = files[i + 1][0] if (i + 1) < len(files) else None
 
+            # handle the overlap with the next product file by adjusting the
+            # data filters.
             if next_cf and self.overlaps(cf, next_cf):
                 filters = self.adjust_overlap(
                     cf, next_cf, deepcopy(orig_filters)
                 )
+            else:
+                filters = orig_filters
 
             observation_filters = {
                 name: value
@@ -146,6 +150,9 @@ class MeasurementDataExtractor(object):
                     data = optimized_access(
                         cf, ds, 'OBSERVATION_DATA', field_name, location
                     )
+
+                    # if field_name == 'time':
+                    #     import pdb; pdb.set_trace()
 
                     new_mask = make_mask(
                         data, filter_value.get('min'), filter_value.get('max'),
@@ -304,10 +311,10 @@ class MeasurementDataExtractor(object):
         return out_measurement_data
 
     def overlaps(self, cf, next_cf):
-        pass
+        raise NotImplementedError
 
     def adjust_overlap(self, cf, next_cf, filters):
-        pass
+        raise NotImplementedError
 
 
 def access_measurements(cf, ds, field_name, location, observation_ids,
@@ -325,15 +332,12 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
             variable = group.variables.get(field_name)
             if variable:
                 data = variable[observation_ids]
-                print "returning optimized measurement data", field_name, data.shape
                 return data
 
-
-    print "returning un-optimized measurement data", field_name
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
     # use many "single reads" when only < 90% of measurements are read
-    if used_sized < 0.9:
+    if used_sized < 0.9 and not callable(location):
         return np.vstack([
             access_location(cf, location[:1] + [int(i)] + location[2:])
             for i in observation_ids
@@ -344,17 +348,11 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
 
 def optimized_access(cf, ds, group_name, field_name, location):
-    # print cf, ds, group_name, field_name, location
     if ds:
-        # import pdb; pdb.set_trace()
         group = ds.groups.get(group_name)
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                print "returning optimized observation data", field_name
                 return variable[:]
-        # if group_name in ds.groups and field_name in ds.groups[group_name].variables:
-        #     return ds[group_name][field_name]
 
-    print "returning un-optimized observation data", field_name
     return access_location(cf, location)

@@ -288,6 +288,7 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
 
     def overlaps(self, cf, next_cf):
         location = MEASUREMENT_LOCATIONS['time']
+
         end = cf.fetch_date(
             location[0],
             cf.get_size(location[0])[0] - 1,
@@ -310,11 +311,6 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
             '/geolocation', 0, 'measurement_aocs', 0, 'measurement_centroid_time'
         )
 
-        from pprint import pprint
-
-
-        pprint(filters)
-
         if 'time' not in filters:
             filters['time'] = {'max': stop_time}
 
@@ -323,9 +319,6 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
 
         else:
             filters['time']['max'] = min(stop_time, filters['time']['max'])
-
-
-        pprint(filters)
 
         return filters
 
