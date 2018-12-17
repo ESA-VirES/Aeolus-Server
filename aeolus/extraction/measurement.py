@@ -319,7 +319,7 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
     # use many "single reads" when only < 90% of measurements are read
-    if used_sized < 0.9:
+    if used_sized < 0.9 and not callable(location):
         return np.vstack([
             access_location(cf, location[:1] + [int(i)] + location[2:])
             for i in observation_ids
