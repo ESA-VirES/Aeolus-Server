@@ -419,7 +419,7 @@ class L2BMeasurementDataExtractor(AccumulatedDataExtractor):
         'rayleigh_wind_result_stop_time',
     ]
 
-extractor = AccumulatedDataExtractor()
+extractor = L2BMeasurementDataExtractor()
 
 # main extraction function
 extract_data = extractor.extract_data
