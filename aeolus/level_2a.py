@@ -371,27 +371,18 @@ class L2AMeasurementDataExtractor(MeasurementDataExtractor):
             location[0], 0, location[2], 0, *location[4:]
         )
 
-        if 'L1B_time_meas' not in filters:
-            filters['L1B_time_meas'] = {'max': stop_time}
+        for field in ['L1B_time_meas', 'L1B_time_obs', 'group_end_time']:
 
-        elif 'max' not in filters['L1B_time_meas']:
-            filters['L1B_time_meas']['max'] = stop_time
+            if field not in filters:
+                filters[field] = {'max': stop_time}
 
-        else:
-            filters['L1B_time_meas']['max'] = min(
-                stop_time, filters['L1B_time_meas']['max']
-            )
+            elif 'max' not in filters[field]:
+                filters[field]['max'] = stop_time
 
-        if 'L1B_time_obs' not in filters:
-            filters['L1B_time_obs'] = {'max': stop_time}
-
-        elif 'max' not in filters['L1B_time_obs']:
-            filters['L1B_time_obs']['max'] = stop_time
-
-        else:
-            filters['L1B_time_obs']['max'] = min(
-                stop_time, filters['L1B_time_obs']['max']
-            )
+            else:
+                filters[field]['max'] = min(
+                    stop_time, filters[field]['max']
+                )
 
         return filters
 
