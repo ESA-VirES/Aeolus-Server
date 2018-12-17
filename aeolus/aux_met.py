@@ -250,7 +250,7 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
                     nonzero_ids = np.nonzero(mask)
 
                 # load all desired values for the requested calibrations
-                for field_name in fields:
+                for field_name in typed_fields:
                     path = LOCATIONS[field_name]
 
                     field_data = access_optimized(cf, ds, field_name, path)
