@@ -288,7 +288,7 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
 
     observation_locations = OBSERVATION_LOCATIONS
     measurement_locations = MEASUREMENT_LOCATIONS
-    group_locations = None
+    group_locations = {}
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):
