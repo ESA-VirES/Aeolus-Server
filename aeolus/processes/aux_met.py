@@ -35,7 +35,7 @@ from eoxserver.services.ows.wps.parameters import LiteralData
 import numpy as np
 
 from aeolus.aux_met import extract_data
-from aeolus.processes.util.bbox import translate_bbox
+from aeolus.processes.util.bbox import translate_bbox_180
 from aeolus.processes.util.base import ExtractionProcessBase
 
 
@@ -78,7 +78,7 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
         )
 
         if bbox:
-            tpl_box = translate_bbox(
+            tpl_box = translate_bbox_180(
                 (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             )
 

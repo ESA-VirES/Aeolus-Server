@@ -44,3 +44,21 @@ def translate_bbox(bbox):
         maxx -= 360
 
     return (minx, miny, maxx, maxy)
+
+
+def translate_bbox_180(bbox):
+    """ Assure that a BBox is within [-180;180]
+    """
+
+    minx, miny, maxx, maxy = bbox
+    while minx < -180:
+        minx += 360
+    while maxx < -180:
+        maxx += 360
+
+    while minx > 180:
+        minx -= 360
+    while maxx > 180:
+        maxx -= 360
+
+    return (minx, miny, maxx, maxy)
