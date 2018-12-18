@@ -29,6 +29,7 @@
 
 import os.path
 from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 from netCDF4 import Dataset
@@ -186,30 +187,7 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
     """
     """
 
-    typed_fields_and_filters = [(
-            'off_nadir',
-            [
-                field_name
-                for field_name in fields
-                if field_name in OFF_NADIR_FIELDS
-            ], dict([
-                (field_name, value)
-                for field_name, value in filters.items()
-                if field_name in OFF_NADIR_FIELDS
-            ]),
-        ), (
-            'nadir',
-            [
-                field_name
-                for field_name in fields
-                if field_name in NADIR_FIELDS
-            ], dict([
-                (field_name, value)
-                for field_name, value in filters.items()
-                if field_name in NADIR_FIELDS
-            ]),
-        )
-    ]
+    orig_filters = filters
 
     files = [
         (
@@ -222,8 +200,47 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
         for (coda_filename, netcdf_filename) in filenames
     ]
 
-    for cf, ds in files:
+    for i, (cf, ds) in enumerate(files):
         with cf:
+
+            next_cf = files[i + 1][0] if (i + 1) < len(files) else None
+
+            # TODO: handle overlap
+            if next_cf and overlaps(cf, next_cf):
+                filters = adjust_overlap(
+                    cf, next_cf, deepcopy(orig_filters)
+                )
+                # completely overlapped
+                if filters is None:
+                    continue
+
+            else:
+                filters = orig_filters
+
+            typed_fields_and_filters = [(
+                'off_nadir',
+                [
+                    field_name
+                    for field_name in fields
+                    if field_name in OFF_NADIR_FIELDS
+                ], dict([
+                    (field_name, value)
+                    for field_name, value in filters.items()
+                    if field_name in OFF_NADIR_FIELDS
+                ]),
+            ), (
+                'nadir',
+                [
+                    field_name
+                    for field_name in fields
+                    if field_name in NADIR_FIELDS
+                ], dict([
+                    (field_name, value)
+                    for field_name, value in filters.items()
+                    if field_name in NADIR_FIELDS
+                ]),
+            )]
+
             for t_name, typed_fields, filters in typed_fields_and_filters:
                 data = defaultdict(list)
 
@@ -266,6 +283,35 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
                         data[field_name] = field_data
 
                 yield t_name, data
+
+
+def overlaps(cf, next_cf):
+    end_time = cf.fetch_date('mph/sensing_stop')
+    begin_time = next_cf.fetch_date('mph/sensing_start')
+    return end_time > begin_time
+
+
+def adjust_overlap(cf, next_cf, filters):
+    stop_time = next_cf.fetch_date('mph/sensing_start')
+
+    for field in ['time_off_nadir', 'time_nadir']:
+
+        if field not in filters:
+            filters[field] = {'max': stop_time}
+
+        else:
+            if 'min' in filters[field] and filters[field]['min'] > stop_time:
+                return None
+
+            elif 'max' not in filters[field]:
+                filters[field]['max'] = stop_time
+
+            else:
+                filters[field]['max'] = min(
+                    stop_time, filters[field]['max']
+                )
+
+    return filters
 
 
 def access_optimized(cf, ds, field_name, location):
