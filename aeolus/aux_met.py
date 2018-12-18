@@ -210,6 +210,10 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
                 filters = adjust_overlap(
                     cf, next_cf, deepcopy(orig_filters)
                 )
+                # completely overlapped
+                if filters is None:
+                    continue
+
             else:
                 filters = orig_filters
 
@@ -295,13 +299,17 @@ def adjust_overlap(cf, next_cf, filters):
         if field not in filters:
             filters[field] = {'max': stop_time}
 
-        elif 'max' not in filters[field]:
-            filters[field]['max'] = stop_time
-
         else:
-            filters[field]['max'] = min(
-                stop_time, filters[field]['max']
-            )
+            if 'min' in filters[field] and filters[field]['min'] > stop_time:
+                return None
+
+            elif 'max' not in filters[field]:
+                filters[field]['max'] = stop_time
+
+            else:
+                filters[field]['max'] = min(
+                    stop_time, filters[field]['max']
+                )
 
     return filters
 
