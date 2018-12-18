@@ -29,6 +29,7 @@
 
 from collections import defaultdict
 from itertools import izip
+from copy import deepcopy
 
 import numpy as np
 import coda
@@ -59,12 +60,12 @@ def _array_to_list(data):
 
 
 class MeasurementDataExtractor(object):
-    def __init__(self, observation_locations, measurement_locations,
-                 group_locations, array_fields):
-        self.observation_locations = observation_locations
-        self.measurement_locations = measurement_locations
-        self.group_locations = group_locations or {}
-        self.array_fields = array_fields
+    # def __init__(self, observation_locations, measurement_locations,
+    #              group_locations, array_fields):
+    #     self.observation_locations = observation_locations
+    #     self.measurement_locations = measurement_locations
+    #     self.group_locations = group_locations or {}
+    #     self.array_fields = array_fields
 
     def extract_data(self, filenames, filters,
                      observation_fields, measurement_fields, group_fields,
@@ -95,23 +96,7 @@ class MeasurementDataExtractor(object):
             group_fields, self.group_locations.keys(), 'group'
         )
 
-        observation_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.observation_locations
-        }
-
-        measurement_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.measurement_locations
-        }
-
-        group_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.group_locations
-        }
+        orig_filters = filters
 
         files = [
             (
@@ -122,10 +107,39 @@ class MeasurementDataExtractor(object):
             for (coda_filename, netcdf_filename) in filenames
         ]
 
-        for cf, ds in files:
+        for i, (cf, ds) in enumerate(files):
             out_observation_data = defaultdict(list)
             out_measurement_data = defaultdict(list)
             out_group_data = defaultdict(list)
+
+            next_cf = files[i + 1][0] if (i + 1) < len(files) else None
+
+            # handle the overlap with the next product file by adjusting the
+            # data filters.
+            if next_cf and self.overlaps(cf, next_cf):
+                filters = self.adjust_overlap(
+                    cf, next_cf, deepcopy(orig_filters)
+                )
+            else:
+                filters = orig_filters
+
+            observation_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.observation_locations
+            }
+
+            measurement_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.measurement_locations
+            }
+
+            group_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.group_locations
+            }
 
             with cf:
                 # create a mask for observation data
@@ -136,6 +150,9 @@ class MeasurementDataExtractor(object):
                     data = optimized_access(
                         cf, ds, 'OBSERVATION_DATA', field_name, location
                     )
+
+                    # if field_name == 'time':
+                    #     import pdb; pdb.set_trace()
 
                     new_mask = make_mask(
                         data, filter_value.get('min'), filter_value.get('max'),
@@ -287,13 +304,17 @@ class MeasurementDataExtractor(object):
 
             # convert to simple list instead of numpy array if requested
             if convert_arrays and isinstance(data, np.ndarray):
-
                 data = _array_to_list(data)
-                print field_name, len(data), len(data[0]), len(data[0][0]) if isinstance(data[0][0], list) else None
 
             out_measurement_data[field_name].extend(data)
 
         return out_measurement_data
+
+    def overlaps(self, cf, next_cf):
+        raise NotImplementedError
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        raise NotImplementedError
 
 
 def access_measurements(cf, ds, field_name, location, observation_ids,
@@ -311,11 +332,8 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
             variable = group.variables.get(field_name)
             if variable:
                 data = variable[observation_ids]
-                print "returning optimized measurement data", field_name, data.shape
                 return data
 
-
-    print "returning un-optimized measurement data", field_name
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
     # use many "single reads" when only < 90% of measurements are read
@@ -330,17 +348,11 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
 
 def optimized_access(cf, ds, group_name, field_name, location):
-    # print cf, ds, group_name, field_name, location
     if ds:
-        # import pdb; pdb.set_trace()
         group = ds.groups.get(group_name)
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                print "returning optimized observation data", field_name
                 return variable[:]
-        # if group_name in ds.groups and field_name in ds.groups[group_name].variables:
-        #     return ds[group_name][field_name]
 
-    print "returning un-optimized observation data", field_name
     return access_location(cf, location)

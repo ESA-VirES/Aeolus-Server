@@ -400,17 +400,26 @@ ARRAY_FIELDS = set([
     'rayleigh_measurement_weight',
 ])
 
-extractor = AccumulatedDataExtractor(
-    locations=locations,
-    mie_grouping_fields_defs=MIE_GROUPING_FIELDS,
-    rayleigh_grouping_fields_defs=RAYLEIGH_GROUPING_FIELDS,
-    mie_profile_fields_defs=MIE_PROFILE_FIELDS,
-    rayleigh_profile_fields_defs=RAYLEIGH_PROFILE_FIELDS,
-    mie_wind_fields_defs=MIE_WIND_FIELDS,
-    rayleigh_wind_fields_defs=RAYLEIGH_WIND_FIELDS,
-    measurement_fields_defs=MEASUREMENT_FIELDS,
-    array_fields=ARRAY_FIELDS,
-)
+
+class L2BMeasurementDataExtractor(AccumulatedDataExtractor):
+    locations = locations
+    mie_grouping_fields_defs = MIE_GROUPING_FIELDS
+    rayleigh_grouping_fields_defs = RAYLEIGH_GROUPING_FIELDS
+    mie_profile_fields_defs = MIE_PROFILE_FIELDS
+    rayleigh_profile_fields_defs = RAYLEIGH_PROFILE_FIELDS
+    mie_wind_fields_defs = MIE_WIND_FIELDS
+    rayleigh_wind_fields_defs = RAYLEIGH_WIND_FIELDS
+    measurement_fields_defs = MEASUREMENT_FIELDS
+    array_fields = ARRAY_FIELDS
+
+    overlap_fields = [
+        'mie_profile_datetime_stop',
+        'rayleigh_profile_datetime_stop',
+        'mie_wind_result_stop_time',
+        'rayleigh_wind_result_stop_time',
+    ]
+
+extractor = L2BMeasurementDataExtractor()
 
 # main extraction function
 extract_data = extractor.extract_data

@@ -283,12 +283,52 @@ ARRAY_FIELDS = set([
     'mie_bin_quality_flag',
 ])
 
-extractor = MeasurementDataExtractor(
-    observation_locations=OBSERVATION_LOCATIONS,
-    measurement_locations=MEASUREMENT_LOCATIONS,
-    group_locations=None,
-    array_fields=ARRAY_FIELDS,
-)
+
+class L1BMeasurementDataExtractor(MeasurementDataExtractor):
+
+    observation_locations = OBSERVATION_LOCATIONS
+    measurement_locations = MEASUREMENT_LOCATIONS
+    group_locations = {}
+    array_fields = ARRAY_FIELDS
+
+    def overlaps(self, cf, next_cf):
+        location = MEASUREMENT_LOCATIONS['time']
+
+        end = cf.fetch_date(
+            location[0],
+            cf.get_size(location[0])[0] - 1,
+            location[2],
+            29,
+            *location[4:]
+        )
+        begin = next_cf.fetch_date(
+            location[0],
+            0,
+            location[2],
+            0,
+            *location[4:]
+        )
+
+        return begin < end
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        stop_time = next_cf.fetch_date(
+            '/geolocation', 0, 'measurement_aocs', 0, 'measurement_centroid_time'
+        )
+
+        if 'time' not in filters:
+            filters['time'] = {'max': stop_time}
+
+        elif 'max' not in filters['time']:
+            filters['time']['max'] = stop_time
+
+        else:
+            filters['time']['max'] = min(stop_time, filters['time']['max'])
+
+        return filters
+
+
+extractor = L1BMeasurementDataExtractor()
 
 extract_data = extractor.extract_data
 

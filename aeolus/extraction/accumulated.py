@@ -28,6 +28,7 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 from netCDF4 import Dataset
@@ -37,21 +38,6 @@ from aeolus.filtering import make_mask, combine_mask
 
 
 class AccumulatedDataExtractor(object):
-    def __init__(self, locations,
-                 mie_grouping_fields_defs, rayleigh_grouping_fields_defs,
-                 mie_profile_fields_defs, rayleigh_profile_fields_defs,
-                 mie_wind_fields_defs, rayleigh_wind_fields_defs,
-                 measurement_fields_defs, array_fields):
-        self.locations = locations
-
-        self.mie_grouping_fields_defs = mie_grouping_fields_defs
-        self.rayleigh_grouping_fields_defs = rayleigh_grouping_fields_defs
-        self.mie_profile_fields_defs = mie_profile_fields_defs
-        self.rayleigh_profile_fields_defs = rayleigh_profile_fields_defs
-        self.mie_wind_fields_defs = mie_wind_fields_defs
-        self.rayleigh_wind_fields_defs = rayleigh_wind_fields_defs
-        self.measurement_fields_defs = measurement_fields_defs
-        self.array_fields = array_fields
 
     def extract_data(self, filenames, filters,
                      mie_grouping_fields, rayleigh_grouping_fields,
@@ -62,48 +48,7 @@ class AccumulatedDataExtractor(object):
         # filenames = [
         #     filenames
         # ] if isinstance(filenames, basestring) else filenames
-
-        mie_grouping_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_grouping_fields_defs
-        }
-
-        rayleigh_grouping_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_grouping_fields_defs
-        }
-
-        mie_profile_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_profile_fields_defs
-        }
-
-        rayleigh_profile_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_profile_fields_defs
-        }
-
-        mie_wind_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_wind_fields_defs
-        }
-
-        rayleigh_wind_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_wind_fields_defs
-        }
-
-        measurement_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.measurement_fields_defs
-        }
+        orig_filters = filters
 
         files = [
             (
@@ -114,9 +59,7 @@ class AccumulatedDataExtractor(object):
             for (coda_filename, netcdf_filename) in filenames
         ]
 
-        print filenames
-
-        for cf, ds in files:
+        for i, (cf, ds) in enumerate(files):
             mie_grouping_data = defaultdict(list)
             rayleigh_grouping_data = defaultdict(list)
             mie_profile_data = defaultdict(list)
@@ -124,6 +67,59 @@ class AccumulatedDataExtractor(object):
             mie_wind_data = defaultdict(list)
             rayleigh_wind_data = defaultdict(list)
             measurement_data = defaultdict(list)
+
+            next_cf = files[i + 1][0] if (i + 1) < len(files) else None
+
+            # handle the overlap with the next product file by adjusting the
+            # data filters.
+            if next_cf and self.overlaps(cf, next_cf):
+                filters = self.adjust_overlap(
+                    cf, next_cf, deepcopy(orig_filters)
+                )
+            else:
+                filters = orig_filters
+
+            mie_grouping_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_grouping_fields_defs
+            }
+
+            rayleigh_grouping_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_grouping_fields_defs
+            }
+
+            mie_profile_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_profile_fields_defs
+            }
+
+            rayleigh_profile_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_profile_fields_defs
+            }
+
+            mie_wind_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_wind_fields_defs
+            }
+
+            rayleigh_wind_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_wind_fields_defs
+            }
+
+            measurement_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.measurement_fields_defs
+            }
 
             with cf:
                 mie_grouping_mask = self._create_type_mask(
@@ -297,3 +293,26 @@ class AccumulatedDataExtractor(object):
                     self._array_to_list(obj) for obj in data
                 ]
         return data
+
+    def overlaps(self, cf, next_cf):
+        end_time = cf.fetch_date('mph/sensing_stop')
+        begin_time = next_cf.fetch_date('mph/sensing_start')
+        return end_time > begin_time
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        stop_time = next_cf.fetch_date('mph/sensing_start')
+
+        for field in self.overlap_fields:
+
+            if field not in filters:
+                filters[field] = {'max': stop_time}
+
+            elif 'max' not in filters[field]:
+                filters[field]['max'] = stop_time
+
+            else:
+                filters[field]['max'] = min(
+                    stop_time, filters[field]['max']
+                )
+
+        return filters
