@@ -347,7 +347,7 @@ class ExtractionProcessBase(AsyncProcessBase):
 
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
-                        'filters': filters,
+                        'filters': filters.data if filters else None,
                         'beginTime': isoformat(begin_time) if begin_time else None,
                         'endTime': isoformat(end_time) if end_time else None,
                         'bbox': [
