@@ -120,7 +120,9 @@ class RawDownloadProcess(AsyncProcessBase, Component):
             (collection, (
                     (
                         product,
-                        product.data_items.values_list('location', flat=True)
+                        product.data_items
+                        .filter(semantic__startswith='bands')
+                        .values_list('location', flat=True)
                     )
                     for product in products
                 )
