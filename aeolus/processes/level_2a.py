@@ -68,7 +68,7 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             L1B_time_meas={'min': begin_time, 'max': end_time},
             group_start_time={'min': begin_time},
             group_end_time={'max': end_time},
-            **(filters.data if filters else {})
+            **(filters if filters else {})
         )
 
         if bbox:
