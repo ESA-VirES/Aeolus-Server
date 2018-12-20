@@ -214,9 +214,9 @@ locations = {
     # 'l1B_measurement_time':                             [''],  # TODO: not available
     # 'mie_bin_classification':                           [''],  # TODO: not described in XLS sheet
     # 'rayleigh_bin_classification':                      [''],  # TODO: not described in XLS sheet
-    'optical_prop_algo_extinction':                     ['/meas_product_confid_data', -1, 'opt_prop_result/extinction_iterative'],
-    'optical_prop_algo_scattering_ratio':               ['/meas_product_confid_data', -1, 'opt_prop_result/scattering_ratio_iterative'],
-    'optical_prop_crosstalk_detected':                  ['/meas_product_confid_data', -1, 'opt_prop_result/xtalk_detected'],
+    'optical_prop_algo_extinction':                     ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'extinction_iterative'],
+    'optical_prop_algo_scattering_ratio':               ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'scattering_ratio_iterative'],
+    'optical_prop_crosstalk_detected':                  ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'xtalk_detected'],
     'mie_wind_result_HLOS_error':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/hlos_error_estimate'],
     'mie_wind_result_QC_flags_1':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags1'],
     'mie_wind_result_QC_flags_2':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
@@ -400,17 +400,26 @@ ARRAY_FIELDS = set([
     'rayleigh_measurement_weight',
 ])
 
-extractor = AccumulatedDataExtractor(
-    locations=locations,
-    mie_grouping_fields_defs=MIE_GROUPING_FIELDS,
-    rayleigh_grouping_fields_defs=RAYLEIGH_GROUPING_FIELDS,
-    mie_profile_fields_defs=MIE_PROFILE_FIELDS,
-    rayleigh_profile_fields_defs=RAYLEIGH_PROFILE_FIELDS,
-    mie_wind_fields_defs=MIE_WIND_FIELDS,
-    rayleigh_wind_fields_defs=RAYLEIGH_WIND_FIELDS,
-    measurement_fields_defs=MEASUREMENT_FIELDS,
-    array_fields=ARRAY_FIELDS,
-)
+
+class L2BMeasurementDataExtractor(AccumulatedDataExtractor):
+    locations = locations
+    mie_grouping_fields_defs = MIE_GROUPING_FIELDS
+    rayleigh_grouping_fields_defs = RAYLEIGH_GROUPING_FIELDS
+    mie_profile_fields_defs = MIE_PROFILE_FIELDS
+    rayleigh_profile_fields_defs = RAYLEIGH_PROFILE_FIELDS
+    mie_wind_fields_defs = MIE_WIND_FIELDS
+    rayleigh_wind_fields_defs = RAYLEIGH_WIND_FIELDS
+    measurement_fields_defs = MEASUREMENT_FIELDS
+    array_fields = ARRAY_FIELDS
+
+    overlap_fields = [
+        'mie_profile_datetime_stop',
+        'rayleigh_profile_datetime_stop',
+        'mie_wind_result_stop_time',
+        'rayleigh_wind_result_stop_time',
+    ]
+
+extractor = L2BMeasurementDataExtractor()
 
 # main extraction function
 extract_data = extractor.extract_data

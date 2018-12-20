@@ -28,29 +28,16 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
+from netCDF4 import Dataset
 
 from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, combine_mask
 
 
 class AccumulatedDataExtractor(object):
-    def __init__(self, locations,
-                 mie_grouping_fields_defs, rayleigh_grouping_fields_defs,
-                 mie_profile_fields_defs, rayleigh_profile_fields_defs,
-                 mie_wind_fields_defs, rayleigh_wind_fields_defs,
-                 measurement_fields_defs, array_fields):
-        self.locations = locations
-
-        self.mie_grouping_fields_defs = mie_grouping_fields_defs
-        self.rayleigh_grouping_fields_defs = rayleigh_grouping_fields_defs
-        self.mie_profile_fields_defs = mie_profile_fields_defs
-        self.rayleigh_profile_fields_defs = rayleigh_profile_fields_defs
-        self.mie_wind_fields_defs = mie_wind_fields_defs
-        self.rayleigh_wind_fields_defs = rayleigh_wind_fields_defs
-        self.measurement_fields_defs = measurement_fields_defs
-        self.array_fields = array_fields
 
     def extract_data(self, filenames, filters,
                      mie_grouping_fields, rayleigh_grouping_fields,
@@ -58,53 +45,21 @@ class AccumulatedDataExtractor(object):
                      mie_wind_fields, rayleigh_wind_fields, measurement_fields,
                      convert_arrays=False):
 
-        filenames = [
-            filenames
-        ] if isinstance(filenames, basestring) else filenames
+        # filenames = [
+        #     filenames
+        # ] if isinstance(filenames, basestring) else filenames
+        orig_filters = filters
 
-        mie_grouping_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_grouping_fields_defs
-        }
+        files = [
+            (
+                CODAFile(coda_filename),
+                Dataset(netcdf_filename) if netcdf_filename else None
 
-        rayleigh_grouping_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_grouping_fields_defs
-        }
+            )
+            for (coda_filename, netcdf_filename) in filenames
+        ]
 
-        mie_profile_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_profile_fields_defs
-        }
-
-        rayleigh_profile_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_profile_fields_defs
-        }
-
-        mie_wind_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.mie_wind_fields_defs
-        }
-
-        rayleigh_wind_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.rayleigh_wind_fields_defs
-        }
-
-        measurement_filters = {
-            name: value
-            for name, value in filters.items()
-            if name in self.measurement_fields_defs
-        }
-
-        for cf in [CODAFile(filename) for filename in filenames]:
+        for i, (cf, ds) in enumerate(files):
             mie_grouping_data = defaultdict(list)
             rayleigh_grouping_data = defaultdict(list)
             mie_profile_data = defaultdict(list)
@@ -113,32 +68,86 @@ class AccumulatedDataExtractor(object):
             rayleigh_wind_data = defaultdict(list)
             measurement_data = defaultdict(list)
 
+            next_cf = files[i + 1][0] if (i + 1) < len(files) else None
+
+            # handle the overlap with the next product file by adjusting the
+            # data filters.
+            if next_cf and self.overlaps(cf, next_cf):
+                filters = self.adjust_overlap(
+                    cf, next_cf, deepcopy(orig_filters)
+                )
+            else:
+                filters = orig_filters
+
+            mie_grouping_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_grouping_fields_defs
+            }
+
+            rayleigh_grouping_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_grouping_fields_defs
+            }
+
+            mie_profile_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_profile_fields_defs
+            }
+
+            rayleigh_profile_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_profile_fields_defs
+            }
+
+            mie_wind_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mie_wind_fields_defs
+            }
+
+            rayleigh_wind_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.rayleigh_wind_fields_defs
+            }
+
+            measurement_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.measurement_fields_defs
+            }
+
             with cf:
                 mie_grouping_mask = self._create_type_mask(
-                    cf, mie_grouping_filters
+                    cf, ds, mie_grouping_filters
                 )
                 mie_profile_mask = self._create_type_mask(
-                    cf, mie_profile_filters
+                    cf, ds, mie_profile_filters
                 )
                 mie_wind_mask = self._create_type_mask(
-                    cf, mie_wind_filters
+                    cf, ds, mie_wind_filters
                 )
                 rayleigh_grouping_mask = self._create_type_mask(
-                    cf, rayleigh_grouping_filters
+                    cf, ds, rayleigh_grouping_filters
                 )
                 rayleigh_profile_mask = self._create_type_mask(
-                    cf, rayleigh_profile_filters
+                    cf, ds, rayleigh_profile_filters
                 )
                 rayleigh_wind_mask = self._create_type_mask(
-                    cf, rayleigh_wind_filters
+                    cf, ds, rayleigh_wind_filters
                 )
                 measurement_mask = self._create_type_mask(
-                    cf, measurement_filters
+                    cf, ds, measurement_filters
                 )
 
                 # mie profile to mie wind mask
                 if mie_profile_mask is not None:
-                    mie_wind_mask = self._join_mask(cf,
+                    mie_wind_mask = self._join_mask(
+                        cf, ds,
                         'mie_wind_profile_wind_result_id',
                         '/sph/NumMieWindResults',
                         mie_profile_mask,
@@ -147,7 +156,8 @@ class AccumulatedDataExtractor(object):
 
                 # measurement to mie wind mask
                 if measurement_mask is not None:
-                    mie_wind_mask = self._join_mask(cf,
+                    mie_wind_mask = self._join_mask(
+                        cf, ds,
                         'mie_measurement_map',
                         '/sph/NumMieWindResults',
                         measurement_mask,
@@ -156,7 +166,8 @@ class AccumulatedDataExtractor(object):
 
                 # rayleigh profile to rayleigh wind mask
                 if rayleigh_profile_mask is not None:
-                    rayleigh_wind_mask = self._join_mask(cf,
+                    rayleigh_wind_mask = self._join_mask(
+                        cf, ds,
                         'rayleigh_wind_profile_wind_result_id',
                         '/sph/NumRayleighWindResults',
                         rayleigh_profile_mask,
@@ -165,7 +176,8 @@ class AccumulatedDataExtractor(object):
 
                 # measurement to rayleigh wind mask
                 if measurement_mask is not None:
-                    rayleigh_wind_mask = self._join_mask(cf,
+                    rayleigh_wind_mask = self._join_mask(
+                        cf, ds,
                         'rayleigh_measurement_map',
                         '/sph/NumRayleighWindResults',
                         measurement_mask,
@@ -173,37 +185,37 @@ class AccumulatedDataExtractor(object):
                     )
 
                 self._make_outputs(
-                    cf, mie_grouping_fields,
+                    cf, ds, mie_grouping_fields,
                     mie_grouping_data, mie_grouping_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, mie_profile_fields,
+                    cf, ds, mie_profile_fields,
                     mie_profile_data, mie_profile_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, mie_wind_fields,
+                    cf, ds, mie_wind_fields,
                     mie_wind_data, mie_wind_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, rayleigh_grouping_fields,
+                    cf, ds, rayleigh_grouping_fields,
                     rayleigh_grouping_data, rayleigh_grouping_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, rayleigh_profile_fields,
+                    cf, ds, rayleigh_profile_fields,
                     rayleigh_profile_data, rayleigh_profile_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, rayleigh_wind_fields,
+                    cf, ds, rayleigh_wind_fields,
                     rayleigh_wind_data, rayleigh_wind_mask,
                     convert_arrays
                 )
                 self._make_outputs(
-                    cf, measurement_fields,
+                    cf, ds, measurement_fields,
                     measurement_data, measurement_mask,
                     convert_arrays
                 )
@@ -218,15 +230,23 @@ class AccumulatedDataExtractor(object):
                 measurement_data,
             )
 
-    def _fetch_array(self, cf, name):
+    def _fetch_array(self, cf, ds, name):
+        if ds:
+            group = ds.groups.get('DATA')
+            if group and name in group.variables:
+                print "Returning optimized data", name
+                return group.variables[name][:]
+
         path = self.locations[name]
+
+        print "Returning un-optimized data", name, ds
         return access_location(cf, path)
 
-    def _create_type_mask(self, cf, filters):
+    def _create_type_mask(self, cf, ds, filters):
         mask = None
         for field, filter_value in filters.items():
             new_mask = make_mask(
-                data=self._fetch_array(cf, field),
+                data=self._fetch_array(cf, ds, field),
                 is_array=(field in self.array_fields),
                 **filter_value
             )
@@ -234,9 +254,9 @@ class AccumulatedDataExtractor(object):
 
         return mask
 
-    def _join_mask(self, cf, mapping_field, length_field, related_mask,
+    def _join_mask(self, cf, ds, mapping_field, length_field, related_mask,
                    joined_mask):
-        ids = self._fetch_array(cf, mapping_field)
+        ids = self._fetch_array(cf, ds, mapping_field)
         new_mask = np.zeros((cf.fetch(length_field),), np.bool)
 
         filtered = ids[np.nonzero(related_mask)]
@@ -248,10 +268,11 @@ class AccumulatedDataExtractor(object):
 
         return new_mask
 
-    def _make_outputs(self, cf, fields, output, mask=None, convert_arrays=False):
+    def _make_outputs(self, cf, ds, fields, output, mask=None,
+                      convert_arrays=False):
         ids = np.nonzero(mask) if mask is not None else None
         for field in fields:
-            data = self._fetch_array(cf, field)
+            data = self._fetch_array(cf, ds, field)
             if mask is not None:
                 data = data[ids]
 
@@ -272,3 +293,26 @@ class AccumulatedDataExtractor(object):
                     self._array_to_list(obj) for obj in data
                 ]
         return data
+
+    def overlaps(self, cf, next_cf):
+        end_time = cf.fetch_date('mph/sensing_stop')
+        begin_time = next_cf.fetch_date('mph/sensing_start')
+        return end_time > begin_time
+
+    def adjust_overlap(self, cf, next_cf, filters):
+        stop_time = next_cf.fetch_date('mph/sensing_start')
+
+        for field in self.overlap_fields:
+
+            if field not in filters:
+                filters[field] = {'max': stop_time}
+
+            elif 'max' not in filters[field]:
+                filters[field]['max'] = stop_time
+
+            else:
+                filters[field]['max'] = min(
+                    stop_time, filters[field]['max']
+                )
+
+        return filters
