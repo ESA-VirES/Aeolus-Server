@@ -259,6 +259,11 @@ class MeasurementDataExtractor(object):
         if not measurement_fields:
             return out_measurement_data
 
+        if not len(observation_ids):
+            for field in measurement_fields:
+                out_measurement_data[field] = []
+            return out_measurement_data
+
         # Build a measurement mask
         measurement_mask = None
         for field_name, filter_value in filters.items():
