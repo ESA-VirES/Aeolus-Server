@@ -48,9 +48,10 @@ def make_mask(data, min_value=None, max_value=None, is_array=False, **kwargs):
     eps = kwargs.get('epsilon')
 
     if is_array:
-        mask = np.empty(data.shape, dtype=bool)
+        mask = np.empty(data.shape[0], dtype=bool)
         for i, array in enumerate(data):
             mask[i] = np.any(make_mask(array, min_value, max_value, False))
+
         return mask
 
     if isinstance(min_value, datetime):
