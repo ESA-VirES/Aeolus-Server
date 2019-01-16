@@ -181,6 +181,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('observations')
 
             for name, values in observation_data.items():
+                if not values:
+                    continue
                 isscalar = values[0].ndim == 0
                 values = np.hstack(values) if isscalar else np.vstack(values)
 

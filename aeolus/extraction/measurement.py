@@ -151,9 +151,6 @@ class MeasurementDataExtractor(object):
                         cf, ds, 'OBSERVATION_DATA', field_name, location
                     )
 
-                    # if field_name == 'time':
-                    #     import pdb; pdb.set_trace()
-
                     new_mask = make_mask(
                         data, filter_value.get('min'), filter_value.get('max'),
                         field_name in self.array_fields
@@ -257,6 +254,11 @@ class MeasurementDataExtractor(object):
 
         # return early, when no measurement fields are actually requested
         if not measurement_fields:
+            return out_measurement_data
+
+        if not len(observation_ids):
+            for field in measurement_fields:
+                out_measurement_data[field] = []
             return out_measurement_data
 
         # Build a measurement mask
