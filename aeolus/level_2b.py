@@ -398,6 +398,9 @@ ARRAY_FIELDS = set([
     'rayleigh_wind_profile_wind_result_id',
     'mie_measurement_weight',
     'rayleigh_measurement_weight',
+    'optical_prop_algo_extinction',
+    'optical_prop_algo_scattering_ratio',
+    'optical_prop_crosstalk_detected',
 ])
 
 

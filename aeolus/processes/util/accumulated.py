@@ -30,6 +30,7 @@
 from collections import defaultdict
 import logging
 
+import numpy as np
 from eoxserver.services.ows.wps.parameters import LiteralData
 
 from aeolus.processes.util.bbox import translate_bbox
@@ -280,13 +281,26 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
                 # if the variable does not yet exist,
                 # create it
                 if name not in group.variables:
+                    isscalar = (values[0].ndim == 0)
+                    if not isscalar:
+                        array_dim_size = values[0].shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+                        values = np.vstack(values)
+
                     with ElapsedTimeLogger("creating var %s" % name, logger):
-                        group.createVariable(
+                        var = group.createVariable(
                             name, '%s%i' % (
                                 values.dtype.kind,
                                 values.dtype.itemsize
-                            ), kind_name
-                        )[:] = values
+                            ), (
+                                kind_name,
+                            ) if isscalar else (
+                                kind_name, array_dim_name
+                            )
+                        )
+                        var[:] = values
                 # if the variable already exists, append
                 # data to it
                 else:
