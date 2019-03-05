@@ -100,6 +100,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         else:
             group_fields = []
 
+        print group_fields
+
         # create the iterator: yielding collection + sub iterators
         # the sub iterators iterate over all data files and yield the selected
         # and filtered fields
@@ -256,4 +258,47 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     end = num_measurements + values.shape[0]
                     var[num_measurements:end] = values
 
-        # TODO: group data?
+        if group_data:
+            group = ds.createGroup('groups')
+
+            for name, values in group_data.items():
+                isscalar = values[0].ndim == 0
+
+                if isscalar:
+                    values = np.hstack(values)
+
+                else:
+                    # import pdb; pdb.set_trace()
+                    if values[0].dtype.kind == 'O':
+                        values = np.vstack(
+                            np.hstack(values)
+                        )
+                    else:
+                        values = np.vstack(values)
+
+                if name not in group.variables:
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
+                    var = ds.createVariable(
+                        '/groups/%s' % name, '%s%i' % (
+                            values[0].dtype.kind, values[0].dtype.itemsize
+                        ), (
+                            'group',
+                        ) if isscalar else (
+                            'group',
+                            array_dim_name,
+                        )
+                    )
+                    var[:] = values
+
+                else:
+                    var = group[name]
+                    end = num_groups + values.shape[0]
+                    var[num_groups:end] = values
