@@ -48,3 +48,19 @@ class Level2BExctract(AccumulatedDataExctractProcessBase, Component):
     level_name = "2B"
 
     range_type_name = "ALD_U_N_2B"
+
+    def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
+        """ Overwritten function to get the exact data filters for L2B/C files
+        """
+        data_filters = super(Level2BExctract, self).get_data_filters(
+            begin_time, end_time, bbox, filters, **kwargs
+        )
+
+        data_filters.update(dict(
+            mie_grouping_start_time={'min_value': begin_time},
+            mie_grouping_stop_time={'max_value': end_time},
+            rayleigh_grouping_start_time={'min_value': begin_time},
+            rayleigh_grouping_stop_time={'max_value': end_time},
+        ))
+
+        return data_filters

@@ -144,6 +144,8 @@ class AccumulatedDataExtractor(object):
                     cf, ds, measurement_filters
                 )
 
+                mask_cache = {}
+
                 # mie profile to mie wind mask
                 if mie_profile_mask is not None:
                     mie_wind_mask = self._join_mask(
@@ -151,7 +153,8 @@ class AccumulatedDataExtractor(object):
                         'mie_wind_profile_wind_result_id',
                         '/sph/NumMieWindResults',
                         mie_profile_mask,
-                        mie_wind_mask
+                        mie_wind_mask,
+                        mask_cache
                     )
 
                 # measurement to mie wind mask
@@ -161,7 +164,8 @@ class AccumulatedDataExtractor(object):
                         'mie_measurement_map',
                         '/sph/NumMieWindResults',
                         measurement_mask,
-                        mie_wind_mask
+                        mie_wind_mask,
+                        mask_cache
                     )
 
                 # rayleigh profile to rayleigh wind mask
@@ -171,7 +175,8 @@ class AccumulatedDataExtractor(object):
                         'rayleigh_wind_profile_wind_result_id',
                         '/sph/NumRayleighWindResults',
                         rayleigh_profile_mask,
-                        rayleigh_wind_mask
+                        rayleigh_wind_mask,
+                        mask_cache
                     )
 
                 # measurement to rayleigh wind mask
@@ -181,7 +186,8 @@ class AccumulatedDataExtractor(object):
                         'rayleigh_measurement_map',
                         '/sph/NumRayleighWindResults',
                         measurement_mask,
-                        rayleigh_wind_mask
+                        rayleigh_wind_mask,
+                        mask_cache
                     )
 
                 self._make_outputs(
@@ -230,17 +236,26 @@ class AccumulatedDataExtractor(object):
                 measurement_data,
             )
 
-    def _fetch_array(self, cf, ds, name):
-        if ds:
+    def _fetch_array(self, cf, ds, name, cache=None):
+        if cache and name in cache:
+            return cache[name]
+
+        data = None
+        if ds and ds.groups.get('DATA'):
             group = ds.groups.get('DATA')
             if group and name in group.variables:
                 print "Returning optimized data", name
-                return group.variables[name][:]
+                data = group.variables[name][:]
 
-        path = self.locations[name]
+        if data is None:
+            path = self.locations[name]
+            print "Returning un-optimized data", name, ds
+            data = access_location(cf, path)
 
-        print "Returning un-optimized data", name, ds
-        return access_location(cf, path)
+        if cache:
+            cache[name] = data
+
+        return data
 
     def _create_type_mask(self, cf, ds, filters):
         mask = None
@@ -255,8 +270,8 @@ class AccumulatedDataExtractor(object):
         return mask
 
     def _join_mask(self, cf, ds, mapping_field, length_field, related_mask,
-                   joined_mask):
-        ids = self._fetch_array(cf, ds, mapping_field)
+                   joined_mask, mask_cache):
+        ids = self._fetch_array(cf, ds, mapping_field, mask_cache)
         new_mask = np.zeros((cf.fetch(length_field),), np.bool)
 
         filtered = ids[np.nonzero(related_mask)]
@@ -275,6 +290,9 @@ class AccumulatedDataExtractor(object):
             data = self._fetch_array(cf, ds, field)
             if mask is not None:
                 data = data[ids]
+
+            if field in self.array_fields:
+                print "Is array"
 
             if convert_arrays:
                 output[field].extend(self._array_to_list(data))
