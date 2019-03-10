@@ -30,6 +30,7 @@
 from collections import defaultdict
 
 import numpy as np
+import netCDF4
 from eoxserver.services.ows.wps.parameters import LiteralData
 
 from aeolus.processes.util.bbox import translate_bbox
@@ -145,7 +146,11 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             for data_kinds in data_iterator:
                 for data_kind, acc in zip(data_kinds, accumulated_data):
                     for field, values in data_kind.items():
-                        acc[field].extend(values)
+                        if values is not None:
+                            acc[field].extend([
+                                value.tolist() if value is not None else []
+                                for value in values
+                            ])
 
             collection_data = dict(
                 observation_data=accumulated_data[0],
@@ -183,10 +188,10 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('observations')
 
             for name, values in observation_data.items():
-                if not values:
+                if not values.shape[0]:
                     continue
                 isscalar = values[0].ndim == 0
-                values = np.hstack(values) if isscalar else np.vstack(values)
+                # values = np.hstack(values) if isscalar else np.vstack(values)
 
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
@@ -198,10 +203,15 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                         if array_dim_name not in ds.dimensions:
                             ds.createDimension(array_dim_name, array_dim_size)
 
+                    if np.ma.is_masked(values):
+                        values.set_fill_value(
+                            netCDF4.default_fillvals.get(
+                                netcdf_dtype(values.dtype)
+                            )
+                        )
+
                     variable = ds.createVariable(
-                        '/observations/%s' % name, '%s%i' % (
-                            values.dtype.kind, values.dtype.itemsize
-                        ), (
+                        '/observations/%s' % name, netcdf_dtype(values.dtype), (
                             'observation'
                         ) if isscalar else (
                             'observation', array_dim_name
@@ -217,19 +227,10 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('measurements')
 
             for name, values in measurement_data.items():
-                isscalar = values[0][0].ndim == 0
+                if values is None:
+                    continue
 
-                if isscalar:
-                    values = np.hstack(values)
-
-                else:
-                    # import pdb; pdb.set_trace()
-                    if values[0].dtype.kind == 'O':
-                        values = np.vstack(
-                            np.hstack(values)
-                        )
-                    else:
-                        values = np.vstack(values)
+                isscalar = values.ndim == 1
 
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
@@ -243,7 +244,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
 
                     var = ds.createVariable(
                         '/measurements/%s' % name, '%s%i' % (
-                            values[0].dtype.kind, values[0].dtype.itemsize
+                            values.dtype.kind, values.dtype.itemsize
                         ), (
                             'measurement',
                         ) if isscalar else (
@@ -302,3 +303,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     var = group[name]
                     end = num_groups + values.shape[0]
                     var[num_groups:end] = values
+
+
+def netcdf_dtype(numpy_dtype):
+    return '%s%i' % (numpy_dtype.kind, numpy_dtype.itemsize)

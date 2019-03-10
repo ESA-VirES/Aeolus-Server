@@ -114,3 +114,62 @@ def combine_mask(mask_a, mask_b=None):
         return mask_a
 
     return np.logical_and(mask_a, mask_b)
+
+
+def make_array_mask(data, min_value=None, max_value=None, is_array=False,
+                    **kwargs):
+    # allow both min and min_value
+    min_value = min_value if min_value is not None else kwargs.get('min')
+    max_value = max_value if max_value is not None else kwargs.get('max')
+    eps = kwargs.get('epsilon')
+
+    if isinstance(min_value, datetime):
+        min_value = datetime_to_coda_time(min_value)
+        eps = 0.0001 if eps is None else eps
+    if isinstance(max_value, datetime):
+        max_value = datetime_to_coda_time(max_value)
+        eps = 0.0001 if eps is None else eps
+
+    if min_value is not None and min_value == max_value:
+        mask = data == min_value
+
+    # special treatment when we get an epsilon value for accuracy
+    elif eps is not None:
+        if min_value is not None and max_value is not None:
+            if min_value > max_value:
+                mask = np.logical_or(
+                    (data - max_value) <= eps,
+                    (data - min_value) >= -eps,
+                )
+            else:
+                mask = np.logical_and(
+                    (data - max_value) <= eps,
+                    (data - min_value) >= -eps,
+                )
+        elif min_value is not None:
+            mask = (data - min_value) >= -eps
+        elif max_value is not None:
+            mask = (data - max_value) <= eps
+        else:
+            raise NotImplementedError
+
+    # no epsilon, use fastest way possible
+    elif min_value is not None and max_value is not None:
+        if min_value > max_value:
+            mask = np.logical_or(
+                data <= max_value,
+                data >= min_value
+            )
+        else:
+            mask = np.logical_and(
+                data <= max_value,
+                data >= min_value
+            )
+
+    elif min_value is not None:
+        mask = data >= min_value
+    elif max_value is not None:
+        mask = data <= max_value
+    else:
+        raise NotImplementedError
+    return mask
