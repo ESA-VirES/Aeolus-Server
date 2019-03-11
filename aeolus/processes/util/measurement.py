@@ -129,7 +129,6 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 measurement_fields=measurement_fields,
                 group_fields=group_fields,
                 simple_observation_filters=True,
-                convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
         )
