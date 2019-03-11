@@ -146,12 +146,12 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 for data_kind, acc in zip(data_kinds, accumulated_data):
                     for field, values in data_kind.items():
                         if values is not None:
-                            acc[field].append([
+                            acc[field].extend([
                                 value.tolist() if value is not None else []
                                 for value in values
                             ])
                         else:
-                            acc[field].append([])
+                            acc[field].extend([])
 
             collection_data = dict(
                 observation_data=accumulated_data[0],
