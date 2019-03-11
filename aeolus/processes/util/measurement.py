@@ -150,12 +150,15 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                                 value.tolist() if value is not None else []
                                 for value in values
                             ])
+                        else:
+                            acc[field].extend([])
 
             collection_data = dict(
                 observation_data=accumulated_data[0],
                 measurement_data=accumulated_data[1],
                 group_data=accumulated_data[2],
             )
+
             out_data[collection.identifier] = collection_data
 
         return out_data
