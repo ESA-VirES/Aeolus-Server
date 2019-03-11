@@ -31,6 +31,7 @@ from collections import defaultdict
 import logging
 
 import numpy as np
+import netCDF4
 from eoxserver.services.ows.wps.parameters import LiteralData
 
 from aeolus.processes.util.bbox import translate_bbox
@@ -231,7 +232,10 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
             for data_kinds in data_iterator:
                 for data_kind, acc in zip(data_kinds, accumulated_data):
                     for field, values in data_kind.items():
-                        acc[field].extend(values)
+                        if values is not None:
+                            acc[field].extend(values.tolist())
+                        else:
+                            acc[field].extend([])
 
             collection_data = dict(
                 mie_grouping_data=accumulated_data[0],
@@ -281,13 +285,19 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
                 # if the variable does not yet exist,
                 # create it
                 if name not in group.variables:
-                    isscalar = (values[0].ndim == 0)
+                    isscalar = values.ndim == 1
                     if not isscalar:
-                        array_dim_size = values[0].shape[-1]
+                        array_dim_size = values.shape[-1]
                         array_dim_name = "array_%d" % array_dim_size
                         if array_dim_name not in ds.dimensions:
                             ds.createDimension(array_dim_name, array_dim_size)
-                        values = np.vstack(values)
+
+                    if np.ma.is_masked(values):
+                        values.set_fill_value(
+                            netCDF4.default_fillvals.get(
+                                netcdf_dtype(values.dtype)
+                            )
+                        )
 
                     with ElapsedTimeLogger("creating var %s" % name, logger):
                         var = group.createVariable(
@@ -309,3 +319,7 @@ class AccumulatedDataExctractProcessBase(ExtractionProcessBase):
 
                     with ElapsedTimeLogger("adding to var %s" % name, logger):
                         var[offsets[kind_name]:end] = values
+
+
+def netcdf_dtype(numpy_dtype):
+    return '%s%i' % (numpy_dtype.kind, numpy_dtype.itemsize)

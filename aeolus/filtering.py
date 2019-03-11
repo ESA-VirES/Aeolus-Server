@@ -103,6 +103,10 @@ def make_mask(data, min_value=None, max_value=None, is_array=False, **kwargs):
         mask = data <= max_value
     else:
         raise NotImplementedError
+
+    if mask.ndim > 1:
+        mask = np.any(mask, -1)
+
     return mask
 
 
