@@ -155,9 +155,10 @@ class MeasurementDataExtractor(object):
 
                 if observation_mask is not None:
                     filtered_observation_ids = np.nonzero(observation_mask)
-                    observation_array_mask = observation_array_mask[
-                        filtered_observation_ids
-                    ]
+                    if observation_array_mask is not None:
+                        observation_array_mask = observation_array_mask[
+                            filtered_observation_ids
+                        ]
                 else:
                     filtered_observation_ids = None
 
@@ -183,8 +184,6 @@ class MeasurementDataExtractor(object):
                     if data.shape[0] and field_name in self.array_fields:
                         data = np.vstack(data)
                         data = np.ma.MaskedArray(data, observation_array_mask)
-                    # else:
-                    #     print data
 
                     out_observation_data[field_name] = data
 
@@ -299,9 +298,10 @@ class MeasurementDataExtractor(object):
 
         if measurement_mask is not None:
             measurement_ids = np.nonzero(measurement_mask)
-            measurement_array_mask = np.logical_not(
-                measurement_array_mask[measurement_ids]
-            )
+            if measurement_array_mask is not None:
+                measurement_array_mask = np.logical_not(
+                    measurement_array_mask[measurement_ids]
+                )
         else:
             measurement_ids = None
 
