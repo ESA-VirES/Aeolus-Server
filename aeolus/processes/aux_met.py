@@ -29,10 +29,12 @@
 
 from collections import defaultdict
 
+
+import numpy as np
+import netCDF4
 from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import LiteralData
-import numpy as np
 
 from aeolus.aux_met import extract_data
 from aeolus.processes.util.bbox import translate_bbox_180
@@ -126,7 +128,6 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
                 data_filters,
                 fields.split(',') if fields else [],
                 scalefactor=scalefactor,
-                convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
         )
@@ -153,13 +154,19 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
             num_records = ds.dimensions[type_name].size
 
         for field_name, data in full_data.items():
-            isscalar = (isinstance(data[0], str) or data[0].ndim == 0)
-            arrsize = data[0].shape[0] if not isscalar else 0
+            isscalar = (isinstance(data, str) or data.ndim == 1)
+            arrsize = data.shape[-1] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
-            data = np.hstack(data) if isscalar else np.vstack(data)
 
             if arrsize and array_dim not in ds.dimensions:
                 ds.createDimension(array_dim, arrsize)
+
+                if np.ma.is_masked(data):
+                    data.set_fill_value(
+                        netCDF4.default_fillvals.get(
+                            netcdf_dtype(data.dtype)
+                        )
+                    )
 
             # create new variable (+ dimensions)
             if field_name not in ds.variables:
@@ -172,3 +179,7 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
                 var = ds[field_name]
                 end = num_records + data.shape[0]
                 var[num_records:end] = data
+
+
+def netcdf_dtype(numpy_dtype):
+    return '%s%i' % (numpy_dtype.kind, numpy_dtype.itemsize)
