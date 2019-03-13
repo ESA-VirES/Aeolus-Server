@@ -139,7 +139,7 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
             for type_name, data in data_iterator:
                 file_data = dict(**data)
                 for field_name, values in file_data.items():
-                    accumulated_data[field_name].extend(values)
+                    accumulated_data[field_name].extend(values.tolist())
 
             out_data[collection.identifier] = accumulated_data
 
