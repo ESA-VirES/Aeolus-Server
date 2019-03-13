@@ -33,7 +33,7 @@ from collections import defaultdict
 import numpy as np
 
 from aeolus.coda_utils import CODAFile, access_location
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.albedo import sample_nadir
 
 
@@ -721,7 +721,7 @@ def _array_to_list(data):
     return data
 
 
-def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
+def extract_data(filenames, filters, fields, aux_type):
     """
     """
 
@@ -768,14 +768,25 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
             # make a mask of all calibrations to be included, by only looking at
             # the fields for whole calibrations
             calibration_mask = None
+            calibration_array_mask = None
             for field_name, filter_value in calibration_filters.items():
                 path = locations[field_name][:]
+                field_data = access_location(cf, path)
                 new_mask = make_mask(
-                    access_location(cf, path),
+                    field_data,
                     filter_value.get('min'), filter_value.get('max'),
                     field_name in calibration_array_fields
                 )
                 calibration_mask = combine_mask(new_mask, calibration_mask)
+
+                if field_name in calibration_array_fields:
+                    field_data = np.vstack(field_data)
+                    new_array_mask = make_array_mask(
+                        field_data, **filter_value
+                    )
+                    calibration_array_mask = combine_mask(
+                        new_array_mask, calibration_array_mask
+                    )
 
             # when the mask is done, create an array of indices for calibrations
             # to be included
@@ -783,6 +794,10 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
             if calibration_mask is not None:
                 calibration_nonzero_ids = np.nonzero(calibration_mask)
                 calibration_ids = calibration_nonzero_ids[0]
+                if calibration_array_mask is not None:
+                    calibration_array_mask = np.logical_not(
+                        calibration_array_mask[calibration_nonzero_ids]
+                    )
 
             elif aux_type == 'MET':
                 num_calibrations = cf.get_size('/geo_nadir')[0]
@@ -802,17 +817,22 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 if calibration_nonzero_ids is not None:
                     field_data = field_data[calibration_nonzero_ids]
 
-                if convert_arrays:
-                    field_data = _array_to_list(field_data)
+                if field_name in calibration_array_fields:
+                    field_data = np.vstack(field_data)
+                    if calibration_array_mask is not None:
+                        field_data = np.ma.MaskedArray(
+                            field_data,
+                            calibration_array_mask
+                        )
 
                 # write out data
                 calibration_data[field_name] = field_data
 
             # build a mask of all frequencies within a specific calibration
             frequency_masks = None
+            frequency_array_masks = None
             for field_name, filter_value in frequency_filters.items():
                 path = locations[field_name]
-
                 field_data = access_location(cf, path)[calibration_ids]
 
                 new_masks = [
@@ -833,6 +853,23 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                 else:
                     frequency_masks = new_masks
 
+                if field_name in array_fields:
+                    new_array_masks = [
+                        make_array_mask(
+                            np.vstack(frequency_field_data), **filter_value
+                        )
+                        for frequency_field_data in field_data
+                    ]
+
+                    if frequency_array_masks:
+                        frequency_array_masks = [
+                            combine_mask(new_array_mask_, array_mask)
+                            for new_array_mask_, array_mask
+                            in izip(new_array_masks, frequency_array_masks)
+                        ]
+                    else:
+                        frequency_array_masks = new_array_masks
+
             # make an array of all indices to be included
             frequency_ids = None
             if frequency_masks is not None:
@@ -840,6 +877,13 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                     np.nonzero(frequency_mask)
                     for frequency_mask in frequency_masks
                 ]
+
+                if frequency_array_masks is not None:
+                    frequency_array_masks = [
+                        np.logical_not(frequency_array_mask[frequency_ids_])
+                        for frequency_ids_, frequency_array_mask
+                        in izip(frequency_ids, frequency_array_masks)
+                    ]
 
             # iterate over all requested frequency fields and write the
             # possibly subset data to the output
@@ -855,14 +899,20 @@ def extract_data(filenames, filters, fields, aux_type, convert_arrays=False):
                         in izip(field_data, frequency_ids)
                     ]
 
-                if convert_arrays:
+                if field_name in array_fields:
                     field_data = [
-                        _array_to_list(frequency_field_data)
+                        np.vstack(frequency_field_data)
                         for frequency_field_data in field_data
                     ]
-                else:
-                    # TODO: steck as object array!
-                    pass
+
+                    # TODO: different array sizes not working
+
+                    # if frequency_array_masks is not None:
+                    #     field_data = [
+                    #         np.ma.MaskedArray(frequency_field_data, mask)
+                    #         for frequency_field_data, mask
+                    #         in izip(field_data, frequency_array_masks)
+                    #     ]
 
                 # write out data
                 frequency_data[field_name] = field_data
