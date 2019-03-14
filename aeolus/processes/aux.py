@@ -33,6 +33,7 @@ from eoxserver.core import Component, implements
 from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import LiteralData
 import numpy as np
+import netCDF4
 
 from aeolus.aux import extract_data
 from aeolus.processes.util.bbox import translate_bbox
@@ -111,7 +112,6 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
                 data_filters,
                 fields.split(',') if fields else [],
                 self.aux_type,
-                convert_arrays=(mime_type == 'application/msgpack'),
             ))
             for collection, products in collection_products
         )
@@ -124,6 +124,14 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
                 file_data = dict(**calibration_data)
                 file_data.update(frequency_data)
                 for field_name, values in file_data.items():
+                    if isinstance(values, list):
+                        values = [
+                            item.tolist()
+                            for item in values
+                        ]
+                    else:
+                        values = values.tolist()
+
                     accumulated_data[field_name].extend(values)
 
             out_data[collection.identifier] = accumulated_data
@@ -150,10 +158,16 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
             isscalar = (isinstance(data[0], str) or data[0].ndim == 0)
             arrsize = data[0].shape[0] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
-            data = np.hstack(data) if isscalar else np.vstack(data)
 
             if arrsize and array_dim not in ds.dimensions:
                 ds.createDimension(array_dim, arrsize)
+
+                if np.ma.is_masked(data):
+                    data.set_fill_value(
+                        netCDF4.default_fillvals.get(
+                            netcdf_dtype(data.dtype)
+                        )
+                    )
 
             # create new variable (+ dimensions)
             if field_name not in group.variables:
@@ -259,3 +273,7 @@ class Level1BAUXZWCExtract(Level1BAUXExtractBase, Component):
 
     range_type_name = "AUX_ZWC_1B"
     aux_type = "ZWC"
+
+
+def netcdf_dtype(numpy_dtype):
+    return '%s%i' % (numpy_dtype.kind, numpy_dtype.itemsize)

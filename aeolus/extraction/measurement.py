@@ -36,7 +36,7 @@ import coda
 from netCDF4 import Dataset
 
 from aeolus.coda_utils import CODAFile, access_location, check_fields
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.filtering import make_mask, make_array_mask, combine_mask
 
 
 def check_has_groups(cf):
@@ -46,17 +46,6 @@ def check_has_groups(cf):
         return cf.fetch('/group_pcd') is not None
     except coda.CodacError:
         return False
-
-
-def _array_to_list(data):
-    if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
-        data = data.tolist()
-        if isobject:
-            data = [
-                _array_to_list(obj) for obj in data
-            ]
-    return data
 
 
 class MeasurementDataExtractor(object):
@@ -69,21 +58,17 @@ class MeasurementDataExtractor(object):
 
     def extract_data(self, filenames, filters,
                      observation_fields, measurement_fields, group_fields,
-                     simple_observation_filters=False,
-                     convert_arrays=False):
+                     ica_fields, simple_observation_filters=False):
         """ Extract the data from the given filename(s) and apply the given
             filters.
         """
-
-        # filenames = (
-        #     [filenames] if isinstance(filenames, basestring) else filenames
-        # )
 
         check_fields(
             filters.keys(),
             self.observation_locations.keys() +
             self.measurement_locations.keys() +
-            self.group_locations.keys(),
+            self.group_locations.keys() +
+            self.ica_locations.keys(),
             'filter'
         )
         check_fields(
@@ -94,6 +79,9 @@ class MeasurementDataExtractor(object):
         )
         check_fields(
             group_fields, self.group_locations.keys(), 'group'
+        )
+        check_fields(
+            ica_fields, self.ica_locations.keys(), 'ICA'
         )
 
         orig_filters = filters
@@ -111,6 +99,7 @@ class MeasurementDataExtractor(object):
             out_observation_data = defaultdict(list)
             out_measurement_data = defaultdict(list)
             out_group_data = defaultdict(list)
+            out_ica_data = defaultdict(list)
 
             next_cf = files[i + 1][0] if (i + 1) < len(files) else None
 
@@ -141,9 +130,17 @@ class MeasurementDataExtractor(object):
                 if name in self.group_locations
             }
 
+            ica_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.ica_locations
+            }
+
             with cf:
                 # create a mask for observation data
                 observation_mask = None
+                observation_array_mask = None
+
                 for field_name, filter_value in observation_filters.items():
                     location = self.observation_locations[field_name]
 
@@ -158,10 +155,30 @@ class MeasurementDataExtractor(object):
 
                     observation_mask = combine_mask(new_mask, observation_mask)
 
+                    if field_name in self.array_fields:
+                        data = np.vstack(data)
+                        new_array_mask = make_array_mask(
+                            data, **filter_value
+                        )
+                        observation_array_mask = combine_mask(
+                            new_array_mask, observation_array_mask
+                        )
+
                 if observation_mask is not None:
                     filtered_observation_ids = np.nonzero(observation_mask)
+                    if observation_array_mask is not None:
+                        observation_array_mask = observation_array_mask[
+                            filtered_observation_ids
+                        ]
                 else:
                     filtered_observation_ids = None
+
+                if observation_array_mask is not None:
+                    # for np.ma.MaskedArrays we need True/False the other way
+                    # around
+                    observation_array_mask = np.logical_not(
+                        observation_array_mask
+                    )
 
                 # fetch the requested observation fields, filter accordingly and
                 # write to the output dict
@@ -175,10 +192,11 @@ class MeasurementDataExtractor(object):
                     if filtered_observation_ids is not None:
                         data = data[filtered_observation_ids]
 
-                    # convert to simple list instead of numpy array if requested
-                    if convert_arrays and isinstance(data, np.ndarray):
-                        data = _array_to_list(data)
-                    out_observation_data[field_name].extend(data)
+                    if data.shape[0] and field_name in self.array_fields:
+                        data = np.vstack(data)
+                        data = np.ma.MaskedArray(data, observation_array_mask)
+
+                    out_observation_data[field_name] = data
 
                 # if we filter the measurements by observation ID, then use the
                 # filtered observation IDs as mask for the measurements.
@@ -195,7 +213,6 @@ class MeasurementDataExtractor(object):
                     self._read_measurements(
                         cf, ds, measurement_fields, measurement_filters,
                         observation_iterator,
-                        convert_arrays,
                         cf.get_size('/geolocation')[0]
                     )
                 )
@@ -239,16 +256,77 @@ class MeasurementDataExtractor(object):
                         if filtered_group_ids is not None:
                             data = data[filtered_group_ids]
 
-                        # convert to simple list instead of numpy array if
-                        # requested
-                        if convert_arrays and isinstance(data, np.ndarray):
-                            data = _array_to_list(data)
                         out_group_data[field_name].extend(data)
 
-                yield out_observation_data, out_measurement_data, out_group_data
+                # handle ICA filters/fields
+                ica_mask = None
+                ica_array_mask = None
+                for field_name, filter_value in ica_filters.items():
+                    location = self.ica_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'ICA_DATA', field_name, location
+                    )
+
+                    new_mask = make_mask(
+                        data, filter_value.get('min'), filter_value.get('max'),
+                        field_name in self.array_fields
+                    )
+
+                    ica_mask = combine_mask(new_mask, ica_mask)
+
+                    if field_name in self.array_fields:
+                        data = np.vstack(data)
+                        new_array_mask = make_array_mask(
+                            data, **filter_value
+                        )
+                        ica_array_mask = combine_mask(
+                            new_array_mask, ica_array_mask
+                        )
+
+                if ica_mask is not None:
+                    filtered_ica_ids = np.nonzero(ica_mask)
+                    if ica_array_mask is not None:
+                        ica_array_mask = ica_array_mask[
+                            filtered_ica_ids
+                        ]
+                else:
+                    filtered_ica_ids = None
+
+                if ica_array_mask is not None:
+                    # for np.ma.MaskedArrays we need True/False the other way
+                    # around
+                    ica_array_mask = np.logical_not(
+                        ica_array_mask
+                    )
+
+                # fetch the requested ICA fields, filter accordingly and
+                # write to the output dict
+                for field_name in ica_fields:
+                    location = self.ica_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'ICA_DATA', field_name, location
+                    )
+
+                    if filtered_ica_ids is not None:
+                        data = data[filtered_ica_ids]
+
+                    if data.shape[0] and field_name in self.array_fields:
+                        data = np.vstack(data)
+                        data = np.ma.MaskedArray(data, ica_array_mask)
+
+                        print ica_array_mask
+
+                    out_ica_data[field_name] = data
+
+                yield (
+                    out_observation_data, out_measurement_data,
+                    out_group_data, out_ica_data
+                )
 
     def _read_measurements(self, cf, ds, measurement_fields, filters,
-                           observation_ids, convert_arrays, total_observations):
+                           observation_ids, total_observations):
 
         out_measurement_data = defaultdict(list)
 
@@ -258,11 +336,12 @@ class MeasurementDataExtractor(object):
 
         if not len(observation_ids):
             for field in measurement_fields:
-                out_measurement_data[field] = []
+                out_measurement_data[field] = None
             return out_measurement_data
 
         # Build a measurement mask
         measurement_mask = None
+        measurement_array_mask = None
         for field_name, filter_value in filters.items():
             # only apply filters for measurement fields
             if field_name not in self.measurement_locations:
@@ -271,15 +350,36 @@ class MeasurementDataExtractor(object):
             location = self.measurement_locations[field_name]
 
             data = access_measurements(
-                cf, ds, field_name, location, observation_ids, total_observations
+                cf, ds, field_name, location, observation_ids,
+                total_observations, field_name in self.array_fields
             )
 
             new_mask = make_mask(
                 data, filter_value.get('min'), filter_value.get('max'),
                 field_name in self.array_fields
             )
+
             # combine the masks
             measurement_mask = combine_mask(new_mask, measurement_mask)
+
+            if field_name in self.array_fields:
+                data = np.vstack(data)
+
+                new_array_mask = make_array_mask(
+                    data, **filter_value
+                )
+                measurement_array_mask = combine_mask(
+                    new_array_mask, measurement_array_mask
+                )
+
+        if measurement_mask is not None:
+            measurement_ids = np.nonzero(measurement_mask)
+            if measurement_array_mask is not None:
+                measurement_array_mask = np.logical_not(
+                    measurement_array_mask[measurement_ids]
+                )
+        else:
+            measurement_ids = None
 
         # iterate over all requested fields
         for field_name in measurement_fields:
@@ -287,28 +387,17 @@ class MeasurementDataExtractor(object):
 
             # fetch the data, and apply the observation id mask
             data = access_measurements(
-                cf, ds, field_name, location, observation_ids, total_observations
+                cf, ds, field_name, location, observation_ids,
+                total_observations, field_name in self.array_fields
             )
 
-            # when a measurement mask was built, iterate over all measurement
-            # groups plus their mask respectively, and apply it to get a filtered
-            # list
-            if measurement_mask is not None:
-                tmp_data = [
-                    (
-                        _array_to_list(measurement[mask])
-                        if convert_arrays else measurement[mask]
-                    )
-                    for measurement, mask in izip(data, measurement_mask)
-                ]
-                data = np.empty(len(tmp_data), dtype=np.object)
-                data[:] = tmp_data
+            if measurement_ids is not None:
+                data = data[measurement_ids]
 
-            # convert to simple list instead of numpy array if requested
-            if convert_arrays and isinstance(data, np.ndarray):
-                data = _array_to_list(data)
+            if field_name in self.array_fields:
+                data = np.ma.MaskedArray(data, measurement_array_mask)
 
-            out_measurement_data[field_name].extend(data)
+            out_measurement_data[field_name] = data
 
         return out_measurement_data
 
@@ -320,7 +409,7 @@ class MeasurementDataExtractor(object):
 
 
 def access_measurements(cf, ds, field_name, location, observation_ids,
-                        total_observations):
+                        total_observations, is_array):
     """ "Smart" measurement function, using one of two methods to read from a
         DBL file: either in one big sweep or in many smaller. When only a
         portion (up to 90% of the total measurements) is required, then the
@@ -340,13 +429,18 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
     # use many "single reads" when only < 90% of measurements are read
     if used_sized < 0.9 and not callable(location):
-        return np.vstack([
+        data = [
             access_location(cf, location[:1] + [int(i)] + location[2:])
             for i in observation_ids
-        ])
+        ]
 
     else:
-        return np.vstack(access_location(cf, location)[observation_ids])
+        data = access_location(cf, location)[observation_ids]
+
+    if is_array:
+        return np.vstack(np.hstack(data))
+
+    return np.hstack(data)
 
 
 def optimized_access(cf, ds, group_name, field_name, location):
