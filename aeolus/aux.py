@@ -898,6 +898,8 @@ def extract_data(filenames, filters, fields, aux_type):
                         for frequency_field_data, mask
                         in izip(field_data, frequency_ids)
                     ]
+                else:
+                    field_data = list(field_data)
 
                 if field_name in array_fields:
                     field_data = [
