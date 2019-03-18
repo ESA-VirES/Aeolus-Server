@@ -169,18 +169,13 @@ class MeasurementDataExtractor(object):
                     filtered_observation_ids = np.nonzero(observation_mask)
                     for size, observation_array_mask in \
                             observation_array_masks.items():
-                        observation_array_masks[size] = observation_array_mask[
-                            filtered_observation_ids
-                        ]
+                        observation_array_masks[size] = np.logical_not(
+                            observation_array_mask[
+                                filtered_observation_ids
+                            ]
+                        )
                 else:
                     filtered_observation_ids = None
-
-                if observation_array_mask is not None:
-                    # for np.ma.MaskedArrays we need True/False the other way
-                    # around
-                    observation_array_mask = np.logical_not(
-                        observation_array_mask
-                    )
 
                 # fetch the requested observation fields, filter accordingly and
                 # write to the output dict
