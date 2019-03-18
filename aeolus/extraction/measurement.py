@@ -316,8 +316,6 @@ class MeasurementDataExtractor(object):
                         data = np.vstack(data)
                         data = np.ma.MaskedArray(data, ica_array_mask)
 
-                        print ica_array_mask
-
                     out_ica_data[field_name] = data
 
                 yield (
