@@ -139,7 +139,7 @@ class MeasurementDataExtractor(object):
             with cf:
                 # create a mask for observation data
                 observation_mask = None
-                observation_array_mask = None
+                observation_array_masks = {}
 
                 for field_name, filter_value in observation_filters.items():
                     location = self.observation_locations[field_name]
@@ -157,17 +157,19 @@ class MeasurementDataExtractor(object):
 
                     if field_name in self.array_fields:
                         data = np.vstack(data)
+                        size = data.shape[-1]
                         new_array_mask = make_array_mask(
                             data, **filter_value
                         )
-                        observation_array_mask = combine_mask(
-                            new_array_mask, observation_array_mask
+                        observation_array_masks[size] = combine_mask(
+                            new_array_mask, observation_array_masks.get(size)
                         )
 
                 if observation_mask is not None:
                     filtered_observation_ids = np.nonzero(observation_mask)
-                    if observation_array_mask is not None:
-                        observation_array_mask = observation_array_mask[
+                    for size, observation_array_mask in \
+                            observation_array_masks.items():
+                        observation_array_masks[size] = observation_array_mask[
                             filtered_observation_ids
                         ]
                 else:
@@ -194,7 +196,11 @@ class MeasurementDataExtractor(object):
 
                     if data.shape[0] and field_name in self.array_fields:
                         data = np.vstack(data)
-                        data = np.ma.MaskedArray(data, observation_array_mask)
+                        size = data.shape[-1]
+                        if size in observation_array_masks:
+                            data = np.ma.MaskedArray(
+                                data, observation_array_masks[size]
+                            )
 
                     out_observation_data[field_name] = data
 
