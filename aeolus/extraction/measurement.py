@@ -339,7 +339,7 @@ class MeasurementDataExtractor(object):
 
         # Build a measurement mask
         measurement_mask = None
-        measurement_array_mask = None
+        measurement_array_masks = {}
         for field_name, filter_value in filters.items():
             # only apply filters for measurement fields
             if field_name not in self.measurement_locations:
@@ -363,17 +363,19 @@ class MeasurementDataExtractor(object):
             if field_name in self.array_fields:
                 data = np.vstack(data)
 
+                size = data.shape[-1]
+
                 new_array_mask = make_array_mask(
                     data, **filter_value
                 )
-                measurement_array_mask = combine_mask(
-                    new_array_mask, measurement_array_mask
+                measurement_array_masks[size] = combine_mask(
+                    new_array_mask, measurement_array_masks.get(size)
                 )
 
         if measurement_mask is not None:
             measurement_ids = np.nonzero(measurement_mask)
-            if measurement_array_mask is not None:
-                measurement_array_mask = np.logical_not(
+            for size, measurement_array_mask in measurement_array_masks.items():
+                measurement_array_masks[size] = np.logical_not(
                     measurement_array_mask[measurement_ids]
                 )
         else:
@@ -393,7 +395,11 @@ class MeasurementDataExtractor(object):
                 data = data[measurement_ids]
 
             if field_name in self.array_fields:
-                data = np.ma.MaskedArray(data, measurement_array_mask)
+                try:
+                    size = data.shape[-1]
+                    data = np.ma.MaskedArray(data, measurement_array_masks[size])
+                except KeyError:
+                    pass
 
             out_measurement_data[field_name] = data
 
