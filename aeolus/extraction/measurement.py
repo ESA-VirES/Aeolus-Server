@@ -139,7 +139,7 @@ class MeasurementDataExtractor(object):
             with cf:
                 # create a mask for observation data
                 observation_mask = None
-                observation_array_masks = {}
+                observation_array_mask = None
 
                 for field_name, filter_value in observation_filters.items():
                     location = self.observation_locations[field_name]
@@ -157,19 +157,20 @@ class MeasurementDataExtractor(object):
 
                     if field_name in self.array_fields:
                         data = np.vstack(data)
-                        size = data.shape[-1]
+                        if data.shape[-1] > 24:
+                            data = data[..., :24]
+
                         new_array_mask = make_array_mask(
                             data, **filter_value
                         )
-                        observation_array_masks[size] = combine_mask(
-                            new_array_mask, observation_array_masks.get(size)
+                        observation_array_mask = combine_mask(
+                            new_array_mask, observation_array_mask
                         )
 
                 if observation_mask is not None:
                     filtered_observation_ids = np.nonzero(observation_mask)
-                    for size, observation_array_mask in \
-                            observation_array_masks.items():
-                        observation_array_masks[size] = np.logical_not(
+                    if observation_array_mask is not None:
+                        observation_array_mask = np.logical_not(
                             observation_array_mask[
                                 filtered_observation_ids
                             ]
@@ -191,11 +192,10 @@ class MeasurementDataExtractor(object):
 
                     if data.shape[0] and field_name in self.array_fields:
                         data = np.vstack(data)
-                        size = data.shape[-1]
-                        if size in observation_array_masks:
-                            data = np.ma.MaskedArray(
-                                data, observation_array_masks[size]
-                            )
+                        if data.shape[-1] > 24:
+                            data = data[..., :24]
+
+                        data = np.ma.MaskedArray(data, observation_array_mask)
 
                     out_observation_data[field_name] = data
 
@@ -340,7 +340,7 @@ class MeasurementDataExtractor(object):
 
         # Build a measurement mask
         measurement_mask = None
-        measurement_array_masks = {}
+        measurement_array_mask = None
         for field_name, filter_value in filters.items():
             # only apply filters for measurement fields
             if field_name not in self.measurement_locations:
@@ -363,20 +363,20 @@ class MeasurementDataExtractor(object):
 
             if field_name in self.array_fields:
                 data = np.vstack(data)
-
-                size = data.shape[-1]
+                if data.shape[-1] > 24:
+                    data = data[..., :24]
 
                 new_array_mask = make_array_mask(
                     data, **filter_value
                 )
-                measurement_array_masks[size] = combine_mask(
-                    new_array_mask, measurement_array_masks.get(size)
+                measurement_array_mask = combine_mask(
+                    new_array_mask, measurement_array_mask
                 )
 
         if measurement_mask is not None:
             measurement_ids = np.nonzero(measurement_mask)
-            for size, measurement_array_mask in measurement_array_masks.items():
-                measurement_array_masks[size] = np.logical_not(
+            if measurement_array_mask is not None:
+                measurement_array_mask = np.logical_not(
                     measurement_array_mask[measurement_ids]
                 )
         else:
@@ -396,11 +396,10 @@ class MeasurementDataExtractor(object):
                 data = data[measurement_ids]
 
             if field_name in self.array_fields:
-                try:
-                    size = data.shape[-1]
-                    data = np.ma.MaskedArray(data, measurement_array_masks[size])
-                except KeyError:
-                    pass
+                if data.shape[-1] > 24:
+                    data = data[..., :24]
+
+                data = np.ma.MaskedArray(data, measurement_array_mask)
 
             out_measurement_data[field_name] = data
 
