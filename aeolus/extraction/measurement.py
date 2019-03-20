@@ -428,7 +428,11 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
             variable = group.variables.get(field_name)
             if variable:
                 data = variable[observation_ids]
-                return data
+
+                if is_array:
+                    return np.vstack(data)
+
+                return np.hstack(data)
 
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
