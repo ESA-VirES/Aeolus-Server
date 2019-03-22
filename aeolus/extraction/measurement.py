@@ -456,10 +456,6 @@ def optimized_access(cf, ds, group_name, field_name, location):
 
 
 def stack_measurement_array(data):
-    init_num = len(data)
-    data = np.vstack(np.hstack(data))
-    return data.reshape(
-        data.shape[0] / init_num,
-        init_num,
-        data.shape[1]
-    ).swapaxes(0, 1)
+    return np.rollaxis(np.dstack([
+        np.vstack(d) for d in data]), 2
+    )
