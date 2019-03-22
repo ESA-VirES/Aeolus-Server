@@ -245,7 +245,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 if values is None:
                     continue
 
-                isscalar = values.ndim == 1
+                isscalar = values.ndim == 2
 
                 if np.ma.is_masked(values):
                     values.set_fill_value(
@@ -253,6 +253,17 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                             netcdf_dtype(values.dtype)
                         )
                     )
+
+                    if isscalar:
+                        values = np.ma.hstack(values)
+                    else:
+                        values = np.ma.vstack(values)
+
+                else:
+                    if isscalar:
+                        values = np.hstack(values)
+                    else:
+                        values = np.vstack(values)
 
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
@@ -274,6 +285,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                             array_dim_name,
                         )
                     )
+
                     var[:] = values
 
                 else:

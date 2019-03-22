@@ -362,10 +362,7 @@ class MeasurementDataExtractor(object):
             measurement_mask = combine_mask(new_mask, measurement_mask)
 
             if field_name in self.array_fields:
-                data = np.vstack(data)
-
                 size = data.shape[-1]
-
                 new_array_mask = make_array_mask(
                     data, **filter_value
                 )
@@ -427,12 +424,7 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                data = variable[observation_ids]
-
-                if is_array:
-                    return np.vstack(data)
-
-                return np.hstack(data)
+                return variable[observation_ids]
 
     used_sized = float(observation_ids.shape[0]) / float(total_observations)
 
@@ -447,9 +439,9 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
         data = access_location(cf, location)[observation_ids]
 
     if is_array:
-        return np.vstack(np.hstack(data))
+        return stack_measurement_array(data)
 
-    return np.hstack(data)
+    return np.vstack(data)
 
 
 def optimized_access(cf, ds, group_name, field_name, location):
@@ -461,3 +453,13 @@ def optimized_access(cf, ds, group_name, field_name, location):
                 return variable[:]
 
     return access_location(cf, location)
+
+
+def stack_measurement_array(data):
+    init_num = len(data)
+    data = np.vstack(np.hstack(data))
+    return data.reshape(
+        data.shape[0] / init_num,
+        init_num,
+        data.shape[1]
+    ).swapaxes(0, 1)
