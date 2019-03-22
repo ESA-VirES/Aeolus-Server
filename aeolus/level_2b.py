@@ -140,6 +140,39 @@ calc_rayleigh_profile_albedo_off_nadir = _make_calc_albedo_off_nadir(
 )
 
 
+def _make_grouping_time_accessor(obs_field, measurements_in_obs_field):
+    times_location = ['/meas_product_confid_data', -1, 'start_of_obs_datetime']
+
+    def _inner(cf):
+        observations = access_location(cf, locations[obs_field])
+        measurements_in_observations = access_location(
+            cf, locations[measurements_in_obs_field]
+        )
+        indices = (observations - 1) * 30 + measurements_in_observations
+        times = access_location(cf, times_location)
+        return times[indices]
+    return _inner
+
+calc_mie_grouping_start_time = _make_grouping_time_accessor(
+    'mie_grouping_start_obs',
+    'mie_grouping_start_meas_per_obs',
+)
+
+calc_mie_grouping_stop_time = _make_grouping_time_accessor(
+    'mie_grouping_start_obs',
+    'mie_grouping_start_meas_per_obs',
+)
+
+calc_rayleigh_grouping_start_time = _make_grouping_time_accessor(
+    'rayleigh_grouping_start_obs',
+    'rayleigh_grouping_start_meas_per_obs',
+)
+
+calc_rayleigh_grouping_stop_time = _make_grouping_time_accessor(
+    'rayleigh_grouping_start_obs',
+    'rayleigh_grouping_start_meas_per_obs',
+)
+
 locations = {
     'mie_measurement_map':                              ['/meas_map', -1, 'mie_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
     'rayleigh_measurement_map':                         ['/meas_map', -1, 'rayleigh_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
@@ -151,12 +184,16 @@ locations = {
     'mie_grouping_start_meas_per_obs':                  ['/mie_grouping', -1, 'which_l1b_meas_within_this_brc1'],
     'mie_grouping_end_obs':                             ['/mie_grouping', -1, 'which_l1b_brc2'],
     'mie_grouping_end_meas_per_obs':                    ['/mie_grouping', -1, 'which_l1b_meas_within_this_brc2'],
+    'mie_grouping_start_time':                          calc_mie_grouping_start_time,
+    'mie_grouping_stop_time':                           calc_mie_grouping_stop_time,
     'rayleigh_grouping_id':                             ['/rayleigh_grouping', -1, 'grouping_result_id'],
     'rayleigh_grouping_time':                           ['/rayleigh_grouping', -1, 'start_of_obs_datetime'],
     'rayleigh_grouping_start_obs':                      ['/rayleigh_grouping', -1, 'which_l1b_brc1'],
     'rayleigh_grouping_start_meas_per_obs':             ['/rayleigh_grouping', -1, 'which_l1b_meas_within_this_brc1'],
     'rayleigh_grouping_end_obs':                        ['/rayleigh_grouping', -1, 'which_l1b_brc2'],
     'rayleigh_grouping_end_meas_per_obs':               ['/rayleigh_grouping', -1, 'which_l1b_meas_within_this_brc2'],
+    'rayleigh_grouping_start_time':                     calc_rayleigh_grouping_start_time,
+    'rayleigh_grouping_stop_time':                      calc_rayleigh_grouping_stop_time,
     'l1B_num_of_measurements_per_obs':                  ['/meas_product_confid_data', -1, 'l1b_meas_number'],
     'l1B_obs_number':                                   ['/meas_product_confid_data', -1, 'l1b_brc_number'],
     'mie_wind_result_id':                               ['/mie_geolocation', -1, 'wind_result_id'],
@@ -267,6 +304,8 @@ MIE_GROUPING_FIELDS = set([
     'mie_grouping_start_meas_per_obs',
     'mie_grouping_end_obs',
     'mie_grouping_end_meas_per_obs',
+    'mie_grouping_start_time',
+    'mie_grouping_stop_time',
 ])
 
 
@@ -277,6 +316,8 @@ RAYLEIGH_GROUPING_FIELDS = set([
     'rayleigh_grouping_start_meas_per_obs',
     'rayleigh_grouping_end_obs',
     'rayleigh_grouping_end_meas_per_obs',
+    'rayleigh_grouping_start_time',
+    'rayleigh_grouping_stop_time',
 ])
 
 MIE_PROFILE_FIELDS = set([
@@ -289,7 +330,7 @@ MIE_PROFILE_FIELDS = set([
     'mie_profile_datetime_start',
     'mie_profile_datetime_average',
     'mie_profile_datetime_stop',
-    'mie_profile_albedo_off_nadir'
+    'mie_profile_albedo_off_nadir',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
@@ -302,7 +343,7 @@ RAYLEIGH_PROFILE_FIELDS = set([
     'rayleigh_profile_datetime_start',
     'rayleigh_profile_datetime_average',
     'rayleigh_profile_datetime_stop',
-    'rayleigh_profile_albedo_off_nadir'
+    'rayleigh_profile_albedo_off_nadir',
 ])
 
 MIE_WIND_FIELDS = set([
@@ -338,7 +379,7 @@ MIE_WIND_FIELDS = set([
     'mie_wind_result_wind_velocity',
     'mie_wind_result_integration_length',
     'mie_wind_result_num_of_measurements',
-    'mie_wind_result_albedo_off_nadir'
+    'mie_wind_result_albedo_off_nadir',
 ])
 
 RAYLEIGH_WIND_FIELDS = set([
@@ -376,7 +417,7 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_wind_result_reference_pressure',
     'rayleigh_wind_result_reference_temperature',
     'rayleigh_wind_result_reference_backscatter_ratio',
-    'rayleigh_wind_result_albedo_off_nadir'
+    'rayleigh_wind_result_albedo_off_nadir',
 ])
 
 MEASUREMENT_FIELDS = set([
@@ -398,6 +439,9 @@ ARRAY_FIELDS = set([
     'rayleigh_wind_profile_wind_result_id',
     'mie_measurement_weight',
     'rayleigh_measurement_weight',
+    'optical_prop_algo_extinction',
+    'optical_prop_algo_scattering_ratio',
+    'optical_prop_crosstalk_detected',
 ])
 
 

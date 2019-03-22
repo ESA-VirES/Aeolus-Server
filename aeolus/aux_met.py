@@ -36,7 +36,7 @@ from netCDF4 import Dataset
 from scipy.interpolate import interp1d
 
 from aeolus.coda_utils import CODAFile, access_location
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.filtering import make_mask, make_array_mask, combine_mask
 
 
 # ------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ def _array_to_list(data):
     return data
 
 
-def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
+def extract_data(filenames, filters, fields, scalefactor):
     """
     """
 
@@ -247,24 +247,38 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
                 # make a mask of all calibrations to be included, by only
                 # looking at the fields for whole calibrations
                 mask = None
+                array_mask = None
+
                 for field_name, filter_value in filters.items():
                     path = LOCATIONS[field_name][:]
 
                     mask_data = access_optimized(cf, ds, field_name, path)
                     mask_data = scale_data(mask_data, scalefactor)
 
+                    is_array = field_name in CALIBRATION_ARRAY_FIELDS
+
+                    if is_array:
+                        mask_data = np.vstack(mask_data)
+
                     new_mask = make_mask(
                         mask_data,
                         filter_value.get('min'), filter_value.get('max'),
-                        field_name in CALIBRATION_ARRAY_FIELDS
                     )
                     mask = combine_mask(new_mask, mask)
+
+                    if is_array:
+                        new_array_mask = make_array_mask(
+                            mask_data, **filter_value
+                        )
+                        array_mask = combine_mask(new_array_mask, array_mask)
 
                 # when the mask is done, create an array of indices for
                 # calibrations to be included
                 nonzero_ids = None
                 if mask is not None:
                     nonzero_ids = np.nonzero(mask)
+                    if array_mask is not None:
+                        array_mask = np.logical_not(array_mask[nonzero_ids])
 
                 # load all desired values for the requested calibrations
                 for field_name in typed_fields:
@@ -274,13 +288,21 @@ def extract_data(filenames, filters, fields, scalefactor, convert_arrays=False):
                     field_data = scale_data(field_data, scalefactor)
 
                     if nonzero_ids is not None:
-                        field_data = field_data[nonzero_ids]
+                        # skip over empty patches of data
+                        if nonzero_ids[0].shape[0] == 0:
+                            continue
 
-                    # write out data
-                    if convert_arrays:
-                        data[field_name] = _array_to_list(field_data)
-                    else:
-                        data[field_name] = field_data
+                        field_data = field_data[nonzero_ids]
+                        if field_name in CALIBRATION_ARRAY_FIELDS:
+                            if field_data.shape[0] > 0:
+                                field_data = np.vstack(field_data)
+
+                            if array_mask is not None:
+                                field_data = np.ma.MaskedArray(
+                                    field_data, array_mask
+                                )
+
+                    data[field_name] = field_data
 
                 yield t_name, data
 

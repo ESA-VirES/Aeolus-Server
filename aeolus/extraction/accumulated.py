@@ -34,7 +34,7 @@ import numpy as np
 from netCDF4 import Dataset
 
 from aeolus.coda_utils import CODAFile, access_location
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.filtering import make_mask, make_array_mask, combine_mask
 
 
 class AccumulatedDataExtractor(object):
@@ -122,27 +122,77 @@ class AccumulatedDataExtractor(object):
             }
 
             with cf:
-                mie_grouping_mask = self._create_type_mask(
-                    cf, ds, mie_grouping_filters
-                )
-                mie_profile_mask = self._create_type_mask(
-                    cf, ds, mie_profile_filters
-                )
-                mie_wind_mask = self._create_type_mask(
-                    cf, ds, mie_wind_filters
-                )
-                rayleigh_grouping_mask = self._create_type_mask(
-                    cf, ds, rayleigh_grouping_filters
-                )
-                rayleigh_profile_mask = self._create_type_mask(
-                    cf, ds, rayleigh_profile_filters
-                )
-                rayleigh_wind_mask = self._create_type_mask(
-                    cf, ds, rayleigh_wind_filters
-                )
-                measurement_mask = self._create_type_mask(
-                    cf, ds, measurement_filters
-                )
+                if mie_grouping_fields:
+                    mie_grouping_mask, mie_grouping_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, mie_grouping_filters
+                        )
+                else:
+                    mie_grouping_mask, mie_grouping_array_mask = (
+                        None, None
+                    )
+
+                if mie_profile_fields:
+                    mie_profile_mask, mie_profile_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, mie_profile_filters
+                        )
+                else:
+                    mie_profile_mask, mie_profile_array_mask = (
+                        None, None
+                    )
+
+                if mie_wind_fields:
+                    mie_wind_mask, mie_wind_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, mie_wind_filters
+                        )
+                else:
+                    mie_wind_mask, mie_wind_array_mask = (
+                        None, None
+                    )
+
+                if rayleigh_grouping_fields:
+                    rayleigh_grouping_mask, rayleigh_grouping_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, rayleigh_grouping_filters
+                        )
+                else:
+                    rayleigh_grouping_mask, rayleigh_grouping_array_mask = (
+                        None, None
+                    )
+
+                if rayleigh_profile_fields:
+                    rayleigh_profile_mask, rayleigh_profile_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, rayleigh_profile_filters
+                        )
+                else:
+                    rayleigh_profile_mask, rayleigh_profile_array_mask = (
+                        None, None
+                    )
+
+                if rayleigh_wind_fields:
+                    rayleigh_wind_mask, rayleigh_wind_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, rayleigh_wind_filters
+                        )
+                else:
+                    rayleigh_wind_mask, rayleigh_wind_array_mask = (
+                        None, None
+                    )
+
+                if measurement_fields:
+                    measurement_mask, measurement_array_mask = \
+                        self._create_type_masks(
+                            cf, ds, measurement_filters
+                        )
+                else:
+                    measurement_mask, measurement_array_mask = (
+                        None, None
+                    )
+
+                mask_cache = {}
 
                 # mie profile to mie wind mask
                 if mie_profile_mask is not None:
@@ -151,7 +201,8 @@ class AccumulatedDataExtractor(object):
                         'mie_wind_profile_wind_result_id',
                         '/sph/NumMieWindResults',
                         mie_profile_mask,
-                        mie_wind_mask
+                        mie_wind_mask,
+                        mask_cache
                     )
 
                 # measurement to mie wind mask
@@ -161,7 +212,8 @@ class AccumulatedDataExtractor(object):
                         'mie_measurement_map',
                         '/sph/NumMieWindResults',
                         measurement_mask,
-                        mie_wind_mask
+                        mie_wind_mask,
+                        mask_cache
                     )
 
                 # rayleigh profile to rayleigh wind mask
@@ -171,7 +223,8 @@ class AccumulatedDataExtractor(object):
                         'rayleigh_wind_profile_wind_result_id',
                         '/sph/NumRayleighWindResults',
                         rayleigh_profile_mask,
-                        rayleigh_wind_mask
+                        rayleigh_wind_mask,
+                        mask_cache
                     )
 
                 # measurement to rayleigh wind mask
@@ -181,44 +234,54 @@ class AccumulatedDataExtractor(object):
                         'rayleigh_measurement_map',
                         '/sph/NumRayleighWindResults',
                         measurement_mask,
-                        rayleigh_wind_mask
+                        rayleigh_wind_mask,
+                        mask_cache
                     )
 
-                self._make_outputs(
-                    cf, ds, mie_grouping_fields,
-                    mie_grouping_data, mie_grouping_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, mie_profile_fields,
-                    mie_profile_data, mie_profile_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, mie_wind_fields,
-                    mie_wind_data, mie_wind_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, rayleigh_grouping_fields,
-                    rayleigh_grouping_data, rayleigh_grouping_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, rayleigh_profile_fields,
-                    rayleigh_profile_data, rayleigh_profile_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, rayleigh_wind_fields,
-                    rayleigh_wind_data, rayleigh_wind_mask,
-                    convert_arrays
-                )
-                self._make_outputs(
-                    cf, ds, measurement_fields,
-                    measurement_data, measurement_mask,
-                    convert_arrays
-                )
+                output_items = [(
+                    mie_grouping_fields,
+                    mie_grouping_data,
+                    mie_grouping_mask,
+                    mie_grouping_array_mask
+                ), (
+                    mie_profile_fields,
+                    mie_profile_data,
+                    mie_profile_mask,
+                    mie_profile_array_mask
+                ), (
+                    mie_wind_fields,
+                    mie_wind_data,
+                    mie_wind_mask,
+                    mie_wind_array_mask
+                ), (
+                    rayleigh_grouping_fields,
+                    rayleigh_grouping_data,
+                    rayleigh_grouping_mask,
+                    rayleigh_grouping_array_mask
+                ), (
+                    rayleigh_profile_fields,
+                    rayleigh_profile_data,
+                    rayleigh_profile_mask,
+                    rayleigh_profile_array_mask
+                ), (
+                    rayleigh_wind_fields,
+                    rayleigh_wind_data,
+                    rayleigh_wind_mask,
+                    rayleigh_wind_array_mask
+                ), (
+                    measurement_fields,
+                    measurement_data,
+                    measurement_mask,
+                    measurement_array_mask
+                )]
+
+                for (fields, data, mask, array_mask) in output_items:
+                    if array_mask is not None and mask is not None:
+                        array_mask = np.logical_not(array_mask[mask.nonzero()])
+
+                    self._make_outputs(
+                        cf, ds, fields, data, mask, array_mask,
+                    )
 
             yield (
                 mie_grouping_data,
@@ -230,33 +293,50 @@ class AccumulatedDataExtractor(object):
                 measurement_data,
             )
 
-    def _fetch_array(self, cf, ds, name):
-        if ds:
+    def _fetch_array(self, cf, ds, name, cache=None):
+        if cache and name in cache:
+            return cache[name]
+
+        data = None
+        if ds and ds.groups.get('DATA'):
             group = ds.groups.get('DATA')
             if group and name in group.variables:
-                print "Returning optimized data", name
-                return group.variables[name][:]
+                data = group.variables[name][:]
 
-        path = self.locations[name]
+        if data is None:
+            path = self.locations[name]
+            data = access_location(cf, path)
 
-        print "Returning un-optimized data", name, ds
-        return access_location(cf, path)
+            if name in self.array_fields:
+                data = np.vstack(data)
 
-    def _create_type_mask(self, cf, ds, filters):
+        if cache:
+            cache[name] = data
+
+        return data
+
+    def _create_type_masks(self, cf, ds, filters):
         mask = None
+        array_mask = None
         for field, filter_value in filters.items():
+            is_array = field in self.array_fields
+            data = self._fetch_array(cf, ds, field)
             new_mask = make_mask(
-                data=self._fetch_array(cf, ds, field),
-                is_array=(field in self.array_fields),
+                data=data,
+                # is_array=is_array,
                 **filter_value
             )
             mask = combine_mask(new_mask, mask)
 
-        return mask
+            if is_array:
+                new_array_mask = make_array_mask(data, **filter_value)
+                array_mask = combine_mask(new_array_mask, array_mask)
+
+        return mask, array_mask
 
     def _join_mask(self, cf, ds, mapping_field, length_field, related_mask,
-                   joined_mask):
-        ids = self._fetch_array(cf, ds, mapping_field)
+                   joined_mask, mask_cache):
+        ids = self._fetch_array(cf, ds, mapping_field, mask_cache)
         new_mask = np.zeros((cf.fetch(length_field),), np.bool)
 
         filtered = ids[np.nonzero(related_mask)]
@@ -268,21 +348,18 @@ class AccumulatedDataExtractor(object):
 
         return new_mask
 
-    def _make_outputs(self, cf, ds, fields, output, mask=None,
-                      convert_arrays=False):
+    def _make_outputs(self, cf, ds, fields, output, mask, array_mask):
         ids = np.nonzero(mask) if mask is not None else None
+
         for field in fields:
             data = self._fetch_array(cf, ds, field)
             if mask is not None:
                 data = data[ids]
 
-            if convert_arrays:
-                output[field].extend(self._array_to_list(data))
-            else:
-                if field in output:
-                    output[field] = np.stack((output[field], data))
-                else:
-                    output[field] = data
+            if field in self.array_fields:
+                data = np.ma.MaskedArray(data, array_mask)
+
+            output[field] = data
 
     def _array_to_list(self, data):
         if isinstance(data, np.ndarray):
