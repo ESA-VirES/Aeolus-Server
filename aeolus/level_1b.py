@@ -27,15 +27,13 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from collections import defaultdict
-from itertools import izip
-
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, access_location
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.coda_utils import access_location
 from aeolus.albedo import sample_offnadir
-from aeolus.extraction.measurement import MeasurementDataExtractor
+from aeolus.extraction.measurement import (
+    MeasurementDataExtractor, stack_measurement_array
+)
 
 
 def location_for_observation(location, observation_id):
@@ -59,9 +57,10 @@ def calc_rayleigh_signal_intensity(cf, observation_id=None):
                 observation_id,
             )
         )
+
         if observation_id == -1:
-            channel_A_intensity = np.vstack(channel_A_intensity)
-            channel_B_intensity = np.vstack(channel_B_intensity)
+            channel_A_intensity = stack_measurement_array(channel_A_intensity)
+            channel_B_intensity = stack_measurement_array(channel_B_intensity)
     else:
         channel_A_intensity = access_location(cf,
             OBSERVATION_LOCATIONS['rayleigh_signal_channel_A_intensity'],
@@ -93,8 +92,8 @@ def calc_rayleigh_SNR(cf, observation_id=None):
             )
         )
         if observation_id == -1:
-            channel_A_SNR = np.vstack(channel_A_SNR)
-            channel_B_SNR = np.vstack(channel_B_SNR)
+            channel_A_SNR = stack_measurement_array(channel_A_SNR)
+            channel_B_SNR = stack_measurement_array(channel_B_SNR)
     else:
         channel_A_SNR = access_location(cf,
             OBSERVATION_LOCATIONS['rayleigh_channel_A_SNR'],
