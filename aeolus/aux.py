@@ -69,6 +69,26 @@ def _make_calc_albedo_nadir_aux_mrc_rrc(lon_location, lat_location):
     return _inner
 
 
+def _checkCorrectIdentifier(location, alternative_location):
+    def _inner(cf):
+        print location
+        try:
+            values = cf.fetch(*location)
+        except Exception as e:
+            try:
+                values = cf.fetch(*alternative_location)
+            except Exception as e:
+                raise e
+
+        return values
+    return _inner
+
+getCurrentSNR = _checkCorrectIdentifier(
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_snr']
+)
+
+
 # ------------------------------------------------------------------------------
 # AUX ISR
 # ------------------------------------------------------------------------------
@@ -271,9 +291,15 @@ AUX_MRC_LOCATIONS = {
     'reference_pulse_zero_frequency':                       ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Reference_Pulse_Response_Calibration/Reference_Pulse_Zero_Frequency'],
     'reference_pulse_error_mie_response_std_dev':           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Reference_Pulse_Response_Calibration/Reference_Pulse_Error_Mie_Response_Std_Dev'],
     'reference_pulse_offset_frequency':                     ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Reference_Pulse_Response_Calibration/Reference_Pulse_Offset_Frequency'],
-    'satisfied_min_valid_freq_steps_per_cal':               ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Satisfied_Min_Valid_Freq_Per_Cal'],
+    'satisfied_min_valid_freq_steps_per_cal':               _checkCorrectIdentifier(
+                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Satisfied_Min_Valid_Freq_Per_Cal'],
+                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Measurement_Calibration_Validity/Satisfied_Min_Valid_Freq_Per_Cal']
+                                                            ),
     'freq_offset_data_monotonic':                           ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Freq_Offset_Data_Monotonic'],
-    'num_of_valid_frequency_steps':                         ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Num_Valid_Frequency_Steps'],
+    'num_of_valid_frequency_steps':                         _checkCorrectIdentifier(
+                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Num_Valid_Frequency_Steps'],
+                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Measurement_Calibration_Validity/Num_Valid_Frequency_Steps'],
+                                                            ),
     'measurement_mean_sensitivity_valid':                   ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Measurement_Calibration_Validity/Mean_Sensitivity_Valid'],
     'measurement_error_response_std_dev_valid':             ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Measurement_Calibration_Validity/Error_Response_Std_Dev_Valid'],
     'measurement_zero_frequency_response_valid':            ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_MRC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Calibration_Validity_Indicators/Measurement_Calibration_Validity/Zero_Freq_Response_Valid'],
