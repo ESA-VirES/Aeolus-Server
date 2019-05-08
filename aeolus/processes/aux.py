@@ -40,6 +40,9 @@ from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.base import ExtractionProcessBase
 
 
+STRING_LENGTH = 10
+
+
 class Level1BAUXExtractBase(ExtractionProcessBase):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
         Level1B products of the specified collections.
@@ -169,14 +172,34 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
                         )
                     )
 
+            if isinstance(data[0], str) and 'nchar' not in ds.dimensions:
+                ds.createDimension('nchar', STRING_LENGTH)
+
             # create new variable (+ dimensions)
             if field_name not in group.variables:
-                group.createVariable(
-                    field_name, '%s%i' % (
-                        data.dtype.kind, data.dtype.itemsize
-                    ),
-                    ('calibration') if isscalar else ('calibration', array_dim)
-                )[:] = data
+                # we need special handling for string data
+                if isinstance(data[0], str):
+                    var = group.createVariable(
+                        field_name, 'c',
+                        ('calibration', 'nchar')
+                        if isscalar else
+                        ('calibration', array_dim, 'nchar')
+                    )
+                    var[:] = netCDF4.stringtochar(
+                        data.astype('S%d' % STRING_LENGTH)
+                    )
+
+                else:
+                    var = group.createVariable(
+                        field_name, '%s%i' % (
+                            data.dtype.kind, data.dtype.itemsize
+                        ),
+                        ('calibration')
+                        if isscalar else
+                        ('calibration', array_dim)
+                    )
+
+                    var[:] = data
 
             # append to existing variable
             else:
