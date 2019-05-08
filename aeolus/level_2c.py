@@ -197,6 +197,20 @@ calc_rayleigh_profile_albedo_off_nadir = _make_calc_albedo_off_nadir(
     'rayleigh_profile_lat_of_DEM_intersection',
 )
 
+def _checkCorrectIdentifier(location, alternative_location):
+    def _inner(cf):
+        try:
+            values = cf.fetch(*location)
+        except Exception as e:
+            try:
+                values = cf.fetch(*alternative_location)
+            except Exception as e:
+                raise e
+
+        return values
+    return _inner
+
+
 
 locations = {
     'mie_measurement_map':                                          ['/meas_map', -1, 'mie_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
@@ -273,14 +287,26 @@ locations = {
     # TODO: mie_bin_classification and rayleigh_bin_classification not specified
     # 'mie_bin_classification':                                       ['/meas_product_confid_data', -1, 'l2b_mie_classification_qc/l2b_mie_meas_bin_classification', -1, 'l2b_mie_meas_bin_class_flags1'],
     # 'rayleigh_bin_classification':                                  ['/meas_product_confid_data', -1, 'l2b_rayleigh_classification_qc/l2b_rayleigh_meas_bin_classification', -1, 'l2b_rayleigh_meas_bin_class_flags1'],
-    'optical_prop_algo_extinction':                                 ['/meas_product_confid_data', -1, 'opt_prop_result/extinction_iterative'],
-    'optical_prop_algo_scattering_ratio':                           ['/meas_product_confid_data', -1, 'opt_prop_result/scattering_ratio_iterative'],
-    'optical_prop_crosstalk_detected':                              ['/meas_product_confid_data', -1, 'opt_prop_result/xtalk_detected'],
+    'optical_prop_algo_extinction':                                 _checkCorrectIdentifier(
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/extinction_iterative'],
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'extinction_iterative']
+                                                                    ),
+    'optical_prop_algo_scattering_ratio':                           _checkCorrectIdentifier(
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/scattering_ratio_iterative'],
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'scattering_ratio_iterative']
+                                                                    ),
+    'optical_prop_crosstalk_detected':                              _checkCorrectIdentifier(
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/xtalk_detected'],
+                                                                        ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'xtalk_detected']
+                                                                    ),
     'mie_wind_result_HLOS_error':                                   ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/hlos_error_estimate'],
     'mie_wind_result_QC_flags_1':                                   ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags1'],
     'mie_wind_result_QC_flags_2':                                   ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
     'mie_wind_result_QC_flags_3':                                   ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags3'],
-    'mie_wind_result_SNR':                                          ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
+    'mie_wind_result_SNR':                                          _checkCorrectIdentifier(
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/intref_fitting_mie_snr']
+                                                                    ),
     'mie_wind_result_scattering_ratio':                             ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
     'rayleigh_wind_result_HLOS_error':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
     'rayleigh_wind_result_QC_flags_1':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],

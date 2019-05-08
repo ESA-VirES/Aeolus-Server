@@ -71,7 +71,6 @@ def _make_calc_albedo_nadir_aux_mrc_rrc(lon_location, lat_location):
 
 def _checkCorrectIdentifier(location, alternative_location):
     def _inner(cf):
-        print location
         try:
             values = cf.fetch(*location)
         except Exception as e:
@@ -82,11 +81,6 @@ def _checkCorrectIdentifier(location, alternative_location):
 
         return values
     return _inner
-
-getCurrentSNR = _checkCorrectIdentifier(
-    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
-    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_snr']
-)
 
 
 # ------------------------------------------------------------------------------

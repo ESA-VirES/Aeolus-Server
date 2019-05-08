@@ -175,7 +175,6 @@ calc_rayleigh_grouping_stop_time = _make_grouping_time_accessor(
 
 def _checkCorrectIdentifier(location, alternative_location):
     def _inner(cf):
-        print location
         try:
             values = cf.fetch(*location)
         except Exception as e:
