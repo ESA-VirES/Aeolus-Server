@@ -205,8 +205,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             for name, values in observation_data.items():
                 if not values.shape[0]:
                     continue
+
                 isscalar = values[0].ndim == 0
-                # values = np.hstack(values) if isscalar else np.vstack(values)
 
                 if np.ma.is_masked(values):
                     values.set_fill_value(
@@ -218,8 +218,10 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
                     # Create one, if it not yet existed
+
                     array_dim_name = None
                     if not isscalar:
+                        values = np.vstack(values)
                         array_dim_size = values.shape[-1]
                         array_dim_name = "array_%d" % array_dim_size
                         if array_dim_name not in ds.dimensions:
@@ -242,7 +244,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('measurements')
 
             for name, values in measurement_data.items():
-                if values is None:
+                if values is None or values.shape[0]:
                     continue
 
                 isscalar = values.ndim == 2
@@ -297,6 +299,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('groups')
 
             for name, values in group_data.items():
+                if not values.shape[0]:
+                    continue
+
                 isscalar = values[0].ndim == 0
 
                 if np.ma.is_masked(values):
@@ -340,6 +345,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('ica')
 
             for name, values in ica_data.items():
+                if not values.shape[0]:
+                    continue
+
                 isscalar = values[0].ndim == 0
 
                 if np.ma.is_masked(values):
