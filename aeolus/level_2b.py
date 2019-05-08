@@ -29,7 +29,7 @@
 
 import numpy as np
 
-from aeolus.coda_utils import access_location
+from aeolus.coda_utils import access_location, check_fields
 from aeolus.albedo import sample_offnadir
 from aeolus.extraction.accumulated import AccumulatedDataExtractor
 
@@ -173,6 +173,26 @@ calc_rayleigh_grouping_stop_time = _make_grouping_time_accessor(
     'rayleigh_grouping_start_meas_per_obs',
 )
 
+def _checkCorrectIdentifier(location, alternative_location):
+    def _inner(cf):
+        print location
+        try:
+            values = cf.fetch(*location)
+        except Exception as e:
+            try:
+                values = cf.fetch(*alternative_location)
+            except Exception as e:
+                raise e
+
+        return values
+    return _inner
+
+getCurrentSNR = _checkCorrectIdentifier(
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_snr']
+)
+
+
 locations = {
     'mie_measurement_map':                              ['/meas_map', -1, 'mie_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
     'rayleigh_measurement_map':                         ['/meas_map', -1, 'rayleigh_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
@@ -258,7 +278,7 @@ locations = {
     'mie_wind_result_QC_flags_1':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags1'],
     'mie_wind_result_QC_flags_2':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
     'mie_wind_result_QC_flags_3':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags3'],
-    'mie_wind_result_SNR':                              ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
+    'mie_wind_result_SNR':                              getCurrentSNR,
     'mie_wind_result_scattering_ratio':                 ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
     'rayleigh_wind_result_HLOS_error':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
     'rayleigh_wind_result_QC_flags_1':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],
