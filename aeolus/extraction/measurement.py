@@ -68,7 +68,8 @@ class MeasurementDataExtractor(object):
             self.observation_locations.keys() +
             self.measurement_locations.keys() +
             self.group_locations.keys() +
-            self.ica_locations.keys(),
+            self.ica_locations.keys() +
+            self.sca_locations.keys(),
             'filter'
         )
         check_fields(
