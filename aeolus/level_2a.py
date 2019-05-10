@@ -217,7 +217,6 @@ def calculate_albedo_off_nadir_meas(cf, observation_id=-1):
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
     'L1B_centroid_time_obs':                        calculate_L1B_centroid_time_obs,
-    'SCA_time_obs':                                 ['/sca_optical_properties', -1, 'starttime'],
     'MCA_time_obs':                                 ['/mca_optical_properties', -1, 'starttime'],
     'longitude_of_DEM_intersection_obs':            calculate_longitude_of_DEM_intersection_obs,
     'latitude_of_DEM_intersection_obs':             calculate_latitude_of_DEM_intersection_obs,
@@ -225,24 +224,7 @@ OBSERVATION_LOCATIONS = {
     'geoid_separation_obs':                         ['/geolocation', -1, 'geoid_separation'],
     'mie_altitude_obs':                             calculate_mie_altitude_obs,
     'rayleigh_altitude_obs':                        calculate_rayleigh_altitude_obs,
-    'SCA_middle_bin_altitude_obs':                  ['/sca_optical_properties', -1, 'geolocation_middle_bins', -1, 'altitude'],
     'L1B_num_of_meas_per_obs':                      ['/geolocation', -1, 'num_meas_eff'],
-    'SCA_QC_flag':                                  ['/sca_pcd', -1, 'qc_flag'],
-    'SCA_extinction_variance':                      ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'extinction_variance'],
-    'SCA_backscatter_variance':                     ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'backscatter_variance'],
-    'SCA_LOD_variance':                             ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'lod_variance'],
-    'SCA_middle_bin_extinction_variance':           ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'extinction_variance'],
-    'SCA_middle_bin_backscatter_variance':          ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'backscatter_variance'],
-    'SCA_middle_bin_LOD_variance':                  ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'lod_variance'],
-    'SCA_middle_bin_BER_variance':                  ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'ber_variance'],
-    'SCA_extinction':                               ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'extinction'],
-    'SCA_backscatter':                              ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'backscatter'],
-    'SCA_LOD':                                      ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'lod'],
-    'SCA_SR':                                       ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'sr'],
-    'SCA_middle_bin_extinction':                    ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'extinction'],
-    'SCA_middle_bin_backscatter':                   ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'backscatter'],
-    'SCA_middle_bin_LOD':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lod'],
-    'SCA_middle_bin_BER':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'],
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
     'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
@@ -313,6 +295,27 @@ ICA_LOCATIONS = {
     'ICA_LOD':                                      ['/ica_optical_properties', -1, 'ica_optical_properties', -1, 'lod'],
 }
 
+SCA_LOCATIONS = {
+    'SCA_QC_flag':                                  ['/sca_pcd', -1, 'qc_flag'],
+    'SCA_extinction_variance':                      ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'extinction_variance'],
+    'SCA_backscatter_variance':                     ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'backscatter_variance'],
+    'SCA_LOD_variance':                             ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'lod_variance'],
+    'SCA_middle_bin_extinction_variance':           ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'extinction_variance'],
+    'SCA_middle_bin_backscatter_variance':          ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'backscatter_variance'],
+    'SCA_middle_bin_LOD_variance':                  ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'lod_variance'],
+    'SCA_middle_bin_BER_variance':                  ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'ber_variance'],
+    'SCA_time_obs':                                 ['/sca_optical_properties', -1, 'starttime'],
+    'SCA_extinction':                               ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'extinction'],
+    'SCA_backscatter':                              ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'backscatter'],
+    'SCA_LOD':                                      ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'lod'],
+    'SCA_SR':                                       ['/sca_optical_properties', -1, 'sca_optical_properties', -1, 'sr'],
+    'SCA_middle_bin_altitude_obs':                  ['/sca_optical_properties', -1, 'geolocation_middle_bins', -1, 'altitude'],
+    'SCA_middle_bin_extinction':                    ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'extinction'],
+    'SCA_middle_bin_backscatter':                   ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'backscatter'],
+    'SCA_middle_bin_LOD':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lod'],
+    'SCA_middle_bin_BER':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'],
+}
+
 ARRAY_FIELDS = set([
     'mie_altitude_obs',
     'rayleigh_altitude_obs',
@@ -349,6 +352,7 @@ class L2AMeasurementDataExtractor(MeasurementDataExtractor):
     measurement_locations = MEASUREMENT_LOCATIONS
     group_locations = GROUP_LOCATIONS
     ica_locations = ICA_LOCATIONS
+    sca_locations = SCA_LOCATIONS
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):

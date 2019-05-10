@@ -58,7 +58,7 @@ class MeasurementDataExtractor(object):
 
     def extract_data(self, filenames, filters,
                      observation_fields, measurement_fields, group_fields,
-                     ica_fields, simple_observation_filters=False):
+                     ica_fields, sca_fields, simple_observation_filters=False):
         """ Extract the data from the given filename(s) and apply the given
             filters.
         """
@@ -100,6 +100,7 @@ class MeasurementDataExtractor(object):
             out_measurement_data = defaultdict(list)
             out_group_data = defaultdict(list)
             out_ica_data = defaultdict(list)
+            out_sca_data = defaultdict(list)
 
             next_cf = files[i + 1][0] if (i + 1) < len(files) else None
 
@@ -134,6 +135,12 @@ class MeasurementDataExtractor(object):
                 name: value
                 for name, value in filters.items()
                 if name in self.ica_locations
+            }
+
+            sca_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.sca_locations
             }
 
             with cf:
@@ -187,7 +194,10 @@ class MeasurementDataExtractor(object):
                     )
 
                     if filtered_observation_ids is not None:
-                        data = data[filtered_observation_ids]
+                        try:
+                            data = data[filtered_observation_ids]
+                        except:
+                            import pdb; pdb.set_trace()
 
                     if data.shape[0] and field_name in self.array_fields:
                         data = np.vstack(data)
@@ -319,9 +329,69 @@ class MeasurementDataExtractor(object):
 
                     out_ica_data[field_name] = data
 
+                # handle SCA filters/fields
+                sca_mask = None
+                sca_array_mask = None
+                for field_name, filter_value in sca_filters.items():
+                    location = self.sca_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'SCA_DATA', field_name, location
+                    )
+
+                    new_mask = make_mask(
+                        data, filter_value.get('min'), filter_value.get('max'),
+                        field_name in self.array_fields
+                    )
+
+                    sca_mask = combine_mask(new_mask, sca_mask)
+
+                    if field_name in self.array_fields:
+                        data = np.vstack(data)
+                        new_array_mask = make_array_mask(
+                            data, **filter_value
+                        )
+                        sca_array_mask = combine_mask(
+                            new_array_mask, sca_array_mask
+                        )
+
+                if sca_mask is not None:
+                    filtered_sca_ids = np.nonzero(sca_mask)
+                    if sca_array_mask is not None:
+                        sca_array_mask = sca_array_mask[
+                            filtered_sca_ids
+                        ]
+                else:
+                    filtered_sca_ids = None
+
+                if sca_array_mask is not None:
+                    # for np.ma.MaskedArrays we need True/False the other way
+                    # around
+                    sca_array_mask = np.logical_not(
+                        sca_array_mask
+                    )
+
+                # fetch the requested SCA fields, filter accordingly and
+                # write to the output dict
+                for field_name in sca_fields:
+                    location = self.sca_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'SCA_DATA', field_name, location
+                    )
+
+                    if filtered_sca_ids is not None:
+                        data = data[filtered_sca_ids]
+
+                    if data.shape[0] and field_name in self.array_fields:
+                        data = np.vstack(data)
+                        data = np.ma.MaskedArray(data, sca_array_mask)
+
+                    out_sca_data[field_name] = data
+
                 yield (
                     out_observation_data, out_measurement_data,
-                    out_group_data, out_ica_data
+                    out_group_data, out_ica_data, out_sca_data
                 )
 
     def _read_measurements(self, cf, ds, measurement_fields, filters,
