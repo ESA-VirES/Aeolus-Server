@@ -151,6 +151,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 defaultdict(list),
                 defaultdict(list),
                 defaultdict(list),
+                defaultdict(list),
             ]
 
             for data_kinds in data_iterator:
@@ -169,6 +170,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 measurement_data=accumulated_data[1],
                 group_data=accumulated_data[2],
                 ica_data=accumulated_data[3],
+                sca_data=accumulated_data[4],
             )
 
             out_data[collection.identifier] = collection_data

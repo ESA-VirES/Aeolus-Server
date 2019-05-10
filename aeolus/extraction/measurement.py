@@ -194,10 +194,7 @@ class MeasurementDataExtractor(object):
                     )
 
                     if filtered_observation_ids is not None:
-                        try:
-                            data = data[filtered_observation_ids]
-                        except:
-                            import pdb; pdb.set_trace()
+                        data = data[filtered_observation_ids]
 
                     if data.shape[0] and field_name in self.array_fields:
                         data = np.vstack(data)
