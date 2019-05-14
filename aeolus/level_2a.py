@@ -214,6 +214,22 @@ def calculate_albedo_off_nadir_meas(cf, observation_id=-1):
     return calculate_albedo_off_nadir(cf, observation_id)
 
 
+def calculate_SCA_longitude_of_DEM_intersection(cf):
+    sca_mask = cf.fetch('/meas_pcd', -1, 'l2a_processing_qc/sca_applied')
+    values = access_location(cf,
+        OBSERVATION_LOCATIONS['longitude_of_DEM_intersection_obs']
+    )
+    return values[sca_mask.nonzero()]
+
+
+def calculate_SCA_latitude_of_DEM_intersection(cf):
+    sca_mask = cf.fetch('/meas_pcd', -1, 'l2a_processing_qc/sca_applied')
+    values = access_location(cf,
+        OBSERVATION_LOCATIONS['latitude_of_DEM_intersection_obs']
+    )
+    return values[sca_mask.nonzero()]
+
+
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
     'L1B_centroid_time_obs':                        calculate_L1B_centroid_time_obs,
@@ -314,6 +330,8 @@ SCA_LOCATIONS = {
     'SCA_middle_bin_backscatter':                   ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'backscatter'],
     'SCA_middle_bin_LOD':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lod'],
     'SCA_middle_bin_BER':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'],
+    'SCA_longitude_of_DEM_intersection':            calculate_SCA_longitude_of_DEM_intersection,
+    'SCA_latitude_of_DEM_intersection':             calculate_SCA_latitude_of_DEM_intersection,
 }
 
 ARRAY_FIELDS = set([

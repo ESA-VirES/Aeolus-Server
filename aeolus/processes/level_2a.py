@@ -105,5 +105,13 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
                 'min': tpl_box[1],
                 'max': tpl_box[3]
             }
+            data_filters['SCA_longitude_of_DEM_intersection'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2]
+            }
+            data_filters['SCA_latitude_of_DEM_intersection'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3]
+            }
 
         return data_filters
