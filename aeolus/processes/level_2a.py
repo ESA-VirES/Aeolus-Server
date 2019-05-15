@@ -62,6 +62,11 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
+        ("sca_fields", LiteralData(
+            'sca_fields', str, optional=True, default=None,
+            title="Data variables",
+            abstract="Comma-separated list of the extracted data variables."
+        )),
     ]
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
@@ -74,6 +79,7 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             group_start_time={'min': begin_time},
             group_end_time={'max': end_time},
             ICA_time_obs={'min': begin_time, 'max': end_time},
+            SCA_time_obs={'min': begin_time, 'max': end_time},
             **(filters if filters else {})
         )
 
@@ -96,6 +102,14 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
                 'max': tpl_box[3]
             }
             data_filters['latitude_of_DEM_intersection_meas'] = {
+                'min': tpl_box[1],
+                'max': tpl_box[3]
+            }
+            data_filters['SCA_longitude_of_DEM_intersection'] = {
+                'min': tpl_box[0],
+                'max': tpl_box[2]
+            }
+            data_filters['SCA_latitude_of_DEM_intersection'] = {
                 'min': tpl_box[1],
                 'max': tpl_box[3]
             }

@@ -106,6 +106,11 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         else:
             ica_fields = []
 
+        if kw.get('sca_fields'):
+            sca_fields = kw['sca_fields'].split(',')
+        else:
+            sca_fields = []
+
         # create the iterator: yielding collection + sub iterators
         # the sub iterators iterate over all data files and yield the selected
         # and filtered fields
@@ -132,6 +137,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 measurement_fields=measurement_fields,
                 group_fields=group_fields,
                 ica_fields=ica_fields,
+                sca_fields=sca_fields,
                 simple_observation_filters=True,
             ))
             for collection, products in collection_products
@@ -141,6 +147,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         out_data = {}
         for collection, data_iterator in out_data_iterator:
             accumulated_data = [
+                defaultdict(list),
                 defaultdict(list),
                 defaultdict(list),
                 defaultdict(list),
@@ -163,6 +170,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 measurement_data=accumulated_data[1],
                 group_data=accumulated_data[2],
                 ica_data=accumulated_data[3],
+                sca_data=accumulated_data[4],
             )
 
             out_data[collection.identifier] = collection_data
@@ -174,6 +182,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         measurement_data = file_data[1]
         group_data = file_data[2]
         ica_data = file_data[3]
+        sca_data = file_data[4]
 
         if observation_data and 'observation' not in ds.dimensions:
             ds.createDimension('observation', None)
@@ -199,14 +208,20 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         elif ica_data:
             num_icas = ds.dimensions['ica_dim'].size
 
+        if sca_data and 'sca_dim' not in ds.dimensions:
+            ds.createDimension('sca_dim', None)
+            num_scas = 0
+        elif sca_data:
+            num_scas = ds.dimensions['sca_dim'].size
+
         if observation_data:
             group = ds.createGroup('observations')
 
             for name, values in observation_data.items():
                 if not values.shape[0]:
                     continue
+
                 isscalar = values[0].ndim == 0
-                # values = np.hstack(values) if isscalar else np.vstack(values)
 
                 if np.ma.is_masked(values):
                     values.set_fill_value(
@@ -218,8 +233,10 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
                     # Create one, if it not yet existed
+
                     array_dim_name = None
                     if not isscalar:
+                        values = np.vstack(values)
                         array_dim_size = values.shape[-1]
                         array_dim_name = "array_%d" % array_dim_size
                         if array_dim_name not in ds.dimensions:
@@ -242,7 +259,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('measurements')
 
             for name, values in measurement_data.items():
-                if values is None:
+                if values is None or values.shape[0]:
                     continue
 
                 isscalar = values.ndim == 2
@@ -297,6 +314,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('groups')
 
             for name, values in group_data.items():
+                if not values.shape[0]:
+                    continue
+
                 isscalar = values[0].ndim == 0
 
                 if np.ma.is_masked(values):
@@ -340,6 +360,9 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('ica')
 
             for name, values in ica_data.items():
+                if not values.shape[0]:
+                    continue
+
                 isscalar = values[0].ndim == 0
 
                 if np.ma.is_masked(values):
@@ -384,6 +407,60 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     var = group[name]
                     end = num_icas + values.shape[0]
                     var[num_icas:end] = values
+
+        if sca_data:
+            group = ds.createGroup('sca')
+
+            for name, values in sca_data.items():
+                if not values.shape[0]:
+                    continue
+
+                isscalar = values[0].ndim == 0
+
+                if np.ma.is_masked(values):
+                    values.set_fill_value(
+                        netCDF4.default_fillvals.get(
+                            netcdf_dtype(values.dtype)
+                        )
+                    )
+
+                if isscalar:
+                    values = np.hstack(values)
+                else:
+                    values = np.vstack(values)
+
+                if name not in group.variables:
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
+                        if np.ma.is_masked(values):
+                            values.set_fill_value(
+                                netCDF4.default_fillvals.get(
+                                    netcdf_dtype(values.dtype)
+                                )
+                            )
+
+                    var = ds.createVariable(
+                        '/sca/%s' % name, netcdf_dtype(values.dtype), (
+                            'sca_dim',
+                        ) if isscalar else (
+                            'sca_dim',
+                            array_dim_name,
+                        )
+                    )
+
+                    var[:] = values
+
+                else:
+                    var = group[name]
+                    end = num_scas + values.shape[0]
+                    var[num_scas:end] = values
 
 
 def netcdf_dtype(numpy_dtype):
