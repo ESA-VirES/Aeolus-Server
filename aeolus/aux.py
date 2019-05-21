@@ -612,7 +612,7 @@ AUX_ZWC_LOCATIONS = {
                                                             ),
     'rayleigh_height_difference_top_to_DEM_ground_bin':     _checkCorrectIdentifier(
                                                                 ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Height_Difference_Top_to_Expected'],
-                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', 'Height_Difference_Top_to_Expected', -1],
+                                                                ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', 'Height_Difference_Expected_to_Top', -1],
                                                             ),
     'rayleigh_channel_A_ground_SNR_meas':                   _checkCorrectIdentifier(
                                                                 ['/Earth_Explorer_File/Data_Block/Auxiliary_Calibration_ZWC/List_of_Data_Set_Records/Data_Set_Record', -1, 'Validity_Indicators/List_of_Rayleigh_Measurement_Validity_Indicators/Rayleigh_Measurement_Validity_Indicators', -1, 'Channel_A_Mean_Ground_Bin_SNR'],
