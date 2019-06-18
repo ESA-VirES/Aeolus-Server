@@ -218,7 +218,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             group = ds.createGroup('observations')
 
             for name, values in observation_data.items():
-                if not values or not values.shape[0]:
+                if not values.shape[0]:
                     continue
 
                 isscalar = values[0].ndim == 0
