@@ -77,35 +77,49 @@ def calc_rayleigh_signal_intensity_measurement(cf, observation_id=-1):
 
 
 def calc_rayleigh_signal_intensity_range_corrected(cf):
-    signal_intensity = calc_rayleigh_signal_intensity(cf)
-    rayleigh_range = access_location(cf,
-        OBSERVATION_LOCATIONS['rayleigh_range'],
-    )
+    signal_intensity = np.vstack(
+        calc_rayleigh_signal_intensity(cf)
+    )[:, :24]
+    rayleigh_range = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_range'],
+        )
+    )[:, 1:]
 
     return signal_intensity * (rayleigh_range ** 2)
 
 
 def calc_mie_signal_intensity_ranged_corrected(cf):
-    mie_range = access_location(cf,
-        OBSERVATION_LOCATIONS['mie_range'],
-    )
-    signal_intensity = access_location(cf,
-        OBSERVATION_LOCATIONS['mie_signal_intensity'],
-    )
+    mie_range = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_range'],
+        )
+    )[:, :24]
+    signal_intensity = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_signal_intensity'],
+        )
+    )[:, 1:]
 
     return signal_intensity * (mie_range ** 2)
 
 
 def calc_rayleigh_signal_intensity_normalised(cf):
-    signal_intensity = calc_rayleigh_signal_intensity(cf)
-    rayleigh_range = access_location(cf,
-        OBSERVATION_LOCATIONS['rayleigh_range'],
-    )
+    signal_intensity = np.vstack(
+        calc_rayleigh_signal_intensity(cf)
+    )[:, :24]
+    rayleigh_range = np.vstack(
+            access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_range'],
+        )
+    )[:, 1:]
 
     integration_time_location = [
         'measurement', -1, 'mie_time_delays', 'bin_layer_integration_time'
     ]
-    integration_times = access_location(cf, integration_time_location)
+    integration_times = np.vstack(
+        access_location(cf, integration_time_location)
+    )
 
     return signal_intensity * (rayleigh_range ** 2) * (101 / integration_times)
 
