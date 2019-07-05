@@ -40,9 +40,10 @@ from django.contrib.gis import geos
 from django.contrib.gis.db.models import (
     GeoManager, MultiLineStringField, OneToOneField
 )
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Permission
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_migrate
+from django.db.models.signals import post_save, post_migrate, pre_delete
+from django.contrib.contenttypes.models import ContentType
 
 from eoxserver.resources.coverages.models import (
     collect_eo_metadata, Collection, Coverage, RangeType,
@@ -166,8 +167,39 @@ def post_migrate_receiver(*args, **kwargs):
     for user in User.objects.all():
         get_or_create_user_product_collection(user)
 
+    # make sure we create the permissions for that collection
+    content_type = ContentType.objects.get_for_model(ProductCollection)
+    for collection in ProductCollection.objects.all():
+        Permission.objects.get_or_create(
+            codename='access_%s' % collection.identifier,
+            name='Can access collection %s' % collection.identifier,
+            content_type=content_type,
+        )
+
 
 @receiver(post_save)
 def post_save_receiver(sender, instance, created, *args, **kwargs):
     if issubclass(sender, User) and created:
         get_or_create_user_product_collection(instance)
+
+    elif issubclass(sender, ProductCollection) and created:
+        # make sure we create the permissions for that collection
+        content_type = ContentType.objects.get_for_model(ProductCollection)
+        Permission.objects.get_or_create(
+            codename='access_%s' % instance.identifier,
+            name='Can access collection %s' % instance.identifier,
+            content_type=content_type,
+        )
+
+
+@receiver(pre_delete)
+def pre_delete_receiver(sender, instance, *args, **kwargs):
+    if issubclass(sender, User):
+        get_or_create_user_product_collection(instance).delete()
+
+    # make sure we clean up the permissions for that collection
+    elif issubclass(sender, ProductCollection):
+        Permission.objects.get(
+            codename='access_%s' % instance.identifier,
+            name='Can access collection %s' % instance.identifier,
+        ).delete()

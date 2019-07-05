@@ -407,8 +407,14 @@ class ExtractionProcessBase(AsyncProcessBase):
             for identifier in collection_ids.data
         ]
 
+        user = get_user(username)
+
         for collection in collections:
             if collection.user and collection.user.username != username:
+                raise Exception(
+                    "No access to '%s' permitted" % collection.identifier
+                )
+            elif not user.has_perm("aeolus.access_%s" % collection.identifier):
                 raise Exception(
                     "No access to '%s' permitted" % collection.identifier
                 )
