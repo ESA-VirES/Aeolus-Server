@@ -40,6 +40,7 @@ import json
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
+from djanog.core.exceptions import PermissionDenied
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
@@ -409,13 +410,16 @@ class ExtractionProcessBase(AsyncProcessBase):
 
         user = get_user(username)
 
+        if not user:
+            raise PermissionDenied("Not logged in")
+
         for collection in collections:
             if collection.user and collection.user.username != username:
-                raise Exception(
+                raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
             elif not user.has_perm("aeolus.access_%s" % collection.identifier):
-                raise Exception(
+                raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
 
