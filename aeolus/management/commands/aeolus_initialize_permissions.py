@@ -77,7 +77,7 @@ class Command(CommandOutputMixIn, BaseCommand):
             for user in auth.User.objects.all():
                 user.groups.add(group)
                 self.print_msg(
-                    "Added user %s group %s" % (user.name, group.name)
+                    "Added user %s group %s" % (user.username, group.name)
                 )
 
         # privileged group has access to all collections
