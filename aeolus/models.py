@@ -40,7 +40,7 @@ from django.contrib.gis import geos
 from django.contrib.gis.db.models import (
     GeoManager, MultiLineStringField, OneToOneField
 )
-from django.contrib.auth.models import User, Permission
+from django.contrib.auth.models import User, Permission, Group
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_migrate, pre_delete
 from django.contrib.contenttypes.models import ContentType
@@ -176,11 +176,42 @@ def post_migrate_receiver(*args, **kwargs):
             content_type=content_type,
         )
 
+    # default group does not have access to AUX collections
+    group, created = Group.objects.get_or_create(
+        name='aeolus_default'
+    )
+    if created:
+        # get permissions for "open" collections
+        permissions = Permission.objects.filter(
+            codename__startswith='access_'
+        ).exclude(
+            codename__startswith='access_AUX'
+        )
+        group.permissions = permissions
+        group.save()
+
+        for user in User.objects.all():
+            user.groups.add(group)
+
+    # privileged group has access to all collections
+    group, created = Group.objects.get_or_create(
+        name='aeolus_privileged'
+    )
+    if created:
+        # get permissions for "open" collections
+        permissions = Permission.objects.filter(
+            codename__startswith='access_'
+        )
+        group.permissions = permissions
+        group.save()
+
 
 @receiver(post_save)
 def post_save_receiver(sender, instance, created, *args, **kwargs):
     if issubclass(sender, User) and created:
         get_or_create_user_product_collection(instance)
+        group = Group.objects.get(name='aeolus_default')
+        instance.groups.add(group)
 
     elif issubclass(sender, ProductCollection) and created:
         # make sure we create the permissions for that collection

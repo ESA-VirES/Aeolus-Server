@@ -57,3 +57,38 @@ class Command(CommandOutputMixIn, BaseCommand):
                     "Permission for collection '%s' already exists"
                     % collection.identifier
                 )
+
+        # default group does not have access to AUX collections
+        group, created = auth.Group.objects.get_or_create(
+            name='aeolus_default'
+        )
+        if created:
+            # get permissions for "open" collections
+            permissions = auth.Permission.objects.filter(
+                codename__startswith='access_'
+            ).exclude(
+                codename__startswith='access_AUX'
+            )
+            group.permissions = permissions
+            group.save()
+
+            self.print_msg("Created group %s" % group.name)
+
+            for user in auth.User.objects.all():
+                user.groups.add(group)
+                self.print_msg(
+                    "Added user %s group %s" % (user.name, group.name)
+                )
+
+        # privileged group has access to all collections
+        group, created = auth.Group.objects.get_or_create(
+            name='aeolus_privileged'
+        )
+        if created:
+            # get permissions for "open" collections
+            permissions = auth.Permission.objects.filter(
+                codename__startswith='access_'
+            )
+            group.permissions = permissions
+            group.save()
+            self.print_msg("Created group %s" % group.name)
