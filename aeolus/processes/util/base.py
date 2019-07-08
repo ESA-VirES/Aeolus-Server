@@ -40,7 +40,8 @@ import json
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
-from djanog.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied
+
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
