@@ -31,6 +31,7 @@ from eoxserver.resources.coverages.management.commands import (
 )
 from django.contrib.auth import models as auth
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 
 from aeolus.models import ProductCollection
 
@@ -68,6 +69,8 @@ class Command(CommandOutputMixIn, BaseCommand):
                 codename__startswith='access_'
             ).exclude(
                 codename__startswith='access_AUX'
+            ).exclude(
+                codename__startswith='access_user_collection'
             )
             group.permissions = permissions
             group.save()
@@ -88,7 +91,17 @@ class Command(CommandOutputMixIn, BaseCommand):
             # get permissions for "open" collections
             permissions = auth.Permission.objects.filter(
                 codename__startswith='access_'
+            ).exclude(
+                codename__startswith='access_user_collection'
             )
             group.permissions = permissions
             group.save()
             self.print_msg("Created group %s" % group.name)
+
+        # give each user access to his own user collection
+        for user in auth.User.objects.all():
+            user.user_permissions.add(
+                auth.Permission.objects.get(
+                    codename='access_user_collection_%s' % user.username
+                )
+            )

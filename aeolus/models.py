@@ -186,6 +186,8 @@ def post_migrate_receiver(*args, **kwargs):
             codename__startswith='access_'
         ).exclude(
             codename__startswith='access_AUX'
+        ).exclude(
+            codename__startswith='access_user_collection'
         )
         group.permissions = permissions
         group.save()
@@ -201,9 +203,19 @@ def post_migrate_receiver(*args, **kwargs):
         # get permissions for "open" collections
         permissions = Permission.objects.filter(
             codename__startswith='access_'
+        ).exclude(
+            codename__startswith='access_user_collection'
         )
         group.permissions = permissions
         group.save()
+
+    # give each user access to his own user collection
+    for user in User.objects.all():
+        user.user_permissions.add(
+            Permission.objects.get(
+                codename='access_user_collection_%s' % user.username
+            )
+        )
 
 
 @receiver(post_save)
@@ -216,11 +228,24 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
     elif issubclass(sender, ProductCollection) and created:
         # make sure we create the permissions for that collection
         content_type = ContentType.objects.get_for_model(ProductCollection)
-        Permission.objects.get_or_create(
+        perm = Permission.objects.get_or_create(
             codename='access_%s' % instance.identifier,
             name='Can access collection %s' % instance.identifier,
             content_type=content_type,
         )
+
+        # if it is a user collection give that user the permission to view it
+        if instance.user:
+            instance.user.user_permissions.add(perm)
+
+        # otherwise add it to the according groups
+        else:
+            if 'AUX' in instance.identifier:
+                group = Group.objects.get(name='aeolus_privileged')
+                group.permissions.add(perm)
+
+            group = Group.objects.get(name='aeolus_default')
+            group.permissions.add(perm)
 
 
 @receiver(pre_delete)

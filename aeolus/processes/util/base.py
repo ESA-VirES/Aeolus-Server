@@ -415,11 +415,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             raise PermissionDenied("Not logged in")
 
         for collection in collections:
-            if collection.user and collection.user.username != username:
-                raise PermissionDenied(
-                    "No access to '%s' permitted" % collection.identifier
-                )
-            elif not user.has_perm("aeolus.access_%s" % collection.identifier):
+            if not user.has_perm("aeolus.access_%s" % collection.identifier):
                 raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
