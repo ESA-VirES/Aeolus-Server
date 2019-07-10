@@ -76,6 +76,74 @@ def calc_rayleigh_signal_intensity_measurement(cf, observation_id=-1):
     return calc_rayleigh_signal_intensity(cf, observation_id)
 
 
+def calc_rayleigh_signal_intensity_range_corrected(cf):
+    signal_intensity = np.vstack(
+        calc_rayleigh_signal_intensity(cf)
+    )[:, :24]
+    rayleigh_range = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_range'],
+        )
+    )[:, 1:]
+
+    return signal_intensity * (rayleigh_range ** 2)
+
+
+def calc_mie_signal_intensity_ranged_corrected(cf):
+    signal_intensity = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_signal_intensity'],
+        )
+    )[:, :24]
+    mie_range = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_range'],
+        )
+    )[:, 1:]
+
+    return signal_intensity * (mie_range ** 2)
+
+
+def calc_rayleigh_signal_intensity_normalised(cf):
+    signal_intensity = np.vstack(
+        calc_rayleigh_signal_intensity(cf)
+    )[:, :24]
+    rayleigh_range = np.vstack(
+            access_location(cf,
+            OBSERVATION_LOCATIONS['rayleigh_range'],
+        )
+    )[:, 1:]
+
+    integration_time_location = [
+        'measurement', -1, 'rayleigh_time_delays', 'bin_layer_integration_time'
+    ]
+    integration_times = np.vstack(
+        access_location(cf, integration_time_location)
+    )
+
+    return signal_intensity * (rayleigh_range ** 2) * (101 / integration_times)
+
+
+def calc_mie_signal_intensity_ranged_normalised(cf, observation_id=None):
+    signal_intensity = np.vstack(
+        calc_rayleigh_signal_intensity(cf)
+    )[:, :24]
+    mie_range = np.vstack(
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_range'],
+        )
+    )[:, 1:]
+
+    integration_time_location = [
+        'measurement', -1, 'mie_time_delays', 'bin_layer_integration_time'
+    ]
+    integration_times = np.vstack(
+        access_location(cf, integration_time_location)
+    )
+
+    return signal_intensity * (mie_range ** 2) * (101 / integration_times)
+
+
 def calc_rayleigh_SNR(cf, observation_id=None):
     if observation_id is not None:
         channel_A_SNR = access_location(cf,
@@ -186,6 +254,10 @@ OBSERVATION_LOCATIONS = {
     'rayleigh_signal_channel_A_intensity':      ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_a'],
     'rayleigh_signal_channel_B_intensity':      ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
     'rayleigh_signal_intensity':                calc_rayleigh_signal_intensity,
+    'rayleigh_signal_intensity_range_corrected': calc_rayleigh_signal_intensity_range_corrected,
+    'mie_signal_intensity_ranged_corrected':    calc_mie_signal_intensity_ranged_corrected,
+    'rayleigh_signal_intensity_normalised':     calc_rayleigh_signal_intensity_normalised,
+    'mie_signal_intensity_ranged_normalised':   calc_mie_signal_intensity_ranged_normalised,
     'mie_ground_velocity':                      ['/ground_wind_detection', -1, 'mie_ground_correction_velocity'],
     'rayleigh_ground_velocity':                 ['/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'],
     'mie_HBE_ground_velocity':                  ['/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'],
@@ -240,7 +312,7 @@ MEASUREMENT_LOCATIONS = {
     'rayleigh_mean_emitted_frequency':          ['/product_confidence_data', -1, 'measurement_pcd', -1, 'rayleigh_mean_emitted_frequency'],
     'mie_emitted_frequency_std_dev':            ['/product_confidence_data', -1, 'measurement_pcd', -1, 'mie_emitted_frequency_std_dev'],
     'rayleigh_emitted_frequency_std_dev':       ['/product_confidence_data', -1, 'measurement_pcd', -1, 'rayleigh_emitted_frequency_std_dev'],
-    
+
     'mie_scattering_ratio':                     ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'refined_scattering_ratio_mie'],
     'mie_SNR':                                  ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'mie_signal_to_noise_ratio'],
     'rayleigh_channel_A_SNR':                   ['/product_confidence_data', -1, 'measurement_pcd', -1, 'meas_alt_bin_pcd', -1, 'rayleigh_signal_to_noise_ratio_channel_a'],
