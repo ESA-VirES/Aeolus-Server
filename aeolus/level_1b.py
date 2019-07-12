@@ -89,7 +89,7 @@ def calc_rayleigh_signal_intensity_range_corrected(cf):
     return signal_intensity * (rayleigh_range ** 2)
 
 
-def calc_mie_signal_intensity_ranged_corrected(cf):
+def calc_mie_signal_intensity_range_corrected(cf):
     signal_intensity = np.vstack(
         access_location(cf,
             OBSERVATION_LOCATIONS['mie_signal_intensity'],
@@ -124,7 +124,7 @@ def calc_rayleigh_signal_intensity_normalised(cf):
     return signal_intensity * (rayleigh_range ** 2) * (101 / integration_times)
 
 
-def calc_mie_signal_intensity_ranged_normalised(cf, observation_id=None):
+def calc_mie_signal_intensity_normalised(cf, observation_id=None):
     signal_intensity = np.vstack(
         calc_rayleigh_signal_intensity(cf)
     )[:, :24]
@@ -255,9 +255,9 @@ OBSERVATION_LOCATIONS = {
     'rayleigh_signal_channel_B_intensity':      ['/useful_signal', -1, 'observation_useful_signals/rayleigh_altitude_bin_useful_signal_info', -1, 'useful_signal_channel_b'],
     'rayleigh_signal_intensity':                calc_rayleigh_signal_intensity,
     'rayleigh_signal_intensity_range_corrected': calc_rayleigh_signal_intensity_range_corrected,
-    'mie_signal_intensity_ranged_corrected':    calc_mie_signal_intensity_ranged_corrected,
+    'mie_signal_intensity_range_corrected':    calc_mie_signal_intensity_range_corrected,
     'rayleigh_signal_intensity_normalised':     calc_rayleigh_signal_intensity_normalised,
-    'mie_signal_intensity_ranged_normalised':   calc_mie_signal_intensity_ranged_normalised,
+    'mie_signal_intensity_normalised':   calc_mie_signal_intensity_normalised,
     'mie_ground_velocity':                      ['/ground_wind_detection', -1, 'mie_ground_correction_velocity'],
     'rayleigh_ground_velocity':                 ['/ground_wind_detection', -1, 'rayleigh_ground_correction_velocity'],
     'mie_HBE_ground_velocity':                  ['/ground_wind_detection', -1, 'hbe_mie_ground_correction_velocity'],
