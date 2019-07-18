@@ -121,12 +121,14 @@ def calc_rayleigh_signal_intensity_normalised(cf):
         access_location(cf, integration_time_location)
     )
 
-    return signal_intensity * (rayleigh_range ** 2) * (101 / integration_times)
+    return signal_intensity * (rayleigh_range ** 2) * (101.0 / integration_times)
 
 
 def calc_mie_signal_intensity_normalised(cf, observation_id=None):
     signal_intensity = np.vstack(
-        calc_rayleigh_signal_intensity(cf)
+        access_location(cf,
+            OBSERVATION_LOCATIONS['mie_signal_intensity'],
+        )
     )[:, :24]
     mie_range = np.vstack(
         access_location(cf,
@@ -141,7 +143,7 @@ def calc_mie_signal_intensity_normalised(cf, observation_id=None):
         access_location(cf, integration_time_location)
     )
 
-    return signal_intensity * (mie_range ** 2) * (101 / integration_times)
+    return signal_intensity * (mie_range ** 2) * (101.0 / integration_times)
 
 
 def calc_rayleigh_SNR(cf, observation_id=None):
