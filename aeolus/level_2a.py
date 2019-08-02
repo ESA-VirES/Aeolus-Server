@@ -125,6 +125,9 @@ def calculate_rayleigh_altitude_obs(cf):
     rayleigh_altitude_meas = cf.fetch(
         *MEASUREMENT_LOCATIONS['rayleigh_altitude_meas']
     )
+    sca_mask = cf.fetch('/meas_pcd', -1, 'l2a_processing_qc/sca_applied')
+    rayleigh_altitude_meas = rayleigh_altitude_meas[sca_mask.nonzero()]
+
     rayleigh_altitude_obs = np.zeros(
         (rayleigh_altitude_meas.shape[0],), np.object
     )
@@ -239,7 +242,6 @@ OBSERVATION_LOCATIONS = {
     'altitude_of_DEM_intersection_obs':             calculate_altitude_of_DEM_intersection_obs,
     'geoid_separation_obs':                         ['/geolocation', -1, 'geoid_separation'],
     'mie_altitude_obs':                             calculate_mie_altitude_obs,
-    'rayleigh_altitude_obs':                        calculate_rayleigh_altitude_obs,
     'L1B_num_of_meas_per_obs':                      ['/geolocation', -1, 'num_meas_eff'],
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
@@ -332,6 +334,7 @@ SCA_LOCATIONS = {
     'SCA_middle_bin_BER':                           ['/sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'],
     'SCA_longitude_of_DEM_intersection':            calculate_SCA_longitude_of_DEM_intersection,
     'SCA_latitude_of_DEM_intersection':             calculate_SCA_latitude_of_DEM_intersection,
+    'rayleigh_altitude_obs':                        calculate_rayleigh_altitude_obs,
 }
 
 ARRAY_FIELDS = set([
