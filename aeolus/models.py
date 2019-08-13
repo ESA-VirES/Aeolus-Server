@@ -180,40 +180,40 @@ def post_migrate_receiver(*args, **kwargs):
     group, created = Group.objects.get_or_create(
         name='aeolus_default'
     )
-    if created:
-        # get permissions for "open" collections, but exclude user collections
-        # and restricted collections
-        permissions = Permission.objects.filter(
-            codename__startswith='access_'
-        ).exclude(
-            codename__in=[
-                'access_AUX_MRC_1B',
-                'access_AUX_RRC_1B',
-                'access_AUX_ISR_1B',
-                'access_AUX_ZWC_1B',
-            ]
-        ).exclude(
-            codename__startswith='access_user_collection'
-        )
-        group.permissions = permissions
-        group.save()
 
-        for user in User.objects.all():
-            user.groups.add(group)
+    # get permissions for "open" collections, but exclude user collections
+    # and restricted collections
+    permissions = Permission.objects.filter(
+        codename__startswith='access_'
+    ).exclude(
+        codename__in=[
+            'access_AUX_MRC_1B',
+            'access_AUX_RRC_1B',
+            'access_AUX_ISR_1B',
+            'access_AUX_ZWC_1B',
+        ]
+    ).exclude(
+        codename__startswith='access_user_collection'
+    )
+    group.permissions = permissions
+    group.save()
+
+    for user in User.objects.all():
+        user.groups.add(group)
 
     # privileged group has access to all collections
-    group, created = Group.objects.get_or_create(
+    group, _ = Group.objects.get_or_create(
         name='aeolus_privileged'
     )
-    if created:
-        # get permissions for "open" collections, but exclude user collections
-        permissions = Permission.objects.filter(
-            codename__startswith='access_'
-        ).exclude(
-            codename__startswith='access_user_collection'
-        )
-        group.permissions = permissions
-        group.save()
+
+    # get permissions for "open" collections, but exclude user collections
+    permissions = Permission.objects.filter(
+        codename__startswith='access_'
+    ).exclude(
+        codename__startswith='access_user_collection'
+    )
+    group.permissions = permissions
+    group.save()
 
     # give each user access to his own user collection
     for user in User.objects.all():
