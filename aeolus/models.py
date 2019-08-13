@@ -228,7 +228,7 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
     elif issubclass(sender, ProductCollection) and created:
         # make sure we create the permissions for that collection
         content_type = ContentType.objects.get_for_model(ProductCollection)
-        perm = Permission.objects.get_or_create(
+        perm, _ = Permission.objects.get_or_create(
             codename='access_%s' % instance.identifier,
             name='Can access collection %s' % instance.identifier,
             content_type=content_type,
