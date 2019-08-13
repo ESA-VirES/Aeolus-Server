@@ -244,7 +244,8 @@ OBSERVATION_LOCATIONS = {
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
     'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
-
+    'sca_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/sca_applied'],
+    'ica_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/ica_applied'],
     # Albedo values:
     'albedo_off_nadir':                             calculate_albedo_off_nadir,
 }
