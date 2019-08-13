@@ -181,11 +181,17 @@ def post_migrate_receiver(*args, **kwargs):
         name='aeolus_default'
     )
     if created:
-        # get permissions for "open" collections
+        # get permissions for "open" collections, but exclude user collections
+        # and restricted collections
         permissions = Permission.objects.filter(
             codename__startswith='access_'
         ).exclude(
-            codename__startswith='access_AUX'
+            codename__in=[
+                'access_AUX_MRC_1B',
+                'access_AUX_RRC_1B',
+                'access_AUX_ISR_1B',
+                'access_AUX_ZWC_1B',
+            ]
         ).exclude(
             codename__startswith='access_user_collection'
         )
@@ -200,7 +206,7 @@ def post_migrate_receiver(*args, **kwargs):
         name='aeolus_privileged'
     )
     if created:
-        # get permissions for "open" collections
+        # get permissions for "open" collections, but exclude user collections
         permissions = Permission.objects.filter(
             codename__startswith='access_'
         ).exclude(
