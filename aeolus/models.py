@@ -40,9 +40,10 @@ from django.contrib.gis import geos
 from django.contrib.gis.db.models import (
     GeoManager, MultiLineStringField, OneToOneField
 )
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Permission, Group
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_migrate
+from django.db.models.signals import post_save, post_migrate, pre_delete
+from django.contrib.contenttypes.models import ContentType
 
 from eoxserver.resources.coverages.models import (
     collect_eo_metadata, Collection, Coverage, RangeType,
@@ -166,8 +167,101 @@ def post_migrate_receiver(*args, **kwargs):
     for user in User.objects.all():
         get_or_create_user_product_collection(user)
 
+    # make sure we create the permissions for that collection
+    content_type = ContentType.objects.get_for_model(ProductCollection)
+    for collection in ProductCollection.objects.all():
+        Permission.objects.get_or_create(
+            codename='access_%s' % collection.identifier,
+            name='Can access collection %s' % collection.identifier,
+            content_type=content_type,
+        )
+
+    # default group does not have access to AUX collections
+    group, created = Group.objects.get_or_create(
+        name='aeolus_default'
+    )
+
+    # get permissions for "open" collections, but exclude user collections
+    # and restricted collections
+    permissions = Permission.objects.filter(
+        codename__startswith='access_'
+    ).exclude(
+        codename__in=[
+            'access_AUX_MRC_1B',
+            'access_AUX_RRC_1B',
+            'access_AUX_ISR_1B',
+            'access_AUX_ZWC_1B',
+        ]
+    ).exclude(
+        codename__startswith='access_user_collection'
+    )
+    group.permissions = permissions
+    group.save()
+
+    for user in User.objects.all():
+        user.groups.add(group)
+
+    # privileged group has access to all collections
+    group, _ = Group.objects.get_or_create(
+        name='aeolus_privileged'
+    )
+
+    # get permissions for "open" collections, but exclude user collections
+    permissions = Permission.objects.filter(
+        codename__startswith='access_'
+    ).exclude(
+        codename__startswith='access_user_collection'
+    )
+    group.permissions = permissions
+    group.save()
+
+    # give each user access to his own user collection
+    for user in User.objects.all():
+        user.user_permissions.add(
+            Permission.objects.get(
+                codename='access_user_collection_%s' % user.username
+            )
+        )
+
 
 @receiver(post_save)
 def post_save_receiver(sender, instance, created, *args, **kwargs):
     if issubclass(sender, User) and created:
         get_or_create_user_product_collection(instance)
+        group = Group.objects.get(name='aeolus_default')
+        instance.groups.add(group)
+
+    elif issubclass(sender, ProductCollection) and created:
+        # make sure we create the permissions for that collection
+        content_type = ContentType.objects.get_for_model(ProductCollection)
+        perm, _ = Permission.objects.get_or_create(
+            codename='access_%s' % instance.identifier,
+            name='Can access collection %s' % instance.identifier,
+            content_type=content_type,
+        )
+
+        # if it is a user collection give that user the permission to view it
+        if instance.user:
+            instance.user.user_permissions.add(perm)
+
+        # otherwise add it to the according groups
+        else:
+            if 'AUX' in instance.identifier:
+                group = Group.objects.get(name='aeolus_privileged')
+                group.permissions.add(perm)
+
+            group = Group.objects.get(name='aeolus_default')
+            group.permissions.add(perm)
+
+
+@receiver(pre_delete)
+def pre_delete_receiver(sender, instance, *args, **kwargs):
+    if issubclass(sender, User):
+        get_or_create_user_product_collection(instance).delete()
+
+    # make sure we clean up the permissions for that collection
+    elif issubclass(sender, ProductCollection):
+        Permission.objects.get(
+            codename='access_%s' % instance.identifier,
+            name='Can access collection %s' % instance.identifier,
+        ).delete()
