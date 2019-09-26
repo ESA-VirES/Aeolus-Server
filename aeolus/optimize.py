@@ -174,7 +174,10 @@ def create_optimized_file(input_file, range_type_name, output_path):
                                 values.dtype.itemsize
                             ), dimensions=dimnames)
 
-                            var[:] = np.hstack(np.hstack(values))
+                            if dimensionality in (2, 3):
+                                values = np.hstack(np.hstack(values))
+
+                            var[:] = values
     except:
         try:
             logger.error(
