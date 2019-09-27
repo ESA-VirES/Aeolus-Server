@@ -502,6 +502,7 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
             access_location(cf, location[:1] + [int(i)] + location[2:])
             for i in observation_ids
         ]
+        data = np.vstack(data)
 
     else:
         data = access_location(cf, location)[observation_ids]
@@ -509,7 +510,7 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
     if is_array:
         return stack_measurement_array(data)
 
-    return np.vstack(data)
+    return data
 
 
 def optimized_access(cf, ds, group_name, field_name, location):
