@@ -91,10 +91,14 @@ calc_rayleigh_profile_alt_of_DEM_intersection = _make_profile_from_wind_calc(
 
 
 def _calc_velocity(u, v):
+    u = u.astype(np.float32)
+    v = v.astype(np.float32)
     return np.sqrt(np.square(u) + np.square(v))
 
 
 def _calc_direction(u, v):
+    u = u.astype(np.float32)
+    v = v.astype(np.float32)
     return (180 / math.pi) * np.arctan2(u, v) + 180
 
 
