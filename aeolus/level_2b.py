@@ -191,6 +191,11 @@ getCurrentSNR = _checkCorrectIdentifier(
     ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_snr']
 )
 
+getCurrentMieScatteringRation = _checkCorrectIdentifier(
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+    ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_sr']
+)
+
 
 locations = {
     'mie_measurement_map':                              ['/meas_map', -1, 'mie_map_of_l1b_meas_used', -1, 'which_l2b_wind_id'],
@@ -278,7 +283,7 @@ locations = {
     'mie_wind_result_QC_flags_2':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
     'mie_wind_result_QC_flags_3':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags3'],
     'mie_wind_result_SNR':                              getCurrentSNR,
-    'mie_wind_result_scattering_ratio':                 ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+    'mie_wind_result_scattering_ratio':                 getCurrentMieScatteringRation,
     'rayleigh_wind_result_HLOS_error':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
     'rayleigh_wind_result_QC_flags_1':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],
     'rayleigh_wind_result_QC_flags_2':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags2'],
