@@ -311,7 +311,10 @@ locations = {
                                                                         ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
                                                                         ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/intref_fitting_mie_snr']
                                                                     ),
-    'mie_wind_result_scattering_ratio':                             ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+    'mie_wind_result_scattering_ratio':                             _checkCorrectIdentifier(
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/intref_fitting_mie_sr']
+                                                                    ),
     'rayleigh_wind_result_HLOS_error':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
     'rayleigh_wind_result_QC_flags_1':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],
     'rayleigh_wind_result_QC_flags_2':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags2'],
