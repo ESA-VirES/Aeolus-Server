@@ -32,7 +32,8 @@
 #from django.contrib.gis import forms
 from django.contrib.gis import admin
 from eoxserver.resources.coverages.admin import (
-    CoverageAdmin, CollectionAdmin
+    CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
+    DataItemInline,
 )
 from aeolus.models import Product, ProductCollection, Job
 
@@ -82,6 +83,7 @@ class ProductAdmin(CoverageAdmin):
             'description': 'Geospatial metadata'
         }),
     )
+    inlines = (DataItemInline, CollectionInline)
 
 admin.site.register(Product, ProductAdmin)
 
@@ -100,5 +102,6 @@ class ProductCollectionAdmin(CollectionAdmin):
             )
         }),
     )
+    inlines = (EOObjectInline, CollectionInline)
 
 admin.site.register(ProductCollection, ProductCollectionAdmin)
