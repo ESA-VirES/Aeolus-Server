@@ -46,10 +46,9 @@ from django.db.models.signals import post_save, post_migrate, pre_delete
 from django.contrib.contenttypes.models import ContentType
 
 from eoxserver.resources.coverages.models import (
-    collect_eo_metadata, Collection, Coverage, RangeType,
-    EO_OBJECT_TYPE_REGISTRY
+    Collection, Coverage, CoverageType
 )
-
+from eoxserver.resources.coverages.util import collect_eo_metadata
 
 class Job(Model):
     """ VirES WPS asynchronous job.
@@ -95,7 +94,6 @@ class Product(Coverage):
     def duration(self):
         return self.end_time - self.begin_time
 
-EO_OBJECT_TYPE_REGISTRY[301] = Product
 
 
 class ProductCollection(Product, Collection):
@@ -131,7 +129,6 @@ class ProductCollection(Product, Collection):
         #self.ground_path = ground_path
         self.save()
 
-EO_OBJECT_TYPE_REGISTRY[310] = ProductCollection
 
 
 def get_or_create_user_product_collection(user):
@@ -140,7 +137,7 @@ def get_or_create_user_product_collection(user):
     try:
         collection = ProductCollection.objects.get(identifier=identifier)
     except ProductCollection.DoesNotExist:
-        range_type, _ = RangeType.objects.get_or_create(name="user_range_type")
+        range_type, _ = CoverageType.objects.get_or_create(name="user_range_type")
 
         collection = ProductCollection()
         collection.identifier = identifier
