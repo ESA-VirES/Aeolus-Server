@@ -27,8 +27,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from itertools import chain, izip
-from collections import defaultdict
+from itertools import chain
 
 import numpy as np
 
@@ -922,7 +921,7 @@ def extract_data(filenames, filters, fields, aux_type):
                     frequency_masks = [
                         combine_mask(new_mask_, frequency_mask)
                         for new_mask_, frequency_mask
-                        in izip(new_masks, frequency_masks)
+                        in zip(new_masks, frequency_masks)
                     ]
                 else:
                     frequency_masks = new_masks
@@ -939,7 +938,7 @@ def extract_data(filenames, filters, fields, aux_type):
                         frequency_array_masks = [
                             combine_mask(new_array_mask_, array_mask)
                             for new_array_mask_, array_mask
-                            in izip(new_array_masks, frequency_array_masks)
+                            in zip(new_array_masks, frequency_array_masks)
                         ]
                     else:
                         frequency_array_masks = new_array_masks
@@ -956,7 +955,7 @@ def extract_data(filenames, filters, fields, aux_type):
                     frequency_array_masks = [
                         np.logical_not(frequency_array_mask[frequency_ids_])
                         for frequency_ids_, frequency_array_mask
-                        in izip(frequency_ids, frequency_array_masks)
+                        in zip(frequency_ids, frequency_array_masks)
                     ]
 
             # iterate over all requested frequency fields and write the
@@ -970,7 +969,7 @@ def extract_data(filenames, filters, fields, aux_type):
                     field_data = [
                         frequency_field_data[mask]
                         for frequency_field_data, mask
-                        in izip(field_data, frequency_ids)
+                        in zip(field_data, frequency_ids)
                     ]
                 else:
                     field_data = list(field_data)
@@ -987,7 +986,7 @@ def extract_data(filenames, filters, fields, aux_type):
                     #     field_data = [
                     #         np.ma.MaskedArray(frequency_field_data, mask)
                     #         for frequency_field_data, mask
-                    #         in izip(field_data, frequency_array_masks)
+                    #         in zip(field_data, frequency_array_masks)
                     #     ]
 
                 # write out data

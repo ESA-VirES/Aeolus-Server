@@ -28,7 +28,6 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
-from itertools import izip
 from copy import deepcopy
 
 import numpy as np

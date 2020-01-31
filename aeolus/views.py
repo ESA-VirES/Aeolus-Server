@@ -40,8 +40,9 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from eoxserver.resources.coverages.models import Product
 
-from aeolus.models import get_or_create_user_product_collection, Product
+from aeolus.models import get_or_create_user_collection
 from aeolus.registration import register_product
 
 
@@ -112,7 +113,7 @@ def handle_uploaded_file(uploaded_file, user):
 
     # register the newly created file and insert it into the user collection
     with transaction.atomic():
-        collection = get_or_create_user_product_collection(user)
+        collection = get_or_create_user_collection(user)
 
         try:
             product = register_product(

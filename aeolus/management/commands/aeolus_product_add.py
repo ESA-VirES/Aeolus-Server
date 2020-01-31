@@ -34,17 +34,14 @@ import sys
 from optparse import make_option
 from os.path import basename
 from django.core.management.base import CommandError, BaseCommand
+from django.db import transaction
 from eoxserver.core import env
 from eoxserver.backends.models import Storage, Package, DataItem
 from eoxserver.backends.component import BackendComponent
-from eoxserver.resources.coverages.models import RangeType
-from eoxserver.resources.coverages.management.commands import (
-    CommandOutputMixIn, nested_commit_on_success
+from eoxserver.resources.coverages.models import (
+    CollectionType, Product, Collection
 )
-from aeolus.models import Product, ProductCollection
-from aeolus.management.commands.aeolus_dataset_register import (
-    VirESMetadataReader
-)
+from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
 
 from aeolus.registration import register_product
 
@@ -196,15 +193,15 @@ class Command(CommandOutputMixIn, BaseCommand):
             if product and kwargs['insert_into_collection']:
                 try:
                     if kwargs.get('collection_id'):
-                        collection = ProductCollection.objects.get(
+                        collection = Collection.objects.get(
                             identifier=kwargs.get('collection_id')
                         )
                     else:
-                        collection = ProductCollection.objects.get(
-                            range_type=product.range_type
+                        collection = Collection.objects.get(
+                            collection_type__allowed_product_types=product.product_type
                         )
                     collection_link_product(collection, product)
-                except ProductCollection.DoesNotExist:
+                except Collection.DoesNotExist:
                     self.print_err(
                         'Could not find collection for product %s'
                         % identifier
@@ -230,7 +227,7 @@ class Command(CommandOutputMixIn, BaseCommand):
 
 def collection_exists(identifier):
     """ Return True if the product collection exists. """
-    return ProductCollection.objects.filter(identifier=identifier).exists()
+    return Collection.objects.filter(identifier=identifier).exists()
 
 
 # @nested_commit_on_success
@@ -251,7 +248,7 @@ def collection_exists(identifier):
 #     return collection
 
 
-@nested_commit_on_success
+@transaction.atomic
 def collection_link_product(collection, product):
     """ Link product to a collection """
     collection.insert(product)
@@ -262,7 +259,7 @@ def product_is_registered(identifier):
     return Product.objects.filter(identifier=identifier).exists()
 
 
-@nested_commit_on_success
+@transaction.atomic
 def product_register(identifier, data_file):
     """ Register product. """
 
@@ -270,14 +267,14 @@ def product_register(identifier, data_file):
     return product
 
 
-@nested_commit_on_success
+@transaction.atomic
 def product_deregister(identifier):
     """ De-register product. """
     product = Product.objects.get(identifier=identifier).cast()
     product.delete()
 
 
-@nested_commit_on_success
+@transaction.atomic
 def product_update(identifier, *args, **kwargs):
     """ Update existing product. """
     product_deregister(identifier)

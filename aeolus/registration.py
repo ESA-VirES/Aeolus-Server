@@ -128,12 +128,8 @@ def get_dbl_metadata(codafile):
         "end_time": codafile.fetch_date('mph/sensing_stop'),
         "footprint": MultiPolygon(Polygon.from_bbox(ground_path.extent)),
         "ground_path": ground_path,
-
         "format": "DBL",
-        "size_x": 1,
-        "size_y": 1,
-
-        "range_type_name": codafile.product_type,
+        "product_type_name": codafile.product_type,
     }
 
 
@@ -176,12 +172,8 @@ def get_eef_metadata(codafile):
     return dict(
         footprint=footprint,
         ground_path=ground_path,
-
         format="EEF",
-        size_x=1,
-        size_y=1,
-
-        range_type_name=codafile.product_type,
+        product_type_name=codafile.product_type,
         **metadata
     )
 

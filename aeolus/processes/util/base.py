@@ -411,14 +411,14 @@ class ExtractionProcessBase(AsyncProcessBase):
 
         user = get_user(username)
 
-        if not user:
-            raise PermissionDenied("Not logged in")
+        # if not user:
+        #     raise PermissionDenied("Not logged in")
 
-        for collection in collections:
-            if not user.has_perm("aeolus.access_%s" % collection.identifier):
-                raise PermissionDenied(
-                    "No access to '%s' permitted" % collection.identifier
-                )
+        # for collection in collections:
+        #     if not user.has_perm("aeolus.access_%s" % collection.identifier):
+        #         raise PermissionDenied(
+        #             "No access to '%s' permitted" % collection.identifier
+        #         )
 
         return [
             (collection, models.Product.objects.filter(

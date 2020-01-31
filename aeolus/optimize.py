@@ -82,17 +82,17 @@ class OptimizationError(Exception):
     pass
 
 
-def create_optimized_file(input_file, range_type_name, output_path):
+def create_optimized_file(input_file, product_type_name, output_path):
     """ Creates an optimized netcdf file for the given product
     """
 
     # get the CODA locations for later access
 
     try:
-        location_groups = LOCATIONS[range_type_name]
+        location_groups = LOCATIONS[product_type_name]
     except KeyError:
         raise OptimizationError(
-            "Product range type '%s' is not supported" % range_type_name
+            "Product range type '%s' is not supported" % product_type_name
         )
 
     if os.path.exists(output_path):
@@ -114,7 +114,7 @@ def create_optimized_file(input_file, range_type_name, output_path):
                         logger.info("Optimizing %s/%s" % (group_name, name))
                         yield (group_name, name)
 
-                        if range_type_name == 'AUX_MET_12' and len(location) > 3:
+                        if product_type_name == 'AUX_MET_12' and len(location) > 3:
                             first = location[:1] + [0] + location[2:]
                             first_values = access_location(in_cf, first)
 

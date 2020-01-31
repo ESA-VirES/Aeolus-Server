@@ -28,7 +28,6 @@
 # ------------------------------------------------------------------------------
 
 import os
-from itertools import izip
 
 import numpy as np
 
@@ -79,7 +78,7 @@ def _sample_data_item(year, month, index, lons, lats):
 
     out_data = np.empty((len(lons),))
 
-    for i, coord in enumerate(izip(lons, lats)):
+    for i, coord in enumerate(zip(lons, lats)):
         lon, lat = coord
 
         px = int(round((lon - o_x) / res_x))

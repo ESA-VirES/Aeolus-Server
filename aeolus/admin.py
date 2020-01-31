@@ -31,11 +31,11 @@
 
 #from django.contrib.gis import forms
 from django.contrib.gis import admin
-from eoxserver.resources.coverages.admin import (
-    CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
-    DataItemInline,
-)
-from aeolus.models import Product, ProductCollection, Job
+# from eoxserver.resources.coverages.admin import (
+#     CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
+#     DataItemInline,
+# )
+from aeolus.models import Job
 
 
 class JobAdmin(admin.ModelAdmin):
@@ -67,41 +67,41 @@ class JobAdmin(admin.ModelAdmin):
 admin.site.register(Job, JobAdmin)
 
 
-class ProductAdmin(CoverageAdmin):
-    fieldsets = (
-        (None, {
-            'fields': ('identifier', )
-        }),
-        ('Metadata', {
-            'fields': (
-                'range_type',
-                ('size_x', 'size_y'),
-                ('begin_time', 'end_time'),
-                'footprint',
-                'ground_path',
-            ),
-            'description': 'Geospatial metadata'
-        }),
-    )
-    inlines = (DataItemInline, CollectionInline)
+# class ProductAdmin(CoverageAdmin):
+#     fieldsets = (
+#         (None, {
+#             'fields': ('identifier', )
+#         }),
+#         ('Metadata', {
+#             'fields': (
+#                 'range_type',
+#                 ('size_x', 'size_y'),
+#                 ('begin_time', 'end_time'),
+#                 'footprint',
+#                 'ground_path',
+#             ),
+#             'description': 'Geospatial metadata'
+#         }),
+#     )
+#     inlines = (DataItemInline, CollectionInline)
 
-admin.site.register(Product, ProductAdmin)
+# admin.site.register(Product, ProductAdmin)
 
 
-class ProductCollectionAdmin(CollectionAdmin):
-    model = ProductCollection
-    fieldsets = (
-        (None, {
-            'fields': ('identifier',)
-        }),
-        ('Metadata', {
-            'fields': (
-                'range_type',
-                ('begin_time', 'end_time'),
-                'footprint', "ground_path"
-            )
-        }),
-    )
-    inlines = (EOObjectInline, CollectionInline)
+# class ProductCollectionAdmin(CollectionAdmin):
+#     model = ProductCollection
+#     fieldsets = (
+#         (None, {
+#             'fields': ('identifier',)
+#         }),
+#         ('Metadata', {
+#             'fields': (
+#                 'range_type',
+#                 ('begin_time', 'end_time'),
+#                 'footprint', "ground_path"
+#             )
+#         }),
+#     )
+#     inlines = (EOObjectInline, CollectionInline)
 
-admin.site.register(ProductCollection, ProductCollectionAdmin)
+# admin.site.register(ProductCollection, ProductCollectionAdmin)
