@@ -40,7 +40,10 @@ from django.db.models.signals import post_save, post_migrate, pre_delete
 from django.contrib.auth.models import User, Permission, Group
 from django.contrib.contenttypes.models import ContentType
 
-from eoxserver.resources.coverages.models import Collection, CollectionType
+from eoxserver.backends.models import DataItem
+from eoxserver.resources.coverages.models import (
+    Collection, CollectionType, Product
+)
 
 
 class Job(Model):
@@ -88,6 +91,11 @@ class UserCollectionLink(Model):
     """
     user = OneToOneField(User, on_delete=CASCADE, related_name="user_collection")
     collection = OneToOneField(Collection, on_delete=CASCADE, related_name="user_collection")
+
+
+class OptimizedProductDataItem(DataItem):
+    product = OneToOneField(Product, related_name='optimized_data_item')
+
 
 #
 # Helpers
@@ -199,8 +207,9 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
         )
 
         # if it is a user collection give that user the permission to view it
-        if instance.user:
-            instance.user.user_permissions.add(perm)
+        link = UserCollectionLink.objects.filter(collection=instance).first()
+        if link:
+            link.user.user_permissions.add(perm)
 
         # otherwise add it to the according groups
         else:

@@ -29,13 +29,12 @@
 #-------------------------------------------------------------------------------
 # pylint: disable=too-few-public-methods, missing-docstring
 
-#from django.contrib.gis import forms
 from django.contrib.gis import admin
-# from eoxserver.resources.coverages.admin import (
-#     CoverageAdmin, CollectionAdmin, EOObjectInline, CollectionInline,
-#     DataItemInline,
-# )
-from aeolus.models import Job
+from eoxserver.resources.coverages.admin import (
+    ProductAdmin, ProductDataItemInline
+)
+
+from aeolus.models import Job, OptimizedProductDataItem
 
 
 class JobAdmin(admin.ModelAdmin):
@@ -67,41 +66,17 @@ class JobAdmin(admin.ModelAdmin):
 admin.site.register(Job, JobAdmin)
 
 
-# class ProductAdmin(CoverageAdmin):
-#     fieldsets = (
-#         (None, {
-#             'fields': ('identifier', )
-#         }),
-#         ('Metadata', {
-#             'fields': (
-#                 'range_type',
-#                 ('size_x', 'size_y'),
-#                 ('begin_time', 'end_time'),
-#                 'footprint',
-#                 'ground_path',
-#             ),
-#             'description': 'Geospatial metadata'
-#         }),
-#     )
-#     inlines = (DataItemInline, CollectionInline)
-
-# admin.site.register(Product, ProductAdmin)
+class OptimizedProductDataItemInline(admin.TabularInline):
+    model = OptimizedProductDataItem
+    extra = 0
 
 
-# class ProductCollectionAdmin(CollectionAdmin):
-#     model = ProductCollection
-#     fieldsets = (
-#         (None, {
-#             'fields': ('identifier',)
-#         }),
-#         ('Metadata', {
-#             'fields': (
-#                 'range_type',
-#                 ('begin_time', 'end_time'),
-#                 'footprint', "ground_path"
-#             )
-#         }),
-#     )
-#     inlines = (EOObjectInline, CollectionInline)
+# register inline
+if ProductAdmin in admin.site._registry:
+    inlines = admin.site._registry[ProductAdmin].inlines
+else:
+    inlines = ProductAdmin.inlines
 
-# admin.site.register(ProductCollection, ProductCollectionAdmin)
+inlines.insert(
+    inlines.index(ProductDataItemInline) + 1, OptimizedProductDataItemInline
+)

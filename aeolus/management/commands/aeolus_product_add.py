@@ -1,11 +1,11 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 # Products management - fast registration
 #
 # Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
 #
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Copyright (C) 2016 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,21 +25,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # pylint: disable=fixme, import-error, no-self-use, broad-except
 # pylint: disable=missing-docstring, too-many-locals, too-many-branches
 # pylint: disable=redefined-variable-type
 
 import sys
-from optparse import make_option
 from os.path import basename
 from django.core.management.base import CommandError, BaseCommand
 from django.db import transaction
-from eoxserver.core import env
-from eoxserver.backends.models import Storage, Package, DataItem
-from eoxserver.backends.component import BackendComponent
 from eoxserver.resources.coverages.models import (
-    CollectionType, Product, Collection
+    Product, Collection, collection_insert_eo_object
 )
 from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
 
@@ -54,27 +50,20 @@ class Command(CommandOutputMixIn, BaseCommand):
     )
     args = "[<identifier> [<identifier> ...]]"
 
-    option_list = BaseCommand.option_list + (
-        make_option(
+    def add_arguments(self, parser):
+        parser.add_argument(
             "-f", "--file", dest="input_file", default=None,
             help=(
                 "Optional file from which the inputs are read rather "
                 "than form the command line arguments. Use dash to read "
                 "file from standard input."
             )
-        ),
-        # make_option(
-        #     "-r", "--range-type", dest="range_type_name", default="AEOLUS",
-        #     help=(
-        #         "Optional name of the model range type. "
-        #         "Defaults to 'AEOLUS'."
-        #     )
-        # ),
-        make_option(
+        )
+        parser.add_argument(
             "-c", "--collection", dest="collection_id", default=None,
             help="Optional collection the product should be linked to."
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "--conflict", dest="conflict", choices=("IGNORE", "REPLACE"),
             default="IGNORE", help=(
                 "Define how to resolve conflict when the product is already "
@@ -83,16 +72,22 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "old product (remove the old one and insert the new one). "
                 "In case of the REPLACE the collection links are NOT preserved."
             )
-        ),
+        )
 
-        make_option(
+        parser.add_argument(
             "--no-insert", dest="insert_into_collection",
             action="store_false", default=True
-        ),
+        )
         # conflict resolving option
-    )
+        parser.add_argument(
+            'FILES', nargs='*',
+            help=(
+                "The product files to register."
+            )
+        )
 
-    def handle(self, *args, **kwargs):
+    @transaction.atomic
+    def handle(self, **kwargs):
         def filer_lines(lines):
             for line in lines:
                 line = line.partition("#")[0]  # strip comments
@@ -100,45 +95,22 @@ class Command(CommandOutputMixIn, BaseCommand):
                 if line:  # empty lines ignored
                     yield line
 
-        # range_type_name = kwargs["range_type_name"]
-        # try:
-        #     range_type = RangeType.objects.get(name=range_type_name)
-        # except RangeType.DoesNotExist:
-        #     raise CommandError(
-        #         "Invalid range type name '%s'!" % range_type_name
-        #     )
-
-        # collection_ids = (
-        #     [kwargs["collection_id"]] if kwargs["collection_id"] else []
-        # )
-
-        # collections = []
-        # for collection_id in collection_ids:
-        #     try:
-        #         collection = ProductCollection.objects.get(
-        #             identifier=collection_id
-        #         )
-        #     except ProductCollection.DoesNotExist:
-        #         self.print_wrn(
-        #             "The collection '%s' does not exist! A new collection "
-        #             "will be created ..." % collection_id
-        #         )
-        #         collection = collection_create(collection_id, range_type)
-        #     collections.append(collection)
-
         # check collection
         # product generator
-        if kwargs["input_file"] is None:
+        if kwargs["input_file"] is None and kwargs['FILES']:
             # command line input
-            product_filenames = args
+            product_filenames = kwargs['FILES']
         elif kwargs["input_file"] == "-":
             product_filenames = filer_lines(filename for filename in sys.stdin)
-        else:
+        elif kwargs["input_file"]:
             def file_reader(file_name):
                 with open(file_name) as fin:
                     for line in fin:
                         yield line.strip()
             product_filenames = filer_lines(file_reader(kwargs["input_file"]))
+
+        else:
+            raise CommandError('Must provide either --file or list of files')
 
         count = 0
         success_count = 0  # success counter - counts finished registrations
@@ -197,8 +169,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                             identifier=kwargs.get('collection_id')
                         )
                     else:
+                        product_type = product.product_type
                         collection = Collection.objects.get(
-                            collection_type__allowed_product_types=product.product_type
+                            collection_type__allowed_product_types=product_type
                         )
                     collection_link_product(collection, product)
                 except Collection.DoesNotExist:
@@ -230,28 +203,11 @@ def collection_exists(identifier):
     return Collection.objects.filter(identifier=identifier).exists()
 
 
-# @nested_commit_on_success
-# def collection_create(identifier, range_type):
-#     """ Create a new product collection. """
-#     collection = ProductCollection()
-#     collection.identifier = identifier
-#     collection.range_type = range_type
-#     collection.srid = 4326
-#     collection.min_x = -180
-#     collection.min_y = -90
-#     collection.max_x = 180
-#     collection.max_y = 90
-#     collection.size_x = 0
-#     collection.size_y = 1
-#     collection.full_clean()
-#     collection.save()
-#     return collection
-
-
 @transaction.atomic
 def collection_link_product(collection, product):
     """ Link product to a collection """
-    collection.insert(product)
+
+    collection_insert_eo_object(collection, product)
 
 
 def product_is_registered(identifier):
@@ -270,7 +226,7 @@ def product_register(identifier, data_file):
 @transaction.atomic
 def product_deregister(identifier):
     """ De-register product. """
-    product = Product.objects.get(identifier=identifier).cast()
+    product = Product.objects.get(identifier=identifier)
     product.delete()
 
 
@@ -292,41 +248,3 @@ def _split_location(item):
     """
     idx = item.find(":")
     return (None, item) if idx == -1 else (item[:idx], item[idx + 1:])
-
-
-def _get_location_chain(items):
-    """ Returns the tuple
-    """
-    component = BackendComponent(env)
-    storage = None
-    package = None
-
-    storage_type, url = _split_location(items[0])
-    if storage_type:
-        storage_component = component.get_storage_component(storage_type)
-    else:
-        storage_component = None
-
-    if storage_component:
-        storage, _ = Storage.objects.get_or_create(
-            url=url, storage_type=storage_type
-        )
-
-    # packages
-    for item in items[1 if storage else 0:-1]:
-        type_or_format, location = _split_location(item)
-        package_component = component.get_package_component(type_or_format)
-        if package_component:
-            package, _ = Package.objects.get_or_create(
-                location=location, format=format,
-                storage=storage, package=package
-            )
-            storage = None  # override here
-        else:
-            raise Exception(
-                "Could not find package component for format '%s'"
-                % type_or_format
-            )
-
-    format_, location = _split_location(items[-1])
-    return storage, package, format_, location

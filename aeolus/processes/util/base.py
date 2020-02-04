@@ -29,18 +29,16 @@
 
 
 from datetime import datetime, timedelta
-from cStringIO import StringIO
+from io import BytesIO
 import tempfile
 import os.path
 from uuid import uuid4
-from itertools import izip
 from logging import getLogger
 import json
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
@@ -48,6 +46,7 @@ from eoxserver.services.ows.wps.parameters import (
     FormatBinaryRaw, CDFile, Reference, RequestParameter
 )
 from eoxserver.services.ows.wps.exceptions import ServerBusy
+from eoxserver.resources.coverages.models import Collection, Product
 import msgpack
 from netCDF4 import Dataset, stringtochar
 import numpy as np
@@ -297,7 +296,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                             for product in products
                         )
 
-            encoded = StringIO(msgpack.dumps(out_data))
+            encoded = BytesIO(msgpack.dumps(out_data))
 
             # some result logging
             self.access_logger.info(
@@ -323,7 +322,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                 with Dataset(tmppath, "w", format="NETCDF4") as ds:
                     for collection, data_iterator in out_data_iterator:
                         products = collection_products_dict[collection]
-                        enumerated_data = izip(
+                        enumerated_data = zip(
                             enumerate(data_iterator, start=1), products
                         )
                         for (product_idx, file_data), product in enumerated_data:
@@ -350,7 +349,9 @@ class ExtractionProcessBase(AsyncProcessBase):
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
                         'filters': filters.data if filters else None,
-                        'beginTime': isoformat(begin_time) if begin_time else None,
+                        'beginTime': (
+                            isoformat(begin_time) if begin_time else None
+                        ),
                         'endTime': isoformat(end_time) if end_time else None,
                         'bbox': [
                             bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]
@@ -396,7 +397,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             db_filters['ground_path__intersects'] = box
 
         if self.range_type_name:
-            db_filters['range_type__name'] = self.range_type_name
+            db_filters['product_type__name'] = self.range_type_name
 
         return db_filters
 
@@ -405,11 +406,11 @@ class ExtractionProcessBase(AsyncProcessBase):
 
     def get_collection_products(self, collection_ids, db_filters, username):
         collections = [
-            models.ProductCollection.objects.get(identifier=identifier)
+            Collection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
         ]
 
-        user = get_user(username)
+        # user = get_user(username)
 
         # if not user:
         #     raise PermissionDenied("Not logged in")
@@ -421,7 +422,7 @@ class ExtractionProcessBase(AsyncProcessBase):
         #         )
 
         return [
-            (collection, models.Product.objects.filter(
+            (collection, Product.objects.filter(
                 collections=collection,
                 **db_filters
             ).order_by('begin_time'))

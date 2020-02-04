@@ -152,7 +152,7 @@ def create_optimized_file(input_file, product_type_name, output_path):
                                 init_num = values.shape[0]
                                 values = np.vstack(np.hstack(values))
                                 values = values.reshape(
-                                    values.shape[0] / init_num,
+                                    values.shape[0] // init_num,
                                     init_num,
                                     values.shape[1]
                                 ).swapaxes(0, 1)

@@ -122,9 +122,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 )
                 for band_data_item, optimized_data_item in (
                     (
-                        product.data_items.filter(
-                            semantic__startswith='bands'
-                        ).first(),
+                        product.product_data_items.all().first(),
                         product.data_items.filter(
                             semantic__startswith='optimized'
                         ).first(),

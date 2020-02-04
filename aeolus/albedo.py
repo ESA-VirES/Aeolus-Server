@@ -66,7 +66,7 @@ def _sample_data_item(year, month, index, lons, lats):
             year, month)
         )
 
-    data_item = albedo.data_items.get(semantic='bands[%d]' % index)
+    data_item = albedo.arraydata_items.get(field_index=index)
     ds = gdal.Open(data_item.location)
     band = ds.GetRasterBand(1)
 
