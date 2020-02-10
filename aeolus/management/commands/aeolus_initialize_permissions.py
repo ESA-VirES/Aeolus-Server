@@ -26,22 +26,19 @@
 # ------------------------------------------------------------------------------
 
 from django.core.management.base import BaseCommand
-from eoxserver.resources.coverages.management.commands import (
-    CommandOutputMixIn, nested_commit_on_success
-)
 from django.contrib.auth import models as auth
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
-
-from aeolus.models import ProductCollection
+from django.db import transaction
+from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
+from eoxserver.resources.coverages.models import Collection
 
 
 class Command(CommandOutputMixIn, BaseCommand):
-    @nested_commit_on_success
+    @transaction.atomic
     def handle(self, *args, **kwargs):
-        content_type = ContentType.objects.get_for_model(ProductCollection)
+        content_type = ContentType.objects.get_for_model(Collection)
 
-        for collection in ProductCollection.objects.all():
+        for collection in Collection.objects.all():
             _, created = auth.Permission.objects.get_or_create(
                 codename='access_%s' % collection.identifier,
                 name='Can access collection %s' % collection.identifier,
