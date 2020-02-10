@@ -287,7 +287,7 @@ def register_albedo(filename, year, month, replace=False):
 
     grid, _ = coverages.Grid.objects.get_or_create(
         name="Albedo_grid",
-        coordinate_reference_system='EPSG_4326',
+        coordinate_reference_system='EPSG:4326',
         axis_1_name='x',
         axis_2_name='y',
         axis_1_type=0,
@@ -309,7 +309,7 @@ def register_albedo(filename, year, month, replace=False):
         coverage_type=coverage_type,
     )
 
-    for i, path in enumerate((offnadir_location, nadir_location), start=1):
+    for i, path in enumerate((offnadir_location, nadir_location)):
         coverages.ArrayDataItem.objects.create(
             location=path,
             format='application/x-netcdf',
