@@ -94,7 +94,7 @@ class UserCollectionLink(Model):
 
 
 class OptimizedProductDataItem(DataItem):
-    product = OneToOneField(Product, related_name='optimized_data_item')
+    product = OneToOneField(Product, on_delete=CASCADE, related_name='optimized_data_item')
 
 
 #
@@ -161,7 +161,7 @@ def post_migrate_receiver(*args, **kwargs):
     ).exclude(
         codename__startswith='access_user_collection'
     )
-    group.permissions = permissions
+    group.permissions.set(permissions)
     group.save()
 
     for user in User.objects.all():
@@ -178,7 +178,7 @@ def post_migrate_receiver(*args, **kwargs):
     ).exclude(
         codename__startswith='access_user_collection'
     )
-    group.permissions = permissions
+    group.permissions.set(permissions)
     group.save()
 
     # give each user access to his own user collection
