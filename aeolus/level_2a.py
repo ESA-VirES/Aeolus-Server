@@ -229,6 +229,24 @@ def calculate_SCA_latitude_of_DEM_intersection(cf):
     )
     return values[sca_mask.nonzero()]
 
+def _checkCorrectIdentifier(location, alternative_location):
+    def _inner(cf):
+        try:
+            values = cf.fetch(*location)
+        except Exception as e:
+            try:
+                values = cf.fetch(*alternative_location)
+            except Exception as e:
+                raise e
+
+        return values
+    return _inner
+
+getCurrentSCA_flag = _checkCorrectIdentifier(
+    ['/sca_pcd', -1, 'qc_flag'],
+    ['/sca_pcd', -1, 'bin_1_clear']
+)
+
 
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
@@ -313,7 +331,7 @@ ICA_LOCATIONS = {
 }
 
 SCA_LOCATIONS = {
-    'SCA_QC_flag':                                  ['/sca_pcd', -1, 'qc_flag'],
+    'SCA_QC_flag':                                  getCurrentSCA_flag,
     'SCA_extinction_variance':                      ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'extinction_variance'],
     'SCA_backscatter_variance':                     ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'backscatter_variance'],
     'SCA_LOD_variance':                             ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'lod_variance'],
