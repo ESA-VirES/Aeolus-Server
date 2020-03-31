@@ -178,7 +178,8 @@ def get_eef_metadata(codafile):
     )
 
 
-def register_product(filename, overrides):
+def register_product(filename, overrides,
+                     footprint_simplification_tolerance=None):
     """ Registers a DBL file as a :class:`aeolus.models.Product`. Metadata is
         extracted from the specified file or passed.
     """
@@ -201,6 +202,13 @@ def register_product(filename, overrides):
     product_type = coverages.ProductType.objects.get(
         name=metadata.pop('product_type_name')
     )
+
+    if footprint_simplification_tolerance is not None:
+        footprint = metadata.get('footprint')
+        if footprint:
+            metadata['footprint'] = footprint.simplify(
+                footprint_simplification_tolerance
+            )
 
     # Register the product
     product = coverages.Product()

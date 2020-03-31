@@ -73,6 +73,16 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "In case of the REPLACE the collection links are NOT preserved."
             )
         )
+        parser.add_argument(
+            "--simplify",
+            type=float, default=None, dest="simplification_tolerance",
+            help=(
+                "Footprint simplification tolerance. See "
+                "https://docs.djangoproject.com/en/2.2/ref/contrib/gis/geos/"
+                "#django.contrib.gis.geos.GEOSGeometry.simplify for details. "
+                "By default no simplification is performed."
+            )
+        )
 
         parser.add_argument(
             "--no-insert", dest="insert_into_collection",
@@ -141,7 +151,12 @@ class Command(CommandOutputMixIn, BaseCommand):
                     "be replaced." % identifier
                 )
                 try:
-                    product = product_update(identifier, product_filename)
+                    product = product_update(
+                        identifier, product_filename,
+                        simplification_tolerance=kwargs[
+                            "simplification_tolerance"
+                        ]
+                    )
                 except Exception as exc:
                     self.print_traceback(exc, kwargs)
                     self.print_err(
@@ -152,7 +167,12 @@ class Command(CommandOutputMixIn, BaseCommand):
                     continue
             else:  # not registered
                 try:
-                    product = product_register(identifier, product_filename)
+                    product = product_register(
+                        identifier, product_filename,
+                        simplification_tolerance=kwargs[
+                            "simplification_tolerance"
+                        ]
+                    )
                 except Exception as exc:
                     self.print_traceback(exc, kwargs)
                     self.print_err(
@@ -216,10 +236,13 @@ def product_is_registered(identifier):
 
 
 @transaction.atomic
-def product_register(identifier, data_file):
+def product_register(identifier, data_file, simplification_tolerance=None):
     """ Register product. """
 
-    product = register_product(data_file, overrides={'identifier': identifier})
+    product = register_product(
+        data_file, overrides={'identifier': identifier},
+        footprint_simplification_tolerance=simplification_tolerance
+    )
     return product
 
 
