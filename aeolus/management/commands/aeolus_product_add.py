@@ -227,7 +227,7 @@ def collection_exists(identifier):
 def collection_link_product(collection, product):
     """ Link product to a collection """
 
-    collection_insert_eo_object(collection, product)
+    collection_insert_eo_object(collection, product, use_extent=True)
 
 
 def product_is_registered(identifier):
