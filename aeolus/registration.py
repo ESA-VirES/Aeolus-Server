@@ -246,14 +246,26 @@ def register_albedo(filename, year, month, replace=False):
             % (filename, e)
         )
 
-    subdatasets = ds.GetSubDatasets()
-
     nadir_location = offnadir_location = None
-    for subdataset, _ in subdatasets:
-        if subdataset.endswith('ADAM_albedo_nadir'):
-            nadir_location = subdataset
-        elif subdataset.endswith('ADAM_albedo_offnadir'):
-            offnadir_location = subdataset
+
+    # check type of file:
+    if ds.RasterCount == 2:
+        # TIF file with 2 bands
+        subdatasets = []
+        nadir_location = offnadir_location = filename
+    elif ds.RasterCount == 0:
+        # netCDF file with subdatasets
+        subdatasets = ds.GetSubDatasets()
+
+        for subdataset, _ in subdatasets:
+            if subdataset.endswith('ADAM_albedo_nadir'):
+                nadir_location = subdataset
+            elif subdataset.endswith('ADAM_albedo_offnadir'):
+                offnadir_location = subdataset
+    else:
+        raise RegistrationError(
+            "Cannot register Albedo file '%s'" % filename
+        )
 
     if not nadir_location:
         raise RegistrationError(
@@ -264,7 +276,7 @@ def register_albedo(filename, year, month, replace=False):
             "File '%s' is missing the offnadir subdataset" % filename
         )
 
-    sds = gdal.Open(nadir_location)
+    nadir_ds = gdal.Open(nadir_location)
     begin_time = datetime(year, month, 1, tzinfo=utc)
     end_time = datetime(
         begin_time.year + (begin_time.month // 12),
@@ -300,8 +312,8 @@ def register_albedo(filename, year, month, replace=False):
         axis_2_name='y',
         axis_1_type=0,
         axis_2_type=0,
-        axis_1_offset=str(360 / sds.RasterXSize),
-        axis_2_offset=str(-180 / sds.RasterYSize),
+        axis_1_offset=str(360 / nadir_ds.RasterXSize),
+        axis_2_offset=str(-180 / nadir_ds.RasterYSize),
     )
 
     coverage = coverages.Coverage.objects.create(
@@ -310,20 +322,29 @@ def register_albedo(filename, year, month, replace=False):
         end_time=end_time,
         footprint=MultiPolygon(Polygon.from_bbox(extent)),
         grid=grid,
-        axis_1_size=sds.RasterXSize,
-        axis_2_size=sds.RasterYSize,
+        axis_1_size=nadir_ds.RasterXSize,
+        axis_2_size=nadir_ds.RasterYSize,
         axis_1_origin=-180,
         axis_2_origin=90,
         coverage_type=coverage_type,
     )
 
-    for i, path in enumerate((offnadir_location, nadir_location)):
+    if nadir_location == offnadir_location:
         coverages.ArrayDataItem.objects.create(
-            location=path,
-            format='application/x-netcdf',
+            location=nadir_location,
+            format='image/tiff',
             coverage=coverage,
-            field_index=i,
-            band_count=1,
+            field_index=0,
+            band_count=2,
         )
+    else:
+        for i, path in enumerate((offnadir_location, nadir_location)):
+            coverages.ArrayDataItem.objects.create(
+                location=path,
+                format='application/x-netcdf',
+                coverage=coverage,
+                field_index=i,
+                band_count=1,
+            )
 
     return coverage
