@@ -70,7 +70,7 @@ class RemoveJob(Component):
 
     def execute(self, user, job_id, **kwargs):
         # find job removal candidates
-        owner = user if user.is_authenticated() else None
+        owner = user if user.is_authenticated else None
         try:
             job = Job.objects.get(owner=owner, identifier=job_id)
         except Job.DoesNotExist:

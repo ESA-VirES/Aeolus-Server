@@ -106,7 +106,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                 (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             )
 
-            db_filters['ground_path__intersects'] = box
+            db_filters['footprint__intersects'] = box
 
         collection_products = [
             (collection, models.Product.objects.filter(
@@ -120,8 +120,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
             (collection, (
                     (
                         product,
-                        product.data_items
-                        .filter(semantic__startswith='bands')
+                        product.product_data_items
                         .values_list('location', flat=True)
                     )
                     for product in products
