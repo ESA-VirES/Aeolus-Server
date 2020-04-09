@@ -33,8 +33,6 @@ import tarfile
 import os.path
 
 from django.contrib.gis.geos import Polygon
-from eoxserver.core import Component, implements
-from eoxserver.services.ows.wps.interfaces import ProcessInterface
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, BoundingBoxData, LiteralData,
     FormatBinaryRaw, Reference
@@ -44,11 +42,10 @@ from aeolus import models
 from aeolus.processes.util.base import AsyncProcessBase
 
 
-class RawDownloadProcess(AsyncProcessBase, Component):
+class RawDownloadProcess(AsyncProcessBase):
     """ This process allows to download raw data files from registered Products
         in ZIP/TAR archives
     """
-    implements(ProcessInterface)
 
     synchronous = False
 
@@ -92,7 +89,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                 output, context=None, **kwargs):
 
         collections = [
-            models.ProductCollection.objects.get(identifier=identifier)
+            models.Collection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
         ]
 
