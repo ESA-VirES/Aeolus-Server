@@ -1,11 +1,11 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 # WPS process removing asynchronous jobs.
 #
 # Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
 #
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Copyright (C) 2017 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,37 +25,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # pylint: disable=no-self-use,missing-docstring, too-few-public-methods
 
-from eoxserver.core import Component, implements, ExtensionPoint, env
-from eoxserver.services.ows.wps.interfaces import (
-    ProcessInterface, AsyncBackendInterface
-)
+
 from eoxserver.services.ows.wps.parameters import (
     RequestParameter, LiteralData,
 )
 from eoxserver.services.ows.wps.exceptions import InvalidInputValueError
+from eoxserver.services.ows.wps.util import get_async_backends
 from aeolus.models import Job
 
 
-class _AsyncBackendProvider(Component):
-    """ Component providing list of WPS AsyncBackend components. """
-    async_backends = ExtensionPoint(AsyncBackendInterface)
-
-
-def get_wps_async_backend():
-    """ Get the asynchronous WPS back-end. """
-    for async_backend in _AsyncBackendProvider(env).async_backends:
-        return async_backend
-    return None
-
-
-class RemoveJob(Component):
+class RemoveJob(object):
     """ This utility process removes an asynchronous WPS  job owned
     by the current user.
     """
-    implements(ProcessInterface)
 
     identifier = "removeJob"
     metadata = {}
@@ -76,7 +61,7 @@ class RemoveJob(Component):
         except Job.DoesNotExist:
             raise InvalidInputValueError('job_id')
 
-        get_wps_async_backend().purge(job.identifier)
+        get_async_backends()[0].purge(job.identifier)
         job.delete()
 
         return True
