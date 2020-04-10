@@ -261,7 +261,11 @@ def pre_delete_receiver(sender, instance, *args, **kwargs):
 
     # make sure we clean up the permissions for that collection
     elif issubclass(sender, ProductCollection):
-        Permission.objects.get(
-            codename='access_%s' % instance.identifier,
-            name='Can access collection %s' % instance.identifier,
-        ).delete()
+        try:
+            Permission.objects.get(
+                codename='access_%s' % instance.identifier,
+                name='Can access collection %s' % instance.identifier,
+            ).delete()
+        except Permission.DoesNotExist:
+            pass
+
