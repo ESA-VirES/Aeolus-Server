@@ -394,7 +394,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             box = Polygon.from_bbox(tpl_box)
 
-            db_filters['ground_path__intersects'] = box
+            db_filters['footprint__intersects'] = box
 
         if self.range_type_name:
             db_filters['product_type__name'] = self.range_type_name
