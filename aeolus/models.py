@@ -42,7 +42,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from eoxserver.backends.models import DataItem
 from eoxserver.resources.coverages.models import (
-    Collection, CollectionType, Product
+    Collection, CollectionType, Product, ProductType
 )
 
 
@@ -102,15 +102,24 @@ class OptimizedProductDataItem(DataItem):
 #
 
 
+def get_or_create_user_collection_type():
+    collection_type, created = CollectionType.objects.get_or_create(
+        name="user_collection_type"
+    )
+    if created:
+        collection_type.allowed_product_types.set(
+            ProductType.objects.all()
+        )
+    return collection_type
+
+
 def get_or_create_user_collection(user):
     identifier = "user_collection_%s" % user.username
 
     try:
         collection = Collection.objects.get(identifier=identifier)
     except Collection.DoesNotExist:
-        collection_type, _ = CollectionType.objects.get_or_create(
-            name="user_collection_type"
-        )
+        collection_type = get_or_create_user_collection_type()
 
         collection = Collection()
         collection.identifier = identifier
