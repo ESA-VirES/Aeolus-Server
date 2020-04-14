@@ -66,9 +66,18 @@ def _sample_data_item(year, month, index, lons, lats):
             year, month)
         )
 
-    data_item = albedo.arraydata_items.get(field_index=index)
+    try:
+        # netCDFs are two data items
+        data_item = albedo.arraydata_items.get(field_index=index)
+    except models.ArrayDataItem.DoesNotExist:
+        # when we only have a single TIFF with 2 bands
+        data_item = albedo.arraydata_items.get()
+
     ds = gdal.Open(data_item.location)
-    band = ds.GetRasterBand(1)
+    if ds.RasterCount == 1:
+        band = ds.GetRasterBand(1)
+    else:
+        band = ds.GetRasterBand(index)
 
     o_x = -180.0
     o_y = 90.0
