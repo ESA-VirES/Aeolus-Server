@@ -311,7 +311,10 @@ locations = {
                                                                         ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
                                                                         ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/intref_fitting_mie_snr']
                                                                     ),
-    'mie_wind_result_scattering_ratio':                             ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+    'mie_wind_result_scattering_ratio':                             _checkCorrectIdentifier(
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
+                                                                        ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/intref_fitting_mie_sr']
+                                                                    ),
     'rayleigh_wind_result_HLOS_error':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
     'rayleigh_wind_result_QC_flags_1':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],
     'rayleigh_wind_result_QC_flags_2':                              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags2'],
@@ -352,8 +355,8 @@ locations = {
     'rayleigh_wind_profile_observation_type':                       ['/rayleigh_profile', -1, 'l2b_wind_profiles/obs_type'],
     'mie_assimilation_validity_flag':                               ['/mie_vecwind', -1, 'height_bin_vecwind/validity_flag'],
     'mie_assimilation_background_HLOS':                             ['/mie_assim_pcd', -1, 'l2c_mie_quality_param/l2c_mie_height_bin_quality_param/assimilation_model_pcd/background_hlos'],
-    'mie_assimilation_background_u_wind_velocity':                  ['/mie_assim_pcd', -1, 'l2c_mie_quality_param/l2c_mie_height_bin_quality_param/assimilation_model_pcd/zonal_wind_background_error'],
-    'mie_assimilation_background_v_wind_velocity':                  ['/mie_assim_pcd', -1, 'l2c_mie_quality_param/l2c_mie_height_bin_quality_param/assimilation_model_pcd/meridional_wind_background_error'],
+    'mie_assimilation_background_u_wind_velocity':                  ['/mie_vecwind', -1, 'height_bin_vecwind/background_zonal_wind_velocity'],
+    'mie_assimilation_background_v_wind_velocity':                  ['/mie_vecwind', -1, 'height_bin_vecwind/background_meridional_wind_velocity'],
     'mie_assimilation_background_horizontal_wind_velocity':         calc_mie_assimilation_background_horizontal_wind_velocity,
     'mie_assimilation_background_wind_direction':                   calc_mie_assimilation_background_wind_direction,
     'mie_assimilation_analysis_HLOS':                               ['/mie_assim_pcd', -1, 'l2c_mie_quality_param/l2c_mie_height_bin_quality_param/assimilation_model_pcd/Analysis_hlos'],
@@ -363,8 +366,8 @@ locations = {
     'mie_assimilation_analysis_wind_direction':                     calc_mie_assimilation_analysis_wind_direction,
     'rayleigh_assimilation_validity_flag':                          ['/rayleigh_vecwind', -1, 'height_bin_vecwind/validity_flag'],
     'rayleigh_assimilation_background_HLOS':                        ['/rayleigh_assim_pcd', -1, 'l2c_rayleigh_quality_param/l2c_rayleigh_height_bin_quality_param/assimilation_model_pcd/background_hlos'],
-    'rayleigh_assimilation_background_u_wind_velocity':             ['/rayleigh_assim_pcd', -1, 'l2c_rayleigh_quality_param/l2c_rayleigh_height_bin_quality_param/assimilation_model_pcd/zonal_wind_background_error'],
-    'rayleigh_assimilation_background_v_wind_velocity':             ['/rayleigh_assim_pcd', -1, 'l2c_rayleigh_quality_param/l2c_rayleigh_height_bin_quality_param/assimilation_model_pcd/meridional_wind_background_error'],
+    'rayleigh_assimilation_background_u_wind_velocity':             ['/rayleigh_vecwind', -1, 'height_bin_vecwind/background_zonal_wind_velocity'],
+    'rayleigh_assimilation_background_v_wind_velocity':             ['/rayleigh_vecwind', -1, 'height_bin_vecwind/background_meridional_wind_velocity'],
     'rayleigh_assimilation_background_horizontal_wind_velocity':    calc_rayleigh_assimilation_background_horizontal_wind_velocity,
     'rayleigh_assimilation_background_wind_direction':              calc_rayleigh_assimilation_background_wind_direction,
     'rayleigh_assimilation_analysis_HLOS':                          ['/rayleigh_assim_pcd', -1, 'l2c_rayleigh_quality_param/l2c_rayleigh_height_bin_quality_param/assimilation_model_pcd/Analysis_hlos'],
