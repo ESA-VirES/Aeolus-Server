@@ -455,7 +455,9 @@ class ExtractionProcessBase(AsyncProcessBase):
                     grp.createDimension(dimname, len(values[0]))
                     var = grp.createVariable(name, 'S1', ('dsd', dimname))
 
-                    values = stringtochar(np.array(values))
+                    values = stringtochar(np.array([
+                        bytes(v, 'ascii') for v in values
+                    ]))
                 else:
                     var = grp.createVariable(name, 'i8', ('dsd',))
 
