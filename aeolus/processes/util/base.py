@@ -33,7 +33,7 @@ from io import BytesIO
 import tempfile
 import os.path
 from uuid import uuid4
-from logging import getLogger
+from logging import getLogger, LoggerAdapter
 import json
 
 from django.utils.timezone import utc
@@ -61,6 +61,24 @@ from aeolus.util import cached_property
 MAX_ACTIVE_JOBS = 2
 
 
+def get_remote_addr(request):
+    """ Extract remote address from the Django HttpRequest """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.partition(',')[0]
+    return request.META.get('REMOTE_ADDR')
+
+
+class AccessLoggerAdapter(LoggerAdapter):
+    """ Logger adapter adding extra fields required by the access logger. """
+
+    def __init__(self, logger, username=None, remote_addr=None, **kwargs):
+        super().__init__(logger, {
+            "remote_addr": remote_addr if remote_addr else "-",
+            "username": username if username else "-",
+        })
+
+
 class AsyncProcessBase(object):
     """
     """
@@ -68,6 +86,7 @@ class AsyncProcessBase(object):
 
     inputs = [
         ("username", RequestParameter(get_username)),
+        ("remote_addr", RequestParameter(get_remote_addr)),
     ]
 
     @staticmethod
@@ -106,9 +125,13 @@ class AsyncProcessBase(object):
             (job.stopped - job.started).total_seconds()
         )
 
+    def get_access_logger(self, *args, **kwargs):
+        """ Get access logger wrapped by the AccessLoggerAdapter """
+        return AccessLoggerAdapter(self._access_logger, *args, **kwargs)
+
     @cached_property
-    def access_logger(self):
-        """ Get access logger. """
+    def _access_logger(self):
+        """ Get raw access logger. """
         return getLogger(
             "access.wps.%s" % self.__class__.__module__.split(".")[-1]
         )
@@ -205,20 +228,21 @@ class ExtractionProcessBase(AsyncProcessBase):
             settings, 'AEOLUS_EXTRACTION_ASYNC_SPAN', None
         )
 
+        access_logger = self.get_access_logger(**kwargs)
+
         if isasync and async_span and time_span > async_span:
             message = 'Exceeding maximum allowed time span.'
-            self.access_logger.error(message)
+            access_logger.error(message)
             raise Exception(message)
         elif not isasync and time_span > sync_span:
             message = 'Exceeding maximum allowed time span.'
-            self.access_logger.error(message)
+            access_logger.error(message)
             raise Exception(message)
 
         # log the request
-        self.access_logger.info(
-            "request parameters: user: %s, toi: (%s, %s), bbox: %s, "
+        access_logger.info(
+            "request parameters: toi: (%s, %s), bbox: %s, "
             "collections: (%s), filters: %s, type: %s",
-            kwargs["username"],
             begin_time.isoformat("T"), end_time.isoformat("T"),
             [bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]] if bbox else None,
             ", ".join(collection_ids.data),
@@ -299,7 +323,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             encoded = BytesIO(msgpack.dumps(out_data))
 
             # some result logging
-            self.access_logger.info(
+            access_logger.info(
                 "response: count: %d files, mime-type: %s, fields: %s",
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
@@ -367,7 +391,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                 raise
 
             # some result logging
-            self.access_logger.info(
+            access_logger.info(
                 "response: count: %d files, mime-type: %s, fields: %s",
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
