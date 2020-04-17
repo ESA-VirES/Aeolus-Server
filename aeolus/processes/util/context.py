@@ -29,7 +29,7 @@
 
 
 class DummyContext():
-    identifier = 'Dummy'
+    identifier = 'sync-process'
 
     def update_progress(self, *args, **kwargs):
         pass
