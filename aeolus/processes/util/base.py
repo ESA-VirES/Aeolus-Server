@@ -231,18 +231,23 @@ class ExtractionProcessBase(AsyncProcessBase):
         access_logger = self.get_access_logger(**kwargs)
 
         if isasync and async_span and time_span > async_span:
-            message = 'Exceeding maximum allowed time span.'
+            message = '%s: Exceeding maximum allowed time span.' % (
+                context.identifier,
+            )
             access_logger.error(message)
             raise Exception(message)
         elif not isasync and time_span > sync_span:
-            message = 'Exceeding maximum allowed time span.'
+            message = '%s: Exceeding maximum allowed time span.' % (
+                context.identifier,
+            )
             access_logger.error(message)
             raise Exception(message)
 
         # log the request
         access_logger.info(
-            "request parameters: toi: (%s, %s), bbox: %s, "
+            "%s: request parameters: toi: (%s, %s), bbox: %s, "
             "collections: (%s), filters: %s, type: %s",
+            context.identifier,
             begin_time.isoformat("T"), end_time.isoformat("T"),
             [bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]] if bbox else None,
             ", ".join(collection_ids.data),
@@ -324,7 +329,8 @@ class ExtractionProcessBase(AsyncProcessBase):
 
             # some result logging
             access_logger.info(
-                "response: count: %d files, mime-type: %s, fields: %s",
+                "%s: response: count: %d files, mime-type: %s, fields: %s",
+                context.identifier,
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
 
@@ -392,7 +398,8 @@ class ExtractionProcessBase(AsyncProcessBase):
 
             # some result logging
             access_logger.info(
-                "response: count: %d files, mime-type: %s, fields: %s",
+                "%s: response: count: %d files, mime-type: %s, fields: %s",
+                context.identifier,
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
 

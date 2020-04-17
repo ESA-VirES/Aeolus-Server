@@ -29,5 +29,7 @@
 
 
 class DummyContext():
+    identifier = 'Dummy'
+
     def update_progress(self, *args, **kwargs):
         pass
