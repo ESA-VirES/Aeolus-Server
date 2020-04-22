@@ -30,20 +30,17 @@
 # pylint: disable=missing-docstring, too-many-locals, too-many-branches
 # pylint: disable=redefined-variable-type
 
-#from optparse import make_option
-from django.core.management.base import CommandError, BaseCommand
-from eoxserver.resources.coverages.management.commands import (
-    CommandOutputMixIn, nested_commit_on_success
-)
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
 from eoxserver.resources.coverages.models import Collection
 
 
 class Command(CommandOutputMixIn, BaseCommand):
     help = "De-register all products from the selected collections."
     args = "[<collection> [<collection> ...]]"
-    option_list = BaseCommand.option_list
 
-    @nested_commit_on_success
+    @transaction.atomic()
     def handle(self, *args, **kwargs):
         count = 0
 
@@ -56,16 +53,13 @@ class Command(CommandOutputMixIn, BaseCommand):
                 )
                 continue
 
-            for coverage in (
-                item.cast() for item in collection.eo_objects.all()
-                if item.iscoverage
-            ):
+            for product in collection.products.all():
                 self.print_msg(
-                    "De-registering dataset: '%s'" % coverage.identifier
-                ) 
-                coverage.delete()
+                    "De-registering dataset: '%s'" % product.identifier
+                )
+                product.delete()
                 count += 1
 
         self.print_msg("%s dataset%s de-registered." % (
-            "No" if count == 0 else "%d" % count, "s" if count > 1 else "" 
+            "No" if count == 0 else "%d" % count, "s" if count > 1 else ""
         ))

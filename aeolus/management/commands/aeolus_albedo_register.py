@@ -1,11 +1,11 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 # Registration of Albedo
 #
 # Project: VirES
 # Authors: Fabian Schindler <fabian.schindler@eox.at>
 #
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Copyright (C) 2018 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,15 +25,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#-------------------------------------------------------------------------------
-
-from optparse import make_option
+# ------------------------------------------------------------------------------
 
 from django.core.management.base import CommandError, BaseCommand
+from django.db import transaction
 from eoxserver.resources.coverages import models
-from eoxserver.resources.coverages.management.commands import (
-    CommandOutputMixIn, nested_commit_on_success
-)
+from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
 
 from aeolus.registration import register_albedo
 
@@ -45,35 +42,34 @@ class Command(CommandOutputMixIn, BaseCommand):
     )
     args = "<filename>"
 
-    option_list = BaseCommand.option_list + (
-        make_option(
+    def add_arguments(self, parser):
+        parser.add_argument(
             "-f", "--file", dest="input_file", default=None,
             help=(
                 "Path to the input filename."
             )
-        ),
+        )
 
-        make_option(
+        parser.add_argument(
             '-y', '--year', type=int, default=None,
             help='The year to register the Albedo map for.'
-        ),
+        )
 
-        make_option(
+        parser.add_argument(
             '-r', '--year-range', default=None, dest='year_range',
             help='The year-range to register the Albedo map for. E.g: 2012-2018'
-        ),
+        )
 
-        make_option(
+        parser.add_argument(
             '-m', '--month', type=int, default=None,
             help='The month to register the Albedo map for.'
-        ),
+        )
 
-
-        make_option(
+        parser.add_argument(
             "-c", "--collection", dest="collection_id", default=None,
             help="Optional collection the product should be linked to."
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "--conflict", dest="conflict", choices=("IGNORE", "REPLACE"),
             default="IGNORE", help=(
                 "Define how to resolve conflict when the product is already "
@@ -82,11 +78,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                 "old product (remove the old one and insert the new one). "
                 "In case of the REPLACE the collection links are NOT preserved."
             )
-        ),
-        # conflict resolving option
-    )
+        )
 
-    @nested_commit_on_success
+    @transaction.atomic()
     def handle(self, input_file, month, year, year_range,
                collection_id, conflict, **kwargs):
 
@@ -115,9 +109,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                 try:
                     collection = models.Collection.objects.get(
                         identifier=collection_id
-                    ).cast()
+                    )
 
-                    collection.insert(ds_model)
+                    models.collection_insert_eo_object(collection, ds_model)
                     self.print_msg(
                         "Succesfully inserted dataset in collection '%s'"
                         % collection_id

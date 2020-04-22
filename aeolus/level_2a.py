@@ -27,13 +27,9 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from collections import defaultdict
-from itertools import izip
-
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, access_location, check_fields
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.coda_utils import access_location
 from aeolus.albedo import sample_offnadir
 from aeolus.extraction.measurement import MeasurementDataExtractor
 
@@ -64,7 +60,7 @@ def calculate_longitude_of_DEM_intersection_obs(cf):
 
     lon_of_DEM_intersection = np.zeros(t_centroid.shape)
 
-    for i, values in enumerate(izip(measurement_lons, measurement_times)):
+    for i, values in enumerate(zip(measurement_lons, measurement_times)):
         measurement_lon, measurement_time = values
         lon_of_DEM_intersection[i] = measurement_lon[(
             np.abs(measurement_time - t_centroid[i])
@@ -88,7 +84,7 @@ def calculate_latitude_of_DEM_intersection_obs(cf):
 
     lat_of_DEM_intersection = np.zeros(t_centroid.shape)
 
-    for i, values in enumerate(izip(measurement_lats, measurement_times)):
+    for i, values in enumerate(zip(measurement_lats, measurement_times)):
         measurement_lat, measurement_time = values
         lat_of_DEM_intersection[i] = measurement_lat[(
             np.abs(measurement_time - t_centroid[i])

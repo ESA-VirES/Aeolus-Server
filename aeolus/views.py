@@ -40,8 +40,11 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from eoxserver.resources.coverages.models import (
+    Product, collection_insert_eo_object
+)
 
-from aeolus.models import get_or_create_user_product_collection, Product
+from aeolus.models import get_or_create_user_collection
 from aeolus.registration import register_product
 
 
@@ -93,10 +96,7 @@ def handle_uploaded_file(uploaded_file, user):
     with transaction.atomic():
         existing_product = Product.objects.filter(identifier=identifier).first()
         if existing_product:
-            existing_product = existing_product.cast()
-            filename = existing_product.data_items.filter(
-                    semantic__startswith='bands'
-            ).first().location
+            filename = existing_product.product_data_items.first().location
             logger.debug(
                 "Product '%s' already registered. "
                 "Deleting old product and file %s"
@@ -112,13 +112,13 @@ def handle_uploaded_file(uploaded_file, user):
 
     # register the newly created file and insert it into the user collection
     with transaction.atomic():
-        collection = get_or_create_user_product_collection(user)
+        collection = get_or_create_user_collection(user)
 
         try:
             product = register_product(
                 out_path, overrides={'identifier': identifier}
             )
-            collection.insert(product)
+            collection_insert_eo_object(collection, product, use_extent=True)
         except:
             logger.error(
                 "Failed to register/insert file %s. Deleting it." % out_path
@@ -127,7 +127,7 @@ def handle_uploaded_file(uploaded_file, user):
             raise
 
     # check whether we have reached the upload limit
-    current_count = collection.eo_objects.all().count()
+    current_count = collection.products.all().count()
     if current_count > user_file_limit:
         num_to_delete = current_count - user_file_limit
         logger.info(
@@ -142,14 +142,11 @@ def handle_uploaded_file(uploaded_file, user):
         )
 
         # delete the first n products
-        to_delete = collection.eo_objects.exclude(
+        to_delete = collection.products.exclude(
             identifier=identifier
         )[:num_to_delete]
-        for eo_object in to_delete:
-            existing_product = eo_object.cast()
-            filename = existing_product.data_items.filter(
-                semantic__startswith='bands'
-            ).first().location
+        for existing_product in to_delete:
+            filename = existing_product.product_data_items.first().location
 
             logger.debug("Deleting user uploaded file %s" % filename)
             os.unlink(filename)

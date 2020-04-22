@@ -64,11 +64,9 @@ def get_dsd(product_or_id, recursive=False, strip=True):
         except models.Product.DoesNotExist:
             return None
 
-    filename = product.data_items.filter(
-        semantic__startswith='bands'
-    ).first().location
+    filename = product.product_data_items.first().location
 
-    is_aux = product.range_type.name.startswith('AUX')
+    is_aux = product.product_type.name.startswith('AUX')
 
     paths = AUX_PATHS if is_aux else DATA_PATHS
     with CODAFile(filename) as cf:

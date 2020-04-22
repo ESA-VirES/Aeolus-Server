@@ -41,7 +41,7 @@ class CODAFile(object):
         """ Initializes a new :class:`CODAFile` with the given filename.
         """
         self._handle = None  # in case the coda.open fails initialize
-        self._handle = coda.open(filename.encode('ascii'))
+        self._handle = coda.open(filename)
         self.filename = filename
 
     @property

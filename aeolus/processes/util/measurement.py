@@ -111,6 +111,12 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         else:
             sca_fields = []
 
+        def get_optimized_data_item(product):
+            try:
+                return product.optimized_data_item
+            except Exception:
+                return None
+
         # create the iterator: yielding collection + sub iterators
         # the sub iterators iterate over all data files and yield the selected
         # and filtered fields
@@ -122,12 +128,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 )
                 for band_data_item, optimized_data_item in (
                     (
-                        product.data_items.filter(
-                            semantic__startswith='bands'
-                        ).first(),
-                        product.data_items.filter(
-                            semantic__startswith='optimized'
-                        ).first(),
+                        product.product_data_items.all().first(),
+                        get_optimized_data_item(product),
 
                     )
                     for product in products
