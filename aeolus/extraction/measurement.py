@@ -28,7 +28,6 @@
 # ------------------------------------------------------------------------------
 
 from collections import defaultdict
-from itertools import izip
 from copy import deepcopy
 
 import numpy as np
@@ -64,12 +63,12 @@ class MeasurementDataExtractor(object):
         """
 
         check_fields(
-            filters.keys(),
-            self.observation_locations.keys() +
-            self.measurement_locations.keys() +
-            self.group_locations.keys() +
-            self.ica_locations.keys() +
-            self.sca_locations.keys(),
+            list(filters.keys()),
+            list(self.observation_locations.keys()) +
+            list(self.measurement_locations.keys()) +
+            list(self.group_locations.keys()) +
+            list(self.ica_locations.keys()) +
+            list(self.sca_locations.keys()),
             'filter'
         )
         check_fields(

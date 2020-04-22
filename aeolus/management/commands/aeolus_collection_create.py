@@ -25,51 +25,37 @@
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
 
-from optparse import make_option
-
 from django.core.management.base import CommandError, BaseCommand
-from eoxserver.resources.coverages.management.commands import (
-    CommandOutputMixIn, nested_commit_on_success
-)
+from eoxserver.resources.coverages.management.commands import CommandOutputMixIn
 from eoxserver.resources.coverages import models
-
-from aeolus.models import ProductCollection
 
 
 class Command(CommandOutputMixIn, BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option("-i", "--identifier", "--coverage-id", dest="identifier",
+    def add_arguments(self, parser):
+        parser.add_argument("-i", "--identifier", dest="identifier",
             action="store", default=None,
             help=("Mandatory. Collection identifier.")
         ),
-        make_option("-r", "--range-type", dest="range_type_name",
-            help=("Mandatory. Name of the stored range type. ")
-        ),
-    )
+        parser.add_argument("-t", "--type", dest="collection_type_name",
+            help=("Mandatory. Name of the stored collection type. ")
+        )
 
-    @nested_commit_on_success
     def handle(self, *args, **kwargs):
         identifier = kwargs["identifier"]
-        range_type_name = kwargs["range_type_name"]
+        collection_type_name = kwargs["collection_type_name"]
 
         if not identifier:
             raise CommandError("No identifier specified.")
 
-        if range_type_name is None:
+        if collection_type_name is None:
             raise CommandError("No range type name specified.")
-        range_type = models.RangeType.objects.get(name=range_type_name)
+        collection_type = models.CollectionType.objects.get(
+            name=collection_type_name
+        )
 
-        collection = ProductCollection()
+        collection = models.Collection()
         collection.identifier = identifier
-        collection.range_type = range_type
-
-        collection.srid = 4326
-        collection.min_x = -180
-        collection.min_y = -90
-        collection.max_x = 180
-        collection.max_y = 90
-        collection.size_x = 0
-        collection.size_y = 1
+        collection.collection_type = collection_type
 
         collection.full_clean()
         collection.save()

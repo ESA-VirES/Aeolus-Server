@@ -28,7 +28,6 @@
 # ------------------------------------------------------------------------------
 
 import os
-from itertools import izip
 
 import numpy as np
 
@@ -67,9 +66,18 @@ def _sample_data_item(year, month, index, lons, lats):
             year, month)
         )
 
-    data_item = albedo.data_items.get(semantic='bands[%d]' % index)
+    try:
+        # netCDFs are two data items
+        data_item = albedo.arraydata_items.get(field_index=index)
+    except models.ArrayDataItem.DoesNotExist:
+        # when we only have a single TIFF with 2 bands
+        data_item = albedo.arraydata_items.get()
+
     ds = gdal.Open(data_item.location)
-    band = ds.GetRasterBand(1)
+    if ds.RasterCount == 1:
+        band = ds.GetRasterBand(1)
+    else:
+        band = ds.GetRasterBand(index)
 
     o_x = -180.0
     o_y = 90.0
@@ -79,7 +87,7 @@ def _sample_data_item(year, month, index, lons, lats):
 
     out_data = np.empty((len(lons),))
 
-    for i, coord in enumerate(izip(lons, lats)):
+    for i, coord in enumerate(zip(lons, lats)):
         lon, lat = coord
 
         px = int(round((lon - o_x) / res_x))

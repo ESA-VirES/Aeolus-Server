@@ -108,8 +108,7 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
                      **kwargs):
         return (
             (collection, extract_data([
-                product.data_items.filter(semantic__startswith='bands')
-                .first().location
+                product.product_data_items.all().first().location
                 for product in products
             ],
                 data_filters,

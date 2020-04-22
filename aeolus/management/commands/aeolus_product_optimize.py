@@ -29,7 +29,6 @@
 
 import os.path
 import errno
-from optparse import make_option
 
 from django.core.management.base import CommandError, BaseCommand
 from django.conf import settings
@@ -38,52 +37,53 @@ from eoxserver.resources.coverages.management.commands import (
     CommandOutputMixIn
 )
 from eoxserver.backends import models as backends
+from eoxserver.resources.coverages.models import Product
 
-from aeolus.models import Product
+from aeolus.models import OptimizedProductDataItem
 from aeolus.optimize import create_optimized_file, OptimizationError
 
 
 class Command(CommandOutputMixIn, BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
+    def add_arguments(self, parser):
+        parser.add_argument(
             "-i", "--identifier", "--coverage-id", dest="identifier",
             action="store", default=None,
             help=(
                 "The identifier to create the optimized file for."
             )
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "-r", "--refresh",
             action="store_const", const="refresh", dest="mode", default="create",
             help="Refresh the optimized file if it already exists."
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "-d", "--delete",
             action="store_const", const="delete", dest="mode", default="create",
             help="Only delete the optimized file, if it exists"
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "-l", "--link",
             action="store_const", const="link", dest="mode", default="create",
             help="Link an already existing optimized file to the product."
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "-u", "--unlink",
             action="store_const", const="unlink", dest="mode", default="create",
             help=(
                 "Unlink an optimized file: remove the reference in the "
                 "database, but leave the optimized file on the disk."
             )
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "-o", "--output", "--output-file", dest="output_file", default=None,
             help=(
                 "Specify an output file. By default, the `AEOLUS_OPTIMIZED_DIR` "
                 "setting is used to generate the filename in the following way: "
-                "$AEOLUS_OPTIMIZED_DIR/{range_type.name}/{product.identifier}.nc"
+                "$AEOLUS_OPTIMIZED_DIR/{product_type.name}/"
+                "{product.identifier}.nc"
             )
         )
-    )
 
     help = """
     Create (or delete) an optimized file for a specific product file.
@@ -101,10 +101,8 @@ class Command(CommandOutputMixIn, BaseCommand):
         self.verbosity = kwargs.get('verbosity', 1)
 
         try:
-            data_item = product.data_items.get(
-                semantic__startswith="optimized"
-            )
-        except backends.DataItem.DoesNotExist:
+            data_item = product.optimized_data_item
+        except OptimizedProductDataItem.DoesNotExist:
             data_item = None
 
         # get an output filename
@@ -112,7 +110,7 @@ class Command(CommandOutputMixIn, BaseCommand):
         optimized_dir = getattr(settings, 'AEOLUS_OPTIMIZED_DIR', None)
         if not output_file and optimized_dir:
             output_file = os.path.join(
-                optimized_dir, product.range_type.name, identifier + '.nc'
+                optimized_dir, product.product_type.name, identifier + '.nc'
             )
 
         if not output_file:
@@ -229,14 +227,12 @@ class Command(CommandOutputMixIn, BaseCommand):
 
     def _create_optimized_file(self, product, output_file):
         identifier = product.identifier
-        range_type = product.range_type
+        product_type = product.product_type
 
         # get the filename for the data file
 
         try:
-            input_file = product.data_items.get(
-                semantic__startswith="bands"
-            ).location
+            input_file = product.product_data_items.get().location
         except backends.DataItem.DoesNotExist:
             raise CommandError(
                 "No data file for product '%s' found" % product.identifier
@@ -246,7 +242,7 @@ class Command(CommandOutputMixIn, BaseCommand):
 
         try:
             group_fields = create_optimized_file(
-                input_file, range_type.name, output_file
+                input_file, product_type.name, output_file
             )
             for group, field_name in group_fields:
                 self.print_msg("Optimizing %s/%s" % (group, field_name), 2)
@@ -266,15 +262,10 @@ class Command(CommandOutputMixIn, BaseCommand):
             2
         )
 
-        range_type = product.range_type
-
         # create a data item for the optimized file
-
-        data_item = backends.DataItem(
-            location=output_file, format="application/netcdf",
-            semantic="optimized[1:%d]" % len(range_type),
-            storage=None, package=None
+        data_item = OptimizedProductDataItem(
+            location=output_file, format="application/netcdf"
         )
-        data_item.dataset = product
+        data_item.product = product
         data_item.full_clean()
         data_item.save()
