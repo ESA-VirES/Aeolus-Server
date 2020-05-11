@@ -39,6 +39,7 @@ import json
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
@@ -441,16 +442,16 @@ class ExtractionProcessBase(AsyncProcessBase):
             for identifier in collection_ids.data
         ]
 
-        # user = get_user(username)
+        user = get_user(username)
 
-        # if not user:
-        #     raise PermissionDenied("Not logged in")
+        if not user:
+            raise PermissionDenied("Not logged in")
 
-        # for collection in collections:
-        #     if not user.has_perm("aeolus.access_%s" % collection.identifier):
-        #         raise PermissionDenied(
-        #             "No access to '%s' permitted" % collection.identifier
-        #         )
+        for collection in collections:
+            if not user.has_perm("aeolus.access_%s" % collection.identifier):
+                raise PermissionDenied(
+                    "No access to '%s' permitted" % collection.identifier
+                )
 
         return [
             (collection, Product.objects.filter(
