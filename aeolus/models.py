@@ -168,7 +168,8 @@ def post_migrate_receiver(*args, **kwargs):
     group.save()
 
     for user in User.objects.all():
-        user.groups.add(group)
+        if not user.groups:
+            user.groups.add(group)
 
     # privileged group has access to all collections
     group, _ = Group.objects.get_or_create(
