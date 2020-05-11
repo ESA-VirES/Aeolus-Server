@@ -159,14 +159,8 @@ def post_migrate_receiver(*args, **kwargs):
     # get permissions for "open" collections, but exclude user collections
     # and restricted collections
     permissions = Permission.objects.filter(
-        codename__startswith='access_'
-    ).exclude(
-        codename__in=[
-            'access_AUX_MRC_1B',
-            'access_AUX_RRC_1B',
-            'access_AUX_ISR_1B',
-            'access_AUX_ZWC_1B',
-        ]
+        codename__startswith='access_',
+        codename__endswith='public',
     ).exclude(
         codename__startswith='access_user_collection'
     )
@@ -186,6 +180,9 @@ def post_migrate_receiver(*args, **kwargs):
         codename__startswith='access_'
     ).exclude(
         codename__startswith='access_user_collection'
+    ).exclude(
+        codename__startswith='access_',
+        codename__endswith='public',
     )
     group.permissions.set(permissions)
     group.save()
