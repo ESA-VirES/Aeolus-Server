@@ -449,7 +449,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             raise PermissionDenied("Not logged in")
 
         for collection in collections:
-            if not user.has_perm("aeolus.access_%s" % collection.identifier):
+            if not user.has_perm("coverages.access_%s" % collection.identifier):
                 raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
