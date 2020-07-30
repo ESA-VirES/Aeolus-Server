@@ -33,6 +33,7 @@ import tarfile
 import os.path
 
 from django.contrib.gis.geos import Polygon
+from django.db.models import F, Func
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, BoundingBoxData, LiteralData,
     FormatBinaryRaw, Reference
@@ -103,15 +104,25 @@ class RawDownloadProcess(AsyncProcessBase):
                 (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             )
 
-            db_filters['footprint__intersects'] = box
+            db_filters['footprint_homogenized__intersects'] = box
 
-        collection_products = [
-            (collection, models.Product.objects.filter(
+        collection_products = []
+        for collection in collections:
+            qs = models.Product.objects.all()
+            if bbox:
+                qs = qs.annotate(
+                    footprint_homogenized=Func(
+                        F('footprint'),
+                        function='ST_CollectionHomogenize'
+                    )
+                )
+
+            qs = qs.filter(
                 collections=collection,
                 **db_filters
-            ).order_by('begin_time'))
-            for collection in collections
-        ]
+            ).order_by('begin_time')
+
+            collection_products.append((collection, qs))
 
         collection_iter = (
             (collection, (
