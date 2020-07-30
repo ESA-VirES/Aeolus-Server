@@ -206,9 +206,16 @@ def register_product(filename, overrides,
     if footprint_simplification_tolerance is not None:
         footprint = metadata.get('footprint')
         if footprint:
-            metadata['footprint'] = footprint.simplify(
+            simplified = footprint.simplify(
                 footprint_simplification_tolerance
             )
+
+            # simplify reduces "Multi"-Geometries to simple ones.
+            # force the same geometry type as the original footprint
+            if simplified.geom_type != footprint.geom_type:
+                simplified = type(footprint)(simplified)
+
+            metadata['footprint'] = simplified
 
     # Register the product
     product = coverages.Product()

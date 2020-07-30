@@ -40,6 +40,7 @@ from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db.models import F, Func
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
@@ -426,7 +427,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             box = Polygon.from_bbox(tpl_box)
 
-            db_filters['footprint__intersects'] = box
+            db_filters['footprint_homogenized__intersects'] = box
 
         if self.range_type_name:
             db_filters['product_type__name'] = self.range_type_name
@@ -453,13 +454,30 @@ class ExtractionProcessBase(AsyncProcessBase):
                     "No access to '%s' permitted" % collection.identifier
                 )
 
-        return [
-            (collection, Product.objects.filter(
+        add_homogenized = any(
+            lookup.startswith('footprint_homogenized')
+            for lookup in db_filters.keys()
+        )
+
+        collection_products = []
+        for collection in collections:
+            qs = Product.objects.all()
+            if add_homogenized:
+                qs = qs.annotate(
+                    footprint_homogenized=Func(
+                        F('footprint'),
+                        function='ST_CollectionHomogenize'
+                    )
+                )
+
+            qs = qs.filter(
                 collections=collection,
                 **db_filters
-            ).order_by('begin_time'))
-            for collection in collections
-        ]
+            ).order_by('begin_time')
+
+            collection_products.append((collection, qs))
+
+        return collection_products
 
     def extract_data(self, collection_products, data_filters, mime_type, **kw):
         raise NotImplementedError
