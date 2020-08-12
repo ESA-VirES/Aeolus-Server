@@ -27,13 +27,9 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-from collections import defaultdict
-from itertools import izip
-
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, access_location, check_fields
-from aeolus.filtering import make_mask, combine_mask
+from aeolus.coda_utils import access_location
 from aeolus.albedo import sample_offnadir
 from aeolus.extraction.measurement import MeasurementDataExtractor
 
@@ -64,7 +60,7 @@ def calculate_longitude_of_DEM_intersection_obs(cf):
 
     lon_of_DEM_intersection = np.zeros(t_centroid.shape)
 
-    for i, values in enumerate(izip(measurement_lons, measurement_times)):
+    for i, values in enumerate(zip(measurement_lons, measurement_times)):
         measurement_lon, measurement_time = values
         lon_of_DEM_intersection[i] = measurement_lon[(
             np.abs(measurement_time - t_centroid[i])
@@ -88,7 +84,7 @@ def calculate_latitude_of_DEM_intersection_obs(cf):
 
     lat_of_DEM_intersection = np.zeros(t_centroid.shape)
 
-    for i, values in enumerate(izip(measurement_lats, measurement_times)):
+    for i, values in enumerate(zip(measurement_lats, measurement_times)):
         measurement_lat, measurement_time = values
         lat_of_DEM_intersection[i] = measurement_lat[(
             np.abs(measurement_time - t_centroid[i])
@@ -229,6 +225,24 @@ def calculate_SCA_latitude_of_DEM_intersection(cf):
     )
     return values[sca_mask.nonzero()]
 
+def _checkCorrectIdentifier(location, alternative_location):
+    def _inner(cf):
+        try:
+            values = cf.fetch(*location)
+        except Exception as e:
+            try:
+                values = cf.fetch(*alternative_location)
+            except Exception as e:
+                raise e
+
+        return values
+    return _inner
+
+getCurrentSCA_flag = _checkCorrectIdentifier(
+    ['/sca_pcd', -1, 'qc_flag'],
+    ['/sca_pcd', -1, 'bin_1_clear']
+)
+
 
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
@@ -313,7 +327,7 @@ ICA_LOCATIONS = {
 }
 
 SCA_LOCATIONS = {
-    'SCA_QC_flag':                                  ['/sca_pcd', -1, 'qc_flag'],
+    'SCA_QC_flag':                                  getCurrentSCA_flag,
     'SCA_processing_qc_flag':                       ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'processing_qc_flag'],
     'SCA_extinction_variance':                      ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'extinction_variance'],
     'SCA_backscatter_variance':                     ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'backscatter_variance'],

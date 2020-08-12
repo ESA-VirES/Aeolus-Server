@@ -603,7 +603,7 @@ test_file = '/mnt/data/AE_OPER_ALD_U_N_2C_20151001T001124_20151001T014439_0002/A
 
 
 def main():
-    print extract_data(
+    print(extract_data(
         test_file, {
             'mie_wind_result_id': {
                 'min_value': 1000,
@@ -646,7 +646,7 @@ def main():
         measurement_fields=[
             # 'l1B_obs_number'
         ],
-    )
+    ))
 
 if __name__ == '__main__':
     main()

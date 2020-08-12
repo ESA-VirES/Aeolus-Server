@@ -28,8 +28,7 @@
 #-------------------------------------------------------------------------------
 # pylint: disable=no-self-use,missing-docstring, too-few-public-methods
 
-from eoxserver.core import Component, implements
-from eoxserver.services.ows.wps.interfaces import ProcessInterface
+
 from eoxserver.services.ows.wps.parameters import (
     RequestParameter, ComplexData, FormatJSON, CDObject,
 )
@@ -37,13 +36,13 @@ from aeolus.models import Job
 
 STATUS_TO_STRING = dict(Job.STATUS_CHOICES)
 
-class ListJobs(Component):
+
+class ListJobs(object):
     """ This utility process lists all asynchronous WPS jobs owned by
     the current user.
     The jobs are grouped by the process identifier and ordered by the creation
     time.
     """
-    implements(ProcessInterface)
 
     identifier = "listJobs"
     metadata = {}
@@ -61,7 +60,7 @@ class ListJobs(Component):
     ]
 
     def execute(self, user, **kwargs):
-        owner = user if user.is_authenticated() else None
+        owner = user if user.is_authenticated else None
         job_list = {}
         for job in Job.objects.filter(owner=owner).order_by("created"):
             job_list.setdefault(job.process_id, []).append({

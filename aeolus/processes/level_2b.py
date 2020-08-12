@@ -34,7 +34,7 @@ from aeolus.level_2b import extract_data
 from aeolus.processes.util.accumulated import AccumulatedDataExctractProcessBase
 
 
-class Level2BExctract(AccumulatedDataExctractProcessBase, Component):
+class Level2BExtract(AccumulatedDataExctractProcessBase, Component):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
         Level2B products of the specified collections.
     """
@@ -52,7 +52,7 @@ class Level2BExctract(AccumulatedDataExctractProcessBase, Component):
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
         """ Overwritten function to get the exact data filters for L2B/C files
         """
-        data_filters = super(Level2BExctract, self).get_data_filters(
+        data_filters = super(Level2BExtract, self).get_data_filters(
             begin_time, end_time, bbox, filters, **kwargs
         )
 

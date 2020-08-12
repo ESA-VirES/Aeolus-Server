@@ -31,23 +31,18 @@
 #pylint: disable=missing-docstring,fixme,unused-argument
 #pylint: disable=old-style-class,no-init,too-few-public-methods
 
-from datetime import timedelta
-from django.core.exceptions import ValidationError
-from django.db.models import (
-    Model, ForeignKey, CharField, DateTimeField,
-)
-from django.contrib.gis import geos
-from django.contrib.gis.db.models import (
-    GeoManager, MultiLineStringField, OneToOneField
-)
-from django.contrib.auth.models import User, Permission, Group
+
 from django.dispatch import receiver
+from django.db.models import (
+    Model, ForeignKey, OneToOneField, CharField, DateTimeField, CASCADE,
+)
 from django.db.models.signals import post_save, post_migrate, pre_delete
+from django.contrib.auth.models import User, Permission, Group
 from django.contrib.contenttypes.models import ContentType
 
+from eoxserver.backends.models import DataItem
 from eoxserver.resources.coverages.models import (
-    collect_eo_metadata, Collection, Coverage, RangeType,
-    EO_OBJECT_TYPE_REGISTRY
+    Collection, CollectionType, Product, ProductType
 )
 
 
@@ -59,7 +54,7 @@ class Job(Model):
     SUCCEEDED = 'S'  # Successfully finished without errors
     ABORTED = 'T'   # Terminated on user request (reserved for future use)
     FAILED = 'F'    # Failed, an error occurred
-    UNDEFINED = 'U' # Unknown undefined state
+    UNDEFINED = 'U'  # Unknown undefined state
 
     STATUS_CHOICES = (
         (ACCEPTED, "ACCEPTED"),
@@ -70,7 +65,7 @@ class Job(Model):
         (UNDEFINED, "UNDEFINED"),
     )
 
-    owner = ForeignKey(User, related_name='jobs', null=True, blank=True)
+    owner = ForeignKey(User, on_delete=CASCADE, related_name='jobs', null=True, blank=True)
     identifier = CharField(max_length=256, null=False, blank=False)
     process_id = CharField(max_length=256, null=False, blank=False)
     response_url = CharField(max_length=512, null=False, blank=False)
@@ -87,89 +82,69 @@ class Job(Model):
         return "%s:%s:%s" % (self.process_id, self.identifier, self.status)
 
 
-class Product(Coverage):
-    objects = GeoManager()
-    ground_path = MultiLineStringField(null=True, blank=True)
+class UserCollectionLink(Model):
+    """ Model class to link a django.contrib.auth.models.User to an
+        eoxserver.resources.coverages.models.Collection.
 
-    @property
-    def duration(self):
-        return self.end_time - self.begin_time
-
-EO_OBJECT_TYPE_REGISTRY[301] = Product
-
-
-class ProductCollection(Product, Collection):
-    objects = GeoManager()
-
-    user = OneToOneField(User, null=True, blank=True, default=None, related_name="user_collection")
-
-    class Meta:
-        verbose_name = "Product Collection"
-        verbose_name_plural = "Product Collections"
-
-    def perform_insertion(self, eo_object, through=None):
-        if eo_object.real_type != Product:
-            raise ValidationError("In a %s only %s can be inserted." % (
-                ProductCollection._meta.verbose_name,
-                Product._meta.verbose_name_plural
-            ))
-
-        product = eo_object.cast()
-
-        if self.begin_time and self.end_time and self.footprint:
-            self.begin_time = min(self.begin_time, product.begin_time)
-            self.end_time = max(self.end_time, product.end_time)
-            footprint = self.footprint.union(product.footprint)
-            self.footprint = geos.MultiPolygon(
-                geos.Polygon.from_bbox(footprint.extent)
-            )
-        else:
-            self.begin_time, self.end_time, self.footprint = collect_eo_metadata(
-                self.eo_objects.all(), insert=[eo_object], bbox=True
-            )
-        #self.size_x =
-        #self.ground_path = ground_path
-        self.save()
-
-EO_OBJECT_TYPE_REGISTRY[310] = ProductCollection
+        For VirES Aeolus, each user can only be linked to exactly one collection
+        and vice-versa
+    """
+    user = OneToOneField(User, on_delete=CASCADE, related_name="user_collection")
+    collection = OneToOneField(Collection, on_delete=CASCADE, related_name="user_collection")
 
 
-def get_or_create_user_product_collection(user):
+class OptimizedProductDataItem(DataItem):
+    product = OneToOneField(Product, on_delete=CASCADE, related_name='optimized_data_item')
+
+
+#
+# Helpers
+#
+
+
+def get_or_create_user_collection_type():
+    collection_type, created = CollectionType.objects.get_or_create(
+        name="user_collection_type"
+    )
+    if created:
+        collection_type.allowed_product_types.set(
+            ProductType.objects.all()
+        )
+    return collection_type
+
+
+def get_or_create_user_collection(user):
     identifier = "user_collection_%s" % user.username
 
     try:
-        collection = ProductCollection.objects.get(identifier=identifier)
-    except ProductCollection.DoesNotExist:
-        range_type, _ = RangeType.objects.get_or_create(name="user_range_type")
+        collection = Collection.objects.get(identifier=identifier)
+    except Collection.DoesNotExist:
+        collection_type = get_or_create_user_collection_type()
 
-        collection = ProductCollection()
+        collection = Collection()
         collection.identifier = identifier
-        collection.range_type = range_type
-
-        collection.srid = 4326
-        collection.min_x = -180
-        collection.min_y = -90
-        collection.max_x = 180
-        collection.max_y = 90
-        collection.size_x = 0
-        collection.size_y = 1
-
-        collection.user = user
+        collection.collection_type = collection_type
 
         collection.full_clean()
         collection.save()
 
+        UserCollectionLink.objects.create(user=user, collection=collection)
+
     return collection
 
+
+#
+# Signal receivers
+#
 
 @receiver(post_migrate)
 def post_migrate_receiver(*args, **kwargs):
     for user in User.objects.all():
-        get_or_create_user_product_collection(user)
+        get_or_create_user_collection(user)
 
     # make sure we create the permissions for that collection
-    content_type = ContentType.objects.get_for_model(ProductCollection)
-    for collection in ProductCollection.objects.all():
+    content_type = ContentType.objects.get_for_model(Collection)
+    for collection in Collection.objects.all():
         Permission.objects.get_or_create(
             codename='access_%s' % collection.identifier,
             name='Can access collection %s' % collection.identifier,
@@ -184,22 +159,17 @@ def post_migrate_receiver(*args, **kwargs):
     # get permissions for "open" collections, but exclude user collections
     # and restricted collections
     permissions = Permission.objects.filter(
-        codename__startswith='access_'
-    ).exclude(
-        codename__in=[
-            'access_AUX_MRC_1B',
-            'access_AUX_RRC_1B',
-            'access_AUX_ISR_1B',
-            'access_AUX_ZWC_1B',
-        ]
+        codename__startswith='access_',
+        codename__endswith='public',
     ).exclude(
         codename__startswith='access_user_collection'
     )
-    group.permissions = permissions
+    group.permissions.set(permissions)
     group.save()
 
     for user in User.objects.all():
-        user.groups.add(group)
+        if not user.groups:
+            user.groups.add(group)
 
     # privileged group has access to all collections
     group, _ = Group.objects.get_or_create(
@@ -211,8 +181,11 @@ def post_migrate_receiver(*args, **kwargs):
         codename__startswith='access_'
     ).exclude(
         codename__startswith='access_user_collection'
+    ).exclude(
+        codename__startswith='access_',
+        codename__endswith='public',
     )
-    group.permissions = permissions
+    group.permissions.set(permissions)
     group.save()
 
     # give each user access to his own user collection
@@ -227,13 +200,13 @@ def post_migrate_receiver(*args, **kwargs):
 @receiver(post_save)
 def post_save_receiver(sender, instance, created, *args, **kwargs):
     if issubclass(sender, User) and created:
-        get_or_create_user_product_collection(instance)
+        get_or_create_user_collection(instance)
         group = Group.objects.get(name='aeolus_default')
         instance.groups.add(group)
 
-    elif issubclass(sender, ProductCollection) and created:
+    elif issubclass(sender, Collection) and created:
         # make sure we create the permissions for that collection
-        content_type = ContentType.objects.get_for_model(ProductCollection)
+        content_type = ContentType.objects.get_for_model(Collection)
         perm, _ = Permission.objects.get_or_create(
             codename='access_%s' % instance.identifier,
             name='Can access collection %s' % instance.identifier,
@@ -241,8 +214,9 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
         )
 
         # if it is a user collection give that user the permission to view it
-        if instance.user:
-            instance.user.user_permissions.add(perm)
+        link = UserCollectionLink.objects.filter(collection=instance).first()
+        if link:
+            link.user.user_permissions.add(perm)
 
         # otherwise add it to the according groups
         else:
@@ -257,10 +231,10 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
 @receiver(pre_delete)
 def pre_delete_receiver(sender, instance, *args, **kwargs):
     if issubclass(sender, User):
-        get_or_create_user_product_collection(instance).delete()
+        get_or_create_user_collection(instance).delete()
 
     # make sure we clean up the permissions for that collection
-    elif issubclass(sender, ProductCollection):
+    elif issubclass(sender, Collection):
         Permission.objects.get(
             codename='access_%s' % instance.identifier,
             name='Can access collection %s' % instance.identifier,

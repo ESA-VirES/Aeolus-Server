@@ -33,8 +33,7 @@ import tarfile
 import os.path
 
 from django.contrib.gis.geos import Polygon
-from eoxserver.core import Component, implements
-from eoxserver.services.ows.wps.interfaces import ProcessInterface
+from django.db.models import F, Func
 from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, BoundingBoxData, LiteralData,
     FormatBinaryRaw, Reference
@@ -44,11 +43,10 @@ from aeolus import models
 from aeolus.processes.util.base import AsyncProcessBase
 
 
-class RawDownloadProcess(AsyncProcessBase, Component):
+class RawDownloadProcess(AsyncProcessBase):
     """ This process allows to download raw data files from registered Products
         in ZIP/TAR archives
     """
-    implements(ProcessInterface)
 
     synchronous = False
 
@@ -92,7 +90,7 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                 output, context=None, **kwargs):
 
         collections = [
-            models.ProductCollection.objects.get(identifier=identifier)
+            models.Collection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
         ]
 
@@ -106,22 +104,31 @@ class RawDownloadProcess(AsyncProcessBase, Component):
                 (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             )
 
-            db_filters['ground_path__intersects'] = box
+            db_filters['footprint_homogenized__intersects'] = box
 
-        collection_products = [
-            (collection, models.Product.objects.filter(
+        collection_products = []
+        for collection in collections:
+            qs = models.Product.objects.all()
+            if bbox:
+                qs = qs.annotate(
+                    footprint_homogenized=Func(
+                        F('footprint'),
+                        function='ST_CollectionHomogenize'
+                    )
+                )
+
+            qs = qs.filter(
                 collections=collection,
                 **db_filters
-            ).order_by('begin_time'))
-            for collection in collections
-        ]
+            ).order_by('begin_time')
+
+            collection_products.append((collection, qs))
 
         collection_iter = (
             (collection, (
                     (
                         product,
-                        product.data_items
-                        .filter(semantic__startswith='bands')
+                        product.product_data_items
                         .values_list('location', flat=True)
                     )
                     for product in products

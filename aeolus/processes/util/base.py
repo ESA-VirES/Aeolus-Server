@@ -29,18 +29,18 @@
 
 
 from datetime import datetime, timedelta
-from cStringIO import StringIO
+from io import BytesIO
 import tempfile
 import os.path
 from uuid import uuid4
-from itertools import izip
-from logging import getLogger
+from logging import getLogger, LoggerAdapter
 import json
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db.models import F, Func
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
@@ -48,6 +48,7 @@ from eoxserver.services.ows.wps.parameters import (
     FormatBinaryRaw, CDFile, Reference, RequestParameter
 )
 from eoxserver.services.ows.wps.exceptions import ServerBusy
+from eoxserver.resources.coverages.models import Collection, Product
 import msgpack
 from netCDF4 import Dataset, stringtochar
 import numpy as np
@@ -62,6 +63,24 @@ from aeolus.util import cached_property
 MAX_ACTIVE_JOBS = 2
 
 
+def get_remote_addr(request):
+    """ Extract remote address from the Django HttpRequest """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.partition(',')[0]
+    return request.META.get('REMOTE_ADDR')
+
+
+class AccessLoggerAdapter(LoggerAdapter):
+    """ Logger adapter adding extra fields required by the access logger. """
+
+    def __init__(self, logger, username=None, remote_addr=None, **kwargs):
+        super().__init__(logger, {
+            "remote_addr": remote_addr if remote_addr else "-",
+            "username": username if username else "-",
+        })
+
+
 class AsyncProcessBase(object):
     """
     """
@@ -69,6 +88,7 @@ class AsyncProcessBase(object):
 
     inputs = [
         ("username", RequestParameter(get_username)),
+        ("remote_addr", RequestParameter(get_remote_addr)),
     ]
 
     @staticmethod
@@ -107,9 +127,13 @@ class AsyncProcessBase(object):
             (job.stopped - job.started).total_seconds()
         )
 
+    def get_access_logger(self, *args, **kwargs):
+        """ Get access logger wrapped by the AccessLoggerAdapter """
+        return AccessLoggerAdapter(self._access_logger, *args, **kwargs)
+
     @cached_property
-    def access_logger(self):
-        """ Get access logger. """
+    def _access_logger(self):
+        """ Get raw access logger. """
         return getLogger(
             "access.wps.%s" % self.__class__.__module__.split(".")[-1]
         )
@@ -206,20 +230,26 @@ class ExtractionProcessBase(AsyncProcessBase):
             settings, 'AEOLUS_EXTRACTION_ASYNC_SPAN', None
         )
 
+        access_logger = self.get_access_logger(**kwargs)
+
         if isasync and async_span and time_span > async_span:
-            message = 'Exceeding maximum allowed time span.'
-            self.access_logger.error(message)
+            message = '%s: Exceeding maximum allowed time span.' % (
+                context.identifier,
+            )
+            access_logger.error(message)
             raise Exception(message)
         elif not isasync and time_span > sync_span:
-            message = 'Exceeding maximum allowed time span.'
-            self.access_logger.error(message)
+            message = '%s: Exceeding maximum allowed time span.' % (
+                context.identifier,
+            )
+            access_logger.error(message)
             raise Exception(message)
 
         # log the request
-        self.access_logger.info(
-            "request parameters: user: %s, toi: (%s, %s), bbox: %s, "
+        access_logger.info(
+            "%s: request parameters: toi: (%s, %s), bbox: %s, "
             "collections: (%s), filters: %s, type: %s",
-            kwargs["username"],
+            context.identifier,
             begin_time.isoformat("T"), end_time.isoformat("T"),
             [bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]] if bbox else None,
             ", ".join(collection_ids.data),
@@ -297,11 +327,12 @@ class ExtractionProcessBase(AsyncProcessBase):
                             for product in products
                         )
 
-            encoded = StringIO(msgpack.dumps(out_data))
+            encoded = BytesIO(msgpack.dumps(out_data))
 
             # some result logging
-            self.access_logger.info(
-                "response: count: %d files, mime-type: %s, fields: %s",
+            access_logger.info(
+                "%s: response: count: %d files, mime-type: %s, fields: %s",
+                context.identifier,
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
 
@@ -323,7 +354,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                 with Dataset(tmppath, "w", format="NETCDF4") as ds:
                     for collection, data_iterator in out_data_iterator:
                         products = collection_products_dict[collection]
-                        enumerated_data = izip(
+                        enumerated_data = zip(
                             enumerate(data_iterator, start=1), products
                         )
                         for (product_idx, file_data), product in enumerated_data:
@@ -350,7 +381,9 @@ class ExtractionProcessBase(AsyncProcessBase):
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
                         'filters': filters.data if filters else None,
-                        'beginTime': isoformat(begin_time) if begin_time else None,
+                        'beginTime': (
+                            isoformat(begin_time) if begin_time else None
+                        ),
                         'endTime': isoformat(end_time) if end_time else None,
                         'bbox': [
                             bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1]
@@ -366,8 +399,9 @@ class ExtractionProcessBase(AsyncProcessBase):
                 raise
 
             # some result logging
-            self.access_logger.info(
-                "response: count: %d files, mime-type: %s, fields: %s",
+            access_logger.info(
+                "%s: response: count: %d files, mime-type: %s, fields: %s",
+                context.identifier,
                 total_product_count, mime_type, json.dumps(fields_for_logging)
             )
 
@@ -393,10 +427,10 @@ class ExtractionProcessBase(AsyncProcessBase):
             tpl_box = (bbox[0][0], bbox[0][1], bbox[1][0], bbox[1][1])
             box = Polygon.from_bbox(tpl_box)
 
-            db_filters['ground_path__intersects'] = box
+            db_filters['footprint_homogenized__intersects'] = box
 
         if self.range_type_name:
-            db_filters['range_type__name'] = self.range_type_name
+            db_filters['product_type__name'] = self.range_type_name
 
         return db_filters
 
@@ -405,7 +439,7 @@ class ExtractionProcessBase(AsyncProcessBase):
 
     def get_collection_products(self, collection_ids, db_filters, username):
         collections = [
-            models.ProductCollection.objects.get(identifier=identifier)
+            Collection.objects.get(identifier=identifier)
             for identifier in collection_ids.data
         ]
 
@@ -415,18 +449,35 @@ class ExtractionProcessBase(AsyncProcessBase):
             raise PermissionDenied("Not logged in")
 
         for collection in collections:
-            if not user.has_perm("aeolus.access_%s" % collection.identifier):
+            if not user.has_perm("coverages.access_%s" % collection.identifier):
                 raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
 
-        return [
-            (collection, models.Product.objects.filter(
+        add_homogenized = any(
+            lookup.startswith('footprint_homogenized')
+            for lookup in db_filters.keys()
+        )
+
+        collection_products = []
+        for collection in collections:
+            qs = Product.objects.all()
+            if add_homogenized:
+                qs = qs.annotate(
+                    footprint_homogenized=Func(
+                        F('footprint'),
+                        function='ST_CollectionHomogenize'
+                    )
+                )
+
+            qs = qs.filter(
                 collections=collection,
                 **db_filters
-            ).order_by('begin_time'))
-            for collection in collections
-        ]
+            ).order_by('begin_time')
+
+            collection_products.append((collection, qs))
+
+        return collection_products
 
     def extract_data(self, collection_products, data_filters, mime_type, **kw):
         raise NotImplementedError
@@ -454,7 +505,9 @@ class ExtractionProcessBase(AsyncProcessBase):
                     grp.createDimension(dimname, len(values[0]))
                     var = grp.createVariable(name, 'S1', ('dsd', dimname))
 
-                    values = stringtochar(np.array(values))
+                    values = stringtochar(np.array([
+                        bytes(v, 'ascii') for v in values
+                    ]))
                 else:
                     var = grp.createVariable(name, 'i8', ('dsd',))
 

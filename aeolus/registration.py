@@ -126,14 +126,10 @@ def get_dbl_metadata(codafile):
         "identifier": codafile.fetch('mph/product').strip(),
         "begin_time": codafile.fetch_date('mph/sensing_start'),
         "end_time": codafile.fetch_date('mph/sensing_stop'),
-        "footprint": MultiPolygon(Polygon.from_bbox(ground_path.extent)),
-        "ground_path": ground_path,
-
+        # "footprint": MultiPolygon(Polygon.from_bbox(ground_path.extent)),
+        "footprint": ground_path,
         "format": "DBL",
-        "size_x": 1,
-        "size_y": 1,
-
-        "range_type_name": codafile.product_type,
+        "product_type_name": codafile.product_type,
     }
 
 
@@ -176,17 +172,14 @@ def get_eef_metadata(codafile):
     return dict(
         footprint=footprint,
         ground_path=ground_path,
-
         format="EEF",
-        size_x=1,
-        size_y=1,
-
-        range_type_name=codafile.product_type,
+        product_type_name=codafile.product_type,
         **metadata
     )
 
 
-def register_product(filename, overrides):
+def register_product(filename, overrides,
+                     footprint_simplification_tolerance=None):
     """ Registers a DBL file as a :class:`aeolus.models.Product`. Metadata is
         extracted from the specified file or passed.
     """
@@ -206,30 +199,39 @@ def register_product(filename, overrides):
 
     metadata.update(overrides)
 
-    range_type = coverages.RangeType.objects.get(
-        name=metadata.pop('range_type_name')
+    product_type = coverages.ProductType.objects.get(
+        name=metadata.pop('product_type_name')
     )
 
+    if footprint_simplification_tolerance is not None:
+        footprint = metadata.get('footprint')
+        if footprint:
+            simplified = footprint.simplify(
+                footprint_simplification_tolerance
+            )
+
+            # simplify reduces "Multi"-Geometries to simple ones.
+            # force the same geometry type as the original footprint
+            if simplified.geom_type != footprint.geom_type:
+                simplified = type(footprint)(simplified)
+
+            metadata['footprint'] = simplified
+
     # Register the product
-    product = models.Product()
+    product = coverages.Product()
     product.identifier = metadata['identifier']
-    product.visible = False
-    product.range_type = range_type
-    product.srid = 4326
-    product.extent = metadata['footprint'].extent
-    for key, value in metadata.iteritems():
+    product.product_type = product_type
+    for key, value in metadata.items():
         setattr(product, key, value)
 
     product.full_clean()
     product.save()
 
     # storage, package, format_, location = _get_location_chain([data_file])
-    data_item = backends.DataItem(
-        location=filename, format=metadata['format'] or "",
-        semantic="bands[1:%d]" % len(range_type),
-        storage=None, package=None,
+    data_item = coverages.ProductDataItem(
+        location=filename, format=metadata['format'] or ""
     )
-    data_item.dataset = product
+    data_item.product = product
     data_item.full_clean()
     data_item.save()
 
@@ -251,14 +253,26 @@ def register_albedo(filename, year, month, replace=False):
             % (filename, e)
         )
 
-    subdatasets = ds.GetSubDatasets()
-
     nadir_location = offnadir_location = None
-    for subdataset, _ in subdatasets:
-        if subdataset.endswith('ADAM_albedo_nadir'):
-            nadir_location = subdataset
-        elif subdataset.endswith('ADAM_albedo_offnadir'):
-            offnadir_location = subdataset
+
+    # check type of file:
+    if ds.RasterCount == 2:
+        # TIF file with 2 bands
+        subdatasets = []
+        nadir_location = offnadir_location = filename
+    elif ds.RasterCount == 0:
+        # netCDF file with subdatasets
+        subdatasets = ds.GetSubDatasets()
+
+        for subdataset, _ in subdatasets:
+            if subdataset.endswith('ADAM_albedo_nadir'):
+                nadir_location = subdataset
+            elif subdataset.endswith('ADAM_albedo_offnadir'):
+                offnadir_location = subdataset
+    else:
+        raise RegistrationError(
+            "Cannot register Albedo file '%s'" % filename
+        )
 
     if not nadir_location:
         raise RegistrationError(
@@ -269,29 +283,28 @@ def register_albedo(filename, year, month, replace=False):
             "File '%s' is missing the offnadir subdataset" % filename
         )
 
-    sds = gdal.Open(nadir_location)
-
+    nadir_ds = gdal.Open(nadir_location)
     begin_time = datetime(year, month, 1, tzinfo=utc)
     end_time = datetime(
-        begin_time.year + (begin_time.month / 12),
+        begin_time.year + (begin_time.month // 12),
         ((begin_time.month % 12) + 1), 1, tzinfo=utc
     ) - timedelta(milliseconds=1)
 
     extent = (-180, -90, 180, 90)
 
     try:
-        range_type = coverages.RangeType.objects.get(name='ADAM_albedo')
-    except coverages.RangeType.DoesNotExist:
+        coverage_type = coverages.CoverageType.objects.get(name='ADAM_albedo')
+    except coverages.CoverageType.DoesNotExist:
         raise RegistrationError('Could not find Albedo range type.')
 
     identifier = 'ADAM_albedo_%d_%d' % (year, month)
 
-    exists = coverages.RectifiedDataset.objects.filter(
+    exists = coverages.Coverage.objects.filter(
         identifier=identifier
     ).exists()
     if exists:
         if replace:
-            coverages.RectifiedDataset.objects.get(
+            coverages.Coverage.objects.get(
                 identifier=identifier
             ).delete()
         else:
@@ -299,27 +312,46 @@ def register_albedo(filename, year, month, replace=False):
                 'Albedo file for %d/%d already registered' % (year, month)
             )
 
-    ds_model = coverages.RectifiedDataset.objects.create(
+    grid, _ = coverages.Grid.objects.get_or_create(
+        name="Albedo_grid",
+        coordinate_reference_system='EPSG:4326',
+        axis_1_name='x',
+        axis_2_name='y',
+        axis_1_type=0,
+        axis_2_type=0,
+        axis_1_offset=str(360 / nadir_ds.RasterXSize),
+        axis_2_offset=str(-180 / nadir_ds.RasterYSize),
+    )
+
+    coverage = coverages.Coverage.objects.create(
         identifier=identifier,
         begin_time=begin_time,
         end_time=end_time,
         footprint=MultiPolygon(Polygon.from_bbox(extent)),
-        size_x=sds.RasterXSize,
-        size_y=sds.RasterYSize,
-        srid=4326,
-        min_x=-180,
-        min_y=-90,
-        max_x=180,
-        max_y=90,
-        range_type=range_type,
+        grid=grid,
+        axis_1_size=nadir_ds.RasterXSize,
+        axis_2_size=nadir_ds.RasterYSize,
+        axis_1_origin=-180,
+        axis_2_origin=90,
+        coverage_type=coverage_type,
     )
 
-    for i, path in enumerate((offnadir_location, nadir_location), start=1):
-        backends.DataItem.objects.create(
-            location=path,
-            format='NetCDF',
-            semantic='bands[%d]' % i,
-            dataset=ds_model,
+    if nadir_location == offnadir_location:
+        coverages.ArrayDataItem.objects.create(
+            location=nadir_location,
+            format='image/tiff',
+            coverage=coverage,
+            field_index=0,
+            band_count=2,
         )
+    else:
+        for i, path in enumerate((offnadir_location, nadir_location)):
+            coverages.ArrayDataItem.objects.create(
+                location=path,
+                format='application/x-netcdf',
+                coverage=coverage,
+                field_index=i,
+                band_count=1,
+            )
 
-    return ds_model
+    return coverage

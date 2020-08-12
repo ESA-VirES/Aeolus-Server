@@ -1,0 +1,21 @@
+[{
+    "name": "ADAM_albedo",
+    "data_type": "Float32",
+    "bands": [{
+        "name": "offnadir",
+        "identifier": "offnadir",
+        "description": "",
+        "definition": "",
+        "gdal_interpretation": "Undefined",
+        "nil_values": [],
+        "uom": "?"
+    }, {
+        "name": "nadir",
+        "identifier": "nadir",
+        "description": "",
+        "definition": "",
+        "gdal_interpretation": "Undefined",
+        "nil_values": [],
+        "uom": "?"
+    }]
+}]

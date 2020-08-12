@@ -34,7 +34,7 @@ from aeolus.level_2c import extract_data
 from aeolus.processes.util.accumulated import AccumulatedDataExctractProcessBase
 
 
-class Level2CExctract(AccumulatedDataExctractProcessBase, Component):
+class Level2CExtract(AccumulatedDataExctractProcessBase, Component):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
         Level2C products of the specified collections.
     """
