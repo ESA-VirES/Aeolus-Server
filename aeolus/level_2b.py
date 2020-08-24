@@ -246,6 +246,7 @@ locations = {
     'mie_profile_geoid_separation':                     calc_mie_profile_geoid_separation,
     'mie_wind_result_alt_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
     'mie_profile_alt_of_DEM_intersection':              calc_mie_profile_alt_of_DEM_intersection,
+    'mie_wind_result_arg_of_lat_of_DEM_intersection':   ['/mie_geolocation', -1, 'windresult_geolocation/arg_of_lat_of_dem_intersection'],
     'rayleigh_wind_result_id':                          ['/rayleigh_geolocation', -1, 'wind_result_id'],
     'rayleigh_wind_profile_wind_result_id':             ['/rayleigh_profile', -1, 'l2b_wind_profiles/wind_result_id_number', -1],
     'rayleigh_wind_result_range_bin_number':            ['/rayleigh_hloswind', -1, 'windresult/which_range_bin'], # TODO ??
@@ -272,6 +273,7 @@ locations = {
     'rayleigh_profile_geoid_separation':                calc_rayleigh_profile_geoid_separation,
     'rayleigh_wind_result_alt_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
     'rayleigh_profile_alt_of_DEM_intersection':         calc_rayleigh_profile_alt_of_DEM_intersection,
+    'rayleigh_wind_result_arg_of_lat_of_DEM_intersection': ['/rayleigh_geolocation', -1, 'windresult_geolocation/arg_of_lat_of_dem_intersection'],
     # 'l1B_measurement_time':                             [''],  # TODO: not available
     # 'mie_bin_classification':                           [''],  # TODO: not described in XLS sheet
     # 'rayleigh_bin_classification':                      [''],  # TODO: not described in XLS sheet
