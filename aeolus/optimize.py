@@ -82,7 +82,7 @@ class OptimizationError(Exception):
     pass
 
 
-def create_optimized_file(input_file, product_type_name, output_path):
+def create_optimized_file(input_file, product_type_name, output_path, update):
     """ Creates an optimized netcdf file for the given product
     """
 
@@ -95,7 +95,7 @@ def create_optimized_file(input_file, product_type_name, output_path):
             "Product range type '%s' is not supported" % product_type_name
         )
 
-    if os.path.exists(output_path):
+    if os.path.exists(output_path) and not update:
         raise OptimizationError("Output path '%s' already exists" % output_path)
 
     # loop through all locations, access them and save them to the netcdf
@@ -105,79 +105,16 @@ def create_optimized_file(input_file, product_type_name, output_path):
             "Starting optimization for file '%s' to generate '%s'"
             % (input_file, output_path)
         )
-        with Dataset(output_path, "w", format="NETCDF4") as out_ds:
+        mode = "a" if update else "w"
+        with Dataset(output_path, mode, format="NETCDF4") as out_ds:
             with CODAFile(input_file) as in_cf:
-                for group_name, locations in location_groups.items():
-                    group = out_ds.createGroup(group_name)
+                gen = _optimize_fields(
+                    product_type_name, location_groups, in_cf, out_ds,
+                    update
+                )
+                for group_name, name in gen:
+                    yield (group_name, name)
 
-                    for name, location in locations.items():
-                        logger.info("Optimizing %s/%s" % (group_name, name))
-                        yield (group_name, name)
-
-                        if product_type_name == 'AUX_MET_12' and len(location) > 3:
-                            first = location[:1] + [0] + location[2:]
-                            first_values = access_location(in_cf, first)
-
-                            shape = (
-                                in_cf.get_size(location[0])[0],
-                                first_values.shape[0]
-                            )
-
-                            # make a list of all dimension names and check if
-                            # they, are already available, otherwise create them
-                            dimnames = [
-                                "arr_%d" % v for v in shape
-                            ]
-                            for dimname, size in zip(dimnames, shape):
-                                if dimname not in out_ds.dimensions:
-                                    out_ds.createDimension(dimname, size)
-
-                            variable = group.createVariable(name, '%s%i' % (
-                                first_values.dtype.kind,
-                                first_values.dtype.itemsize
-                            ), dimensions=dimnames)
-
-                            data = access_location(in_cf, location)
-                            for i, item in enumerate(data):
-                                variable[i] = item
-
-                        else:
-                            values = access_location(in_cf, location)
-
-                            # get the correct dimensionality for the values and
-                            # reshape if necessary
-                            dimensionality = get_dimensionality(values)
-
-                            if dimensionality == 3:
-                                init_num = values.shape[0]
-                                values = np.vstack(np.hstack(values))
-                                values = values.reshape(
-                                    values.shape[0] // init_num,
-                                    init_num,
-                                    values.shape[1]
-                                ).swapaxes(0, 1)
-                            elif dimensionality == 2:
-                                values = np.vstack(values)
-
-                            # make a list of all dimension names and check if
-                            # they, are already available, otherwise create them
-                            dimnames = [
-                                "arr_%d" % v for v in values.shape
-                            ]
-                            for dimname, size in zip(dimnames, values.shape):
-                                if dimname not in out_ds.dimensions:
-                                    out_ds.createDimension(dimname, size)
-
-                            # create a variable and store the data in it
-                            var = group.createVariable(name, '%s%i' % (
-                                values.dtype.kind,
-                                values.dtype.itemsize
-                            ), dimensions=dimnames)
-
-                            if dimensionality in (2, 3):
-                                values = np.hstack(np.hstack(values))
-
-                            var[:] = values
     except:
         try:
             logger.error(
@@ -187,6 +124,98 @@ def create_optimized_file(input_file, product_type_name, output_path):
         except OSError:
             pass
         raise
+
+
+def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
+    for group_name, locations in location_groups.items():
+        if group_name in out_ds.groups:
+            if update:
+                group = out_ds.groups[group_name]
+            else:
+                raise OptimizationError('Group %s already exists' % group_name)
+        else:
+            group = out_ds.createGroup(group_name)
+
+        for name, location in locations.items():
+            # check of the variable already exists. If mode is `update`, simply
+            # skip over existing ones. If not, fail the generation.
+            # Otherwise just create the variable normally
+            if name in group.variables:
+                if update:
+                    continue
+                else:
+                    raise OptimizationError(
+                        'Variable %s already exists for group %s'
+                        % (name, group_name)
+                    )
+
+            logger.info("Optimizing %s/%s" % (group_name, name))
+            yield (group_name, name)
+
+            if product_type_name == 'AUX_MET_12' and len(location) > 3:
+                first = location[:1] + [0] + location[2:]
+                first_values = access_location(in_cf, first)
+
+                shape = (
+                    in_cf.get_size(location[0])[0],
+                    first_values.shape[0]
+                )
+
+                # make a list of all dimension names and check if
+                # they, are already available, otherwise create them
+                dimnames = [
+                    "arr_%d" % v for v in shape
+                ]
+                for dimname, size in zip(dimnames, shape):
+                    if dimname not in out_ds.dimensions:
+                        out_ds.createDimension(dimname, size)
+
+                variable = group.createVariable(name, '%s%i' % (
+                    first_values.dtype.kind,
+                    first_values.dtype.itemsize
+                ), dimensions=dimnames)
+
+                data = access_location(in_cf, location)
+                for i, item in enumerate(data):
+                    variable[i] = item
+
+            else:
+                values = access_location(in_cf, location)
+
+                # get the correct dimensionality for the values and
+                # reshape if necessary
+                dimensionality = get_dimensionality(values)
+
+                if dimensionality == 3:
+                    init_num = values.shape[0]
+                    values = np.vstack(np.hstack(values))
+                    values = values.reshape(
+                        values.shape[0] // init_num,
+                        init_num,
+                        values.shape[1]
+                    ).swapaxes(0, 1)
+                elif dimensionality == 2:
+                    values = np.vstack(values)
+
+                # make a list of all dimension names and check if
+                # they, are already available, otherwise create them
+                dimnames = [
+                    "arr_%d" % v for v in values.shape
+                ]
+                for dimname, size in zip(dimnames, values.shape):
+                    if dimname not in out_ds.dimensions:
+                        out_ds.createDimension(dimname, size)
+
+                # create a variable and store the data in it
+                var = group.createVariable(name, '%s%i' % (
+                    values.dtype.kind,
+                    values.dtype.itemsize
+                ), dimensions=dimnames)
+
+                if dimensionality in (2, 3):
+                    values = np.hstack(np.hstack(values))
+
+                var[:] = values
 
 
 def get_dimensionality(values):
