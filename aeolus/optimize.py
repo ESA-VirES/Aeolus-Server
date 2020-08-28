@@ -95,7 +95,7 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
             "Product range type '%s' is not supported" % product_type_name
         )
 
-    if os.path.exists(output_path):
+    if os.path.exists(output_path) and not update:
         raise OptimizationError("Output path '%s' already exists" % output_path)
 
     # loop through all locations, access them and save them to the netcdf
@@ -105,7 +105,8 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
             "Starting optimization for file '%s' to generate '%s'"
             % (input_file, output_path)
         )
-        with Dataset(output_path, "w", format="NETCDF4") as out_ds:
+        mode = "a" if update else "w"
+        with Dataset(output_path, mode, format="NETCDF4") as out_ds:
             with CODAFile(input_file) as in_cf:
                 gen = _optimize_fields(
                     product_type_name, location_groups, in_cf, out_ds,
@@ -136,9 +137,6 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
             group = out_ds.createGroup(group_name)
 
         for name, location in locations.items():
-            logger.info("Optimizing %s/%s" % (group_name, name))
-            yield (group_name, name)
-
             # check of the variable already exists. If mode is `update`, simply
             # skip over existing ones. If not, fail the generation.
             # Otherwise just create the variable normally
@@ -150,6 +148,9 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                         'Variable %s already exists for group %s'
                         % (name, group_name)
                     )
+
+            logger.info("Optimizing %s/%s" % (group_name, name))
+            yield (group_name, name)
 
             if product_type_name == 'AUX_MET_12' and len(location) > 3:
                 first = location[:1] + [0] + location[2:]
