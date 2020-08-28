@@ -95,8 +95,16 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
             "Product range type '%s' is not supported" % product_type_name
         )
 
-    if os.path.exists(output_path) and not update:
-        raise OptimizationError("Output path '%s' already exists" % output_path)
+    # select correct file mode
+    mode = "w"
+    if os.path.exists(output_path):
+        if update:
+            # 'a' only works when a file exists
+            mode = "a"
+        else:
+            raise OptimizationError(
+                "Output path '%s' already exists" % output_path
+            )
 
     # loop through all locations, access them and save them to the netcdf
 
@@ -105,7 +113,6 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
             "Starting optimization for file '%s' to generate '%s'"
             % (input_file, output_path)
         )
-        mode = "a" if update else "w"
         with Dataset(output_path, mode, format="NETCDF4") as out_ds:
             with CODAFile(input_file) as in_cf:
                 gen = _optimize_fields(
