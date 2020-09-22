@@ -37,6 +37,7 @@ from aeolus.coda_utils import (
     CODAFile, access_location, check_fields, NoSuchFieldException
 )
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
+from aeolus.extraction import exception
 
 
 def check_has_groups(cf):
@@ -521,7 +522,10 @@ def optimized_access(cf, ds, group_name, field_name, location):
             if variable:
                 return variable[:]
 
-    return access_location(cf, location)
+    try:
+        return access_location(cf, location)
+    except:
+        raise exception.NoSuchFieldException(field_name, location)
 
 
 def stack_measurement_array(data):
