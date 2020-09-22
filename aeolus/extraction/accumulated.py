@@ -309,7 +309,7 @@ class AccumulatedDataExtractor(object):
                 path = self.locations[name]
                 data = access_location(cf, path)
             except NoSuchFieldException:
-                raise exception.NoSuchFieldException(name, path)
+                raise exception.InvalidFieldError(name, path)
 
             if name in self.array_fields:
                 data = np.vstack(data)
