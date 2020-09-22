@@ -525,7 +525,7 @@ def optimized_access(cf, ds, group_name, field_name, location):
     try:
         return access_location(cf, location)
     except:
-        raise exception.NoSuchFieldException(field_name, location)
+        raise exception.InvalidFieldError(field_name, location)
 
 
 def stack_measurement_array(data):
