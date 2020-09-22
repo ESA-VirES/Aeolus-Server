@@ -38,7 +38,7 @@ class NoSuchFieldException(Exception):
 
     def __init__(self, location):
         self.locator = str(location)
-        super().__init__('No such field %s' % location)
+        super().__init__('No such field %s' % str(location))
 
 
 class CODAFile(object):
