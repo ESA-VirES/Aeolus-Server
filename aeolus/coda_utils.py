@@ -33,6 +33,14 @@ import coda
 from django.utils.timezone import utc
 
 
+class NoSuchFieldException(Exception):
+    code = 'NoSuchField'
+
+    def __init__(self, location):
+        self.locator = str(location)
+        super(self).__init__('No such field %s' % location)
+
+
 class CODAFile(object):
     """ Wrapper around the filehandles used in the :mod:`coda` library.
     """
@@ -56,7 +64,10 @@ class CODAFile(object):
     def fetch(self, *args):
         """
         """
-        return coda.fetch(self._handle, *args)
+        try:
+            return coda.fetch(self._handle, *args)
+        except coda.CodacError:
+            raise NoSuchFieldException(args)
 
     def fetch_date(self, *args):
         """ Fetch a value and convert it to a :class:`datetime.datetime` with
