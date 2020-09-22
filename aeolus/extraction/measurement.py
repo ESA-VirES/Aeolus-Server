@@ -31,10 +31,11 @@ from collections import defaultdict
 from copy import deepcopy
 
 import numpy as np
-import coda
 from netCDF4 import Dataset
 
-from aeolus.coda_utils import CODAFile, access_location, check_fields
+from aeolus.coda_utils import (
+    CODAFile, access_location, check_fields, NoSuchFieldException
+)
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 
 
@@ -43,7 +44,7 @@ def check_has_groups(cf):
     """
     try:
         return cf.fetch('/group_pcd') is not None
-    except coda.CodacError:
+    except NoSuchFieldException:
         return False
 
 
