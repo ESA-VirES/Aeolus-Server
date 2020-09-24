@@ -33,7 +33,7 @@ import logging
 from netCDF4 import Dataset
 import numpy as np
 
-from aeolus.coda_utils import CODAFile, access_location
+from aeolus.coda_utils import CODAFile, access_location, NoSuchFieldException
 from aeolus import level_1b
 from aeolus import level_2a
 from aeolus import level_2b
@@ -161,7 +161,11 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
 
             if product_type_name == 'AUX_MET_12' and len(location) > 3:
                 first = location[:1] + [0] + location[2:]
-                first_values = access_location(in_cf, first)
+                try:
+                    first_values = access_location(in_cf, first)
+                except NoSuchFieldException:
+                    logger.warn('No such field %s' % (name))
+                    continue
 
                 shape = (
                     in_cf.get_size(location[0])[0],
@@ -182,12 +186,20 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                     first_values.dtype.itemsize
                 ), dimensions=dimnames)
 
-                data = access_location(in_cf, location)
-                for i, item in enumerate(data):
-                    variable[i] = item
+                try:
+                    data = access_location(in_cf, location)
+                    for i, item in enumerate(data):
+                        variable[i] = item
+                except NoSuchFieldException:
+                    logger.warn('No such field %s' % (name))
+                    continue
 
             else:
-                values = access_location(in_cf, location)
+                try:
+                    values = access_location(in_cf, location)
+                except NoSuchFieldException:
+                    logger.warn('No such field %s' % (name))
+                    continue
 
                 # get the correct dimensionality for the values and
                 # reshape if necessary
