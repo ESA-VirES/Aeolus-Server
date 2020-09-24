@@ -119,10 +119,9 @@ def _make_calc_albedo_off_nadir(lon_location, lat_location):
 
 def _create_temp_granularity(temp_location, ref_location):
     def _inner(cf):
-        temperature_data = access_location(cf,temp_location)
-        which_cog_data = access_location(cf,ref_location)
-        unique_vals, count = np.unique(which_cog_data, return_counts=True)
-        data = np.repeat(temperature_data, count)
+        temperature_data = access_location(cf, temp_location)
+        which_cog_data = access_location(cf, ref_location)
+        data = temperature_data[which_cog_data-1]
         return data
     return _inner
 
