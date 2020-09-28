@@ -260,6 +260,7 @@ OBSERVATION_LOCATIONS = {
     'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
     'sca_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/sca_applied'],
     'ica_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/ica_applied'],
+    'mca_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/mca_applied'],
     # Albedo values:
     'albedo_off_nadir':                             calculate_albedo_off_nadir,
 }
@@ -328,9 +329,11 @@ ICA_LOCATIONS = {
 
 SCA_LOCATIONS = {
     'SCA_QC_flag':                                  getCurrentSCA_flag,
+    'SCA_processing_qc_flag':                       ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'processing_qc_flag'],
     'SCA_extinction_variance':                      ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'extinction_variance'],
     'SCA_backscatter_variance':                     ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'backscatter_variance'],
     'SCA_LOD_variance':                             ['/sca_pcd', -1, 'profile_pcd_bins', -1, 'lod_variance'],
+    'SCA_middle_bin_processing_qc_flag':            ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'processing_qc_flag'],
     'SCA_middle_bin_extinction_variance':           ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'extinction_variance'],
     'SCA_middle_bin_backscatter_variance':          ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'backscatter_variance'],
     'SCA_middle_bin_LOD_variance':                  ['/sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'lod_variance'],

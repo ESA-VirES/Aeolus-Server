@@ -31,11 +31,13 @@ from collections import defaultdict
 from copy import deepcopy
 
 import numpy as np
-import coda
 from netCDF4 import Dataset
 
-from aeolus.coda_utils import CODAFile, access_location, check_fields
+from aeolus.coda_utils import (
+    CODAFile, access_location, check_fields, NoSuchFieldException
+)
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
+from aeolus.extraction import exception
 
 
 def check_has_groups(cf):
@@ -43,7 +45,7 @@ def check_has_groups(cf):
     """
     try:
         return cf.fetch('/group_pcd') is not None
-    except coda.CodacError:
+    except NoSuchFieldException:
         return False
 
 
@@ -520,7 +522,10 @@ def optimized_access(cf, ds, group_name, field_name, location):
             if variable:
                 return variable[:]
 
-    return access_location(cf, location)
+    try:
+        return access_location(cf, location)
+    except:
+        raise exception.InvalidFieldError(field_name, location)
 
 
 def stack_measurement_array(data):

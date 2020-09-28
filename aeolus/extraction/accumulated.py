@@ -33,8 +33,9 @@ from copy import deepcopy
 import numpy as np
 from netCDF4 import Dataset
 
-from aeolus.coda_utils import CODAFile, access_location
+from aeolus.coda_utils import CODAFile, access_location, NoSuchFieldException
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
+from aeolus.extraction import exception
 
 
 class AccumulatedDataExtractor(object):
@@ -304,8 +305,11 @@ class AccumulatedDataExtractor(object):
                 data = group.variables[name][:]
 
         if data is None:
-            path = self.locations[name]
-            data = access_location(cf, path)
+            try:
+                path = self.locations[name]
+                data = access_location(cf, path)
+            except NoSuchFieldException:
+                raise exception.InvalidFieldError(name, path)
 
             if name in self.array_fields:
                 data = np.vstack(data)

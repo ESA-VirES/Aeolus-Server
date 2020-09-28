@@ -76,6 +76,14 @@ class Command(CommandOutputMixIn, BaseCommand):
             )
         )
         parser.add_argument(
+            "-U", "--update",
+            action="store_true", dest="update", default=False,
+            help=(
+                "Update an optimized file, if it already exists, instead of "
+                "recreate it wholly anew. Only used for `--create`."
+            )
+        )
+        parser.add_argument(
             "-o", "--output", "--output-file", dest="output_file", default=None,
             help=(
                 "Specify an output file. By default, the `AEOLUS_OPTIMIZED_DIR` "
@@ -90,7 +98,7 @@ class Command(CommandOutputMixIn, BaseCommand):
     """
 
     @transaction.atomic()
-    def handle(self, identifier, mode, output_file, **kwargs):
+    def handle(self, identifier, mode, output_file, update, **kwargs):
         if not identifier:
             raise CommandError("Missing manadatory --identifier")
         try:
@@ -152,18 +160,19 @@ class Command(CommandOutputMixIn, BaseCommand):
                     )
 
         elif mode == "create":
-            if data_item:
-                raise CommandError(
-                    "Product '%s' already has an optimized file. Use "
-                    "'--delete' to remove it or '--refresh' to re-generate it."
-                    % identifier
-                )
-            elif os.path.exists(output_file):
-                raise CommandError(
-                    "Orphaned optimized file '%s' already exists file. Use "
-                    "'--delete' to remove it or '--refresh' to re-generate it."
-                    % output_file
-                )
+            if not update:
+                if data_item:
+                    raise CommandError(
+                        "Product '%s' already has an optimized file. Use "
+                        "'--delete' to remove it or '--refresh' to re-generate "
+                        "it." % identifier
+                    )
+                elif os.path.exists(output_file):
+                    raise CommandError(
+                        "Orphaned optimized file '%s' already exists file. Use "
+                        "'--delete' to remove it or '--refresh' to re-generate "
+                        "it." % output_file
+                    )
 
         elif mode == "link":
             if not os.path.exists(output_file):
@@ -223,9 +232,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                         % e
                     )
 
-            self._create_optimized_file(product, output_file)
+            self._create_optimized_file(product, output_file, update)
 
-    def _create_optimized_file(self, product, output_file):
+    def _create_optimized_file(self, product, output_file, update):
         identifier = product.identifier
         product_type = product.product_type
 
@@ -242,7 +251,7 @@ class Command(CommandOutputMixIn, BaseCommand):
 
         try:
             group_fields = create_optimized_file(
-                input_file, product_type.name, output_file
+                input_file, product_type.name, output_file, update
             )
             for group, field_name in group_fields:
                 self.print_msg("Optimizing %s/%s" % (group, field_name), 2)
@@ -263,9 +272,9 @@ class Command(CommandOutputMixIn, BaseCommand):
         )
 
         # create a data item for the optimized file
-        data_item = OptimizedProductDataItem(
+        data_item, _ = OptimizedProductDataItem.objects.get_or_create(
+            product=product,
             location=output_file, format="application/netcdf"
         )
-        data_item.product = product
         data_item.full_clean()
         data_item.save()
