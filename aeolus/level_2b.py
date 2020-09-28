@@ -117,6 +117,14 @@ def _make_calc_albedo_off_nadir(lon_location, lat_location):
 
     return _inner
 
+def _create_temp_granularity(temp_location, ref_location):
+    def _inner(cf):
+        temperature_data = access_location(cf, temp_location)
+        which_cog_data = access_location(cf, ref_location)
+        data = temperature_data[which_cog_data-1]
+        return data
+    return _inner
+
 
 calc_mie_wind_result_albedo_off_nadir = _make_calc_albedo_off_nadir(
     'mie_wind_result_lon_of_DEM_intersection',
@@ -281,24 +289,38 @@ locations = {
     'optical_prop_algo_scattering_ratio':               ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'scattering_ratio_iterative'],
     'optical_prop_crosstalk_detected':                  ['/meas_product_confid_data', -1, 'opt_prop_result/opt_prop_meas_result', -1, 'xtalk_detected'],
     'mie_wind_result_HLOS_error':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/hlos_error_estimate'],
+    'mie_wind_result_reference_hlos':                   ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/reference_hlos'],
     'mie_wind_result_QC_flags_1':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags1'],
     'mie_wind_result_QC_flags_2':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
     'mie_wind_result_QC_flags_3':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags3'],
     'mie_wind_result_SNR':                              getCurrentSNR,
     'mie_wind_result_scattering_ratio':                 getCurrentMieScatteringRation,
+    'mie_wind_result_extinction':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/extinction'],
+    'mie_wind_result_background_high':                  ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_background_high'],
     'rayleigh_wind_result_HLOS_error':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
+    'rayleigh_wind_result_reference_hlos':              ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/reference_hlos'],
     'rayleigh_wind_result_QC_flags_1':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags1'],
     'rayleigh_wind_result_QC_flags_2':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags2'],
     'rayleigh_wind_result_QC_flags_3':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/flags3'],
     'rayleigh_wind_result_scattering_ratio':            ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/scattering_ratio'],
+    'rayleigh_wind_result_background_high':             ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/rayleigh_background_high'],
     'mie_wind_result_observation_type':                 ['/mie_hloswind', -1, 'windresult/observation_type'],
     'mie_wind_result_validity_flag':                    ['/mie_hloswind', -1, 'windresult/validity_flag'],
     'mie_wind_result_wind_velocity':                    ['/mie_hloswind', -1, 'windresult/mie_wind_velocity'],
+    'mie_wind_result_applied_spacecraft_los_corr_velocity': ['/mie_hloswind', -1, 'windresult/applied_spacecraft_los_corr_velocity'],
+    'mie_wind_result_applied_m1_temperature_corr_velocity': ['/mie_hloswind', -1, 'windresult/applied_m1_temperature_corr_velocity'],
     'mie_wind_result_integration_length':               ['/mie_hloswind', -1, 'windresult/integration_length'],
     'mie_wind_result_num_of_measurements':              ['/mie_hloswind', -1, 'windresult/n_meas_in_class'],
     'rayleigh_wind_result_observation_type':            ['/rayleigh_hloswind', -1, 'windresult/observation_type'],
     'rayleigh_wind_result_validity_flag':               ['/rayleigh_hloswind', -1, 'windresult/validity_flag'],
     'rayleigh_wind_result_wind_velocity':               ['/rayleigh_hloswind', -1, 'windresult/rayleigh_wind_velocity'],
+    'rayleigh_wind_result_wind_to_pressure':            ['/rayleigh_hloswind', -1, 'windresult/rayleigh_wind_to_pressure'],
+    'rayleigh_wind_result_wind_to_temperature':         ['/rayleigh_hloswind', -1, 'windresult/rayleigh_wind_to_temperature'],
+    'rayleigh_wind_result_wind_to_backscatter_ratio':   ['/rayleigh_hloswind', -1, 'windresult/rayleigh_wind_to_backscatter_ratio'],
+    'rayleigh_wind_result_applied_spacecraft_los_corr_velocity': ['/rayleigh_hloswind', -1, 'windresult/applied_spacecraft_los_corr_velocity'],
+    'rayleigh_wind_result_applied_rdb_corr_velocity':   ['/rayleigh_hloswind', -1, 'windresult/applied_rdb_corr_velocity'],
+    'rayleigh_wind_result_applied_ground_corr_velocity': ['/rayleigh_hloswind', -1, 'windresult/applied_ground_corr_velocity'],
+    'rayleigh_wind_result_applied_m1_temperature_corr_velocity': ['/rayleigh_hloswind', -1, 'windresult/applied_m1_temperature_corr_velocity'],
     'rayleigh_wind_result_integration_length':          ['/rayleigh_hloswind', -1, 'windresult/integration_length'],
     'rayleigh_wind_result_num_of_measurements':         ['/rayleigh_hloswind', -1, 'windresult/n_meas_in_class'],
     'rayleigh_wind_result_reference_pressure':          ['/rayleigh_hloswind', -1, 'windresult/reference_pressure'],
@@ -320,6 +342,128 @@ locations = {
     'rayleigh_wind_result_albedo_off_nadir':            calc_rayleigh_wind_result_albedo_off_nadir,
     'mie_profile_albedo_off_nadir':                     calc_mie_profile_albedo_off_nadir,
     'rayleigh_profile_albedo_off_nadir':                calc_rayleigh_profile_albedo_off_nadir,
+
+    # Temperature masked by mie and rayleigh
+    'mie_aht_22':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_22'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_aht_23':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_23'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_aht_24':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_24'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_aht_25':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_25'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_aht_26':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_26'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_aht_27':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_27'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_18':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_18'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_19':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_19'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_20':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_20'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_21':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_21'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_23':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_23'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_25':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_25'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_27':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_27'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_29':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_29'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'mie_tc_32':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_32'],
+                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_22':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_22'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_23':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_23'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_24':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_24'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_25':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_25'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_26':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_26'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_aht_27':       _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/aht_27'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_18':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_18'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_19':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_19'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_20':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_20'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_21':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_21'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_23':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_23'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_25':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_25'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_27':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_27'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_29':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_29'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
+    'rayleigh_tc_32':        _create_temp_granularity(
+                            ['/copied_brc_data', -1, 'm1_temperature/tc_32'],
+                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
+                        ),
 }
 
 
@@ -357,6 +501,21 @@ MIE_PROFILE_FIELDS = set([
     'mie_profile_datetime_average',
     'mie_profile_datetime_stop',
     'mie_profile_albedo_off_nadir',
+    'mie_aht_22',
+    'mie_aht_23',
+    'mie_aht_24',
+    'mie_aht_25',
+    'mie_aht_26',
+    'mie_aht_27',
+    'mie_tc_18',
+    'mie_tc_19',
+    'mie_tc_20',
+    'mie_tc_21',
+    'mie_tc_23',
+    'mie_tc_25',
+    'mie_tc_27',
+    'mie_tc_29',
+    'mie_tc_32',
 ])
 
 RAYLEIGH_PROFILE_FIELDS = set([
@@ -370,6 +529,21 @@ RAYLEIGH_PROFILE_FIELDS = set([
     'rayleigh_profile_datetime_average',
     'rayleigh_profile_datetime_stop',
     'rayleigh_profile_albedo_off_nadir',
+    'rayleigh_aht_22',
+    'rayleigh_aht_23',
+    'rayleigh_aht_24',
+    'rayleigh_aht_25',
+    'rayleigh_aht_26',
+    'rayleigh_aht_27',
+    'rayleigh_tc_18',
+    'rayleigh_tc_19',
+    'rayleigh_tc_20',
+    'rayleigh_tc_21',
+    'rayleigh_tc_23',
+    'rayleigh_tc_25',
+    'rayleigh_tc_27',
+    'rayleigh_tc_29',
+    'rayleigh_tc_32',
 ])
 
 MIE_WIND_FIELDS = set([
@@ -395,14 +569,19 @@ MIE_WIND_FIELDS = set([
     'mie_wind_result_geoid_separation',
     'mie_wind_result_alt_of_DEM_intersection',
     'mie_wind_result_HLOS_error',
+    'mie_wind_result_reference_hlos',
     'mie_wind_result_QC_flags_1',
     'mie_wind_result_QC_flags_2',
     'mie_wind_result_QC_flags_3',
     'mie_wind_result_SNR',
     'mie_wind_result_scattering_ratio',
+    'mie_wind_result_extinction',
+    'mie_wind_result_background_high',
     'mie_wind_result_observation_type',
     'mie_wind_result_validity_flag',
     'mie_wind_result_wind_velocity',
+    'mie_wind_result_applied_spacecraft_los_corr_velocity',
+    'mie_wind_result_applied_m1_temperature_corr_velocity',
     'mie_wind_result_integration_length',
     'mie_wind_result_num_of_measurements',
     'mie_wind_result_albedo_off_nadir',
@@ -431,6 +610,8 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_wind_result_geoid_separation',
     'rayleigh_wind_result_alt_of_DEM_intersection',
     'rayleigh_wind_result_HLOS_error',
+    'rayleigh_wind_result_reference_hlos',
+    'rayleigh_wind_result_background_high',
     'rayleigh_wind_result_QC_flags_1',
     'rayleigh_wind_result_QC_flags_2',
     'rayleigh_wind_result_QC_flags_3',
@@ -438,6 +619,13 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_wind_result_observation_type',
     'rayleigh_wind_result_validity_flag',
     'rayleigh_wind_result_wind_velocity',
+    'rayleigh_wind_result_wind_to_pressure',
+    'rayleigh_wind_result_wind_to_temperature',
+    'rayleigh_wind_result_wind_to_backscatter_ratio',
+    'rayleigh_wind_result_applied_spacecraft_los_corr_velocity',
+    'rayleigh_wind_result_applied_rdb_corr_velocity',
+    'rayleigh_wind_result_applied_ground_corr_velocity',
+    'rayleigh_wind_result_applied_m1_temperature_corr_velocity',
     'rayleigh_wind_result_integration_length',
     'rayleigh_wind_result_num_of_measurements',
     'rayleigh_wind_result_reference_pressure',
