@@ -214,9 +214,10 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
         )
 
         # if it is a user collection give that user the permission to view it
-        link = UserCollectionLink.objects.filter(collection=instance).first()
-        if link:
-            link.user.user_permissions.add(perm)
+        if instance.identifier.startswith("user_collection_"):
+            username = instance.identifier[len("user_collection_"):]
+            user = User.objects.get(username=username)
+            user.user_permissions.add(perm)
 
         # otherwise add it to the according groups
         else:
