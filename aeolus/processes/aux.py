@@ -160,7 +160,6 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
             isscalar = (isinstance(data[0], str) or data[0].ndim == 0)
             arrsize = data[0].shape[0] if not isscalar else 0
             array_dim = 'array_%d' % arrsize
-
             if arrsize and array_dim not in ds.dimensions:
                 ds.createDimension(array_dim, arrsize)
 
@@ -204,7 +203,12 @@ class Level1BAUXExtractBase(ExtractionProcessBase):
             else:
                 var = group[field_name]
                 end = num_calibrations + data.shape[0]
-                var[num_calibrations:end] = data
+                if isinstance(data[0], str):
+                    var[num_calibrations:end] = netCDF4.stringtochar(
+                        data.astype('S%d' % STRING_LENGTH)
+                    )
+                else:
+                    var[num_calibrations:end] = data
 
         for field_name, data in frequency_data.items():
             group = ds.createGroup('frequency_data')
