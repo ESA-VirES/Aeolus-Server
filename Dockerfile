@@ -57,20 +57,17 @@ RUN yum --assumeyes install install epel-release \
         python3-psycopg2 postgresql11-libs \
         python-spacepy \
         coda coda-python3 \
+    && pip3 install --no-deps \
+        django-allauth \
+        django-request-logging \
     && pip3 install \
         "django==${DJANGO_VERSION}" \
         pygdal=="`gdal-config --version`.*" \
         gunicorn \
         django-countries \
-    && pip3 install --no-deps \
-        django-allauth \
-        django-request-logging \
         "EOxServer==${EOXSERVER_VERSION}" \
+        https://github.com/DAMATS/WPS-Backend/archive/0.5.0.tar.gz \
     && wget -q -P /usr/share/coda/definitions/ https://github.com/stcorp/codadef-aeolus/releases/download/20200731/${AEOLUS_DEFINITION_FILE} \
-    && curl -sSL "https://github.com/DAMATS/WPS-Backend/archive/0.5.0.tar.gz" | tar -xzf - \
-    && cd "`find -name setup.py -exec dirname {} \; | head -n 1`" \
-    && python3 ./setup.py install \
-    && cd - \
     && yum clean all \
     && mkdir /opt/aeolus
 
