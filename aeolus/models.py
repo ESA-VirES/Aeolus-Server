@@ -39,11 +39,13 @@ from django.db.models import (
 from django.db.models.signals import post_save, post_migrate, pre_delete
 from django.contrib.auth.models import User, Permission, Group
 from django.contrib.contenttypes.models import ContentType
+from allauth.socialaccount.models import SocialAccount
 
 from eoxserver.backends.models import DataItem
 from eoxserver.resources.coverages.models import (
     Collection, CollectionType, Product, ProductType
 )
+from .vires_permissions import update_user_groups
 
 
 class Job(Model):
@@ -203,6 +205,9 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
         get_or_create_user_collection(instance)
         group = Group.objects.get(name='aeolus_default')
         instance.groups.add(group)
+
+    elif issubclass(sender, SocialAccount):
+        update_user_groups(instance)
 
     elif issubclass(sender, Collection) and created:
         # make sure we create the permissions for that collection
