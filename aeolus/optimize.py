@@ -234,7 +234,7 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                 if dimensionality in (2, 3):
                     values = np.hstack(np.hstack(values))
 
-                var[:] = values
+                var[:] = values.reshape(var.shape)
 
 
 def get_dimensionality(values):
