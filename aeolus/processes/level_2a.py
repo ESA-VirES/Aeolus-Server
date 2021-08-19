@@ -67,6 +67,11 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
+        ("mca_fields", LiteralData(
+            'mca_fields', str, optional=True, default=None,
+            title="Data variables",
+            abstract="Comma-separated list of the extracted data variables."
+        )),
     ]
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
@@ -80,6 +85,7 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             group_end_time={'max': end_time},
             ICA_time_obs={'min': begin_time, 'max': end_time},
             SCA_time_obs={'min': begin_time, 'max': end_time},
+            MCA_time_obs={'min': begin_time, 'max': end_time},
             **(filters if filters else {})
         )
 
