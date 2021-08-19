@@ -247,7 +247,6 @@ getCurrentSCA_flag = _checkCorrectIdentifier(
 OBSERVATION_LOCATIONS = {
     'L1B_start_time_obs':                           ['/geolocation', -1, 'start_of_obs_time'],
     'L1B_centroid_time_obs':                        calculate_L1B_centroid_time_obs,
-    'MCA_time_obs':                                 ['/mca_optical_properties', -1, 'starttime'],
     'longitude_of_DEM_intersection_obs':            calculate_longitude_of_DEM_intersection_obs,
     'latitude_of_DEM_intersection_obs':             calculate_latitude_of_DEM_intersection_obs,
     'altitude_of_DEM_intersection_obs':             calculate_altitude_of_DEM_intersection_obs,
@@ -255,9 +254,6 @@ OBSERVATION_LOCATIONS = {
     'mie_altitude_obs':                             calculate_mie_altitude_obs,
     'rayleigh_altitude_obs':                        calculate_rayleigh_altitude_obs,
     'L1B_num_of_meas_per_obs':                      ['/geolocation', -1, 'num_meas_eff'],
-    'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
-    'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
-    'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
     'sca_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/sca_applied'],
     'ica_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/ica_applied'],
     'mca_mask':                                     ['/meas_pcd', -1, 'l2a_processing_qc/mca_applied'],
@@ -352,6 +348,13 @@ SCA_LOCATIONS = {
     'SCA_latitude_of_DEM_intersection':             calculate_SCA_latitude_of_DEM_intersection,
 }
 
+MCA_LOCATIONS = {
+    'MCA_time_obs':                                 ['/mca_optical_properties', -1, 'starttime'],
+    'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
+    'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
+    'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
+}
+
 ARRAY_FIELDS = set([
     'mie_altitude_obs',
     'rayleigh_altitude_obs',
@@ -389,6 +392,7 @@ class L2AMeasurementDataExtractor(MeasurementDataExtractor):
     group_locations = GROUP_LOCATIONS
     ica_locations = ICA_LOCATIONS
     sca_locations = SCA_LOCATIONS
+    mca_locations = MCA_LOCATIONS
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):
