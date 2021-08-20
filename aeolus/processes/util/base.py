@@ -35,6 +35,7 @@ import os.path
 from uuid import uuid4
 from logging import getLogger, LoggerAdapter
 import json
+import os
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
@@ -309,6 +310,8 @@ class ExtractionProcessBase(AsyncProcessBase):
             if arg_name.endswith('fields')
         )
 
+        file_size_limit = getattr(settings, 'AEOLUS_DOWNLOAD_SIZE_LIMIT', None)
+
         # encode as messagepack
         if mime_type == 'application/msgpack':
             if isasync:
@@ -377,6 +380,14 @@ class ExtractionProcessBase(AsyncProcessBase):
                                 )
                             )
                             product_count += 1
+
+                            if file_size_limit is not None:
+                                ds.sync()
+                                if os.path.getsize(tmppath) > file_size_limit:
+                                    raise Exception(
+                                        'Downloadfile is exceeding maximum '
+                                        'allowed size'
+                                    )
 
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
