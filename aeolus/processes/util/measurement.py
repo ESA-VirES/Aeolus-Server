@@ -247,13 +247,15 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                         )
                     )
 
+                if not isscalar:
+                    values = np.vstack(values)
+
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
                     # Create one, if it not yet existed
 
                     array_dim_name = None
                     if not isscalar:
-                        values = np.vstack(values)
                         array_dim_size = values.shape[-1]
                         array_dim_name = "array_%d" % array_dim_size
                         if array_dim_name not in ds.dimensions:
