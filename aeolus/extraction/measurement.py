@@ -578,6 +578,8 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
     if is_array:
         return stack_measurement_array(data)
+    else:
+        data = np.vstack(data)
 
     return data
 
