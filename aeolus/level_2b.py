@@ -156,7 +156,7 @@ def _make_grouping_time_accessor(obs_field, measurements_in_obs_field):
         measurements_in_observations = access_location(
             cf, locations[measurements_in_obs_field]
         )
-        indices = (observations - 1) * 30 + measurements_in_observations
+        indices = (observations - 1) * 30 + (measurements_in_observations - 1)
         times = access_location(cf, times_location)
         return times[indices]
     return _inner
