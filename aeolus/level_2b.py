@@ -29,7 +29,7 @@
 
 import numpy as np
 
-from aeolus.coda_utils import access_location, check_fields
+from aeolus.coda_utils import access_location
 from aeolus.albedo import sample_offnadir
 from aeolus.extraction.accumulated import AccumulatedDataExtractor
 
@@ -117,6 +117,7 @@ def _make_calc_albedo_off_nadir(lon_location, lat_location):
 
     return _inner
 
+
 def _create_temp_granularity(temp_location, ref_location):
     def _inner(cf):
         temperature_data = access_location(cf, temp_location)
@@ -181,7 +182,8 @@ calc_rayleigh_grouping_stop_time = _make_grouping_time_accessor(
     'rayleigh_grouping_start_meas_per_obs',
 )
 
-def _checkCorrectIdentifier(location, alternative_location):
+
+def _alternative_location_accessor(location, alternative_location):
     def _inner(cf):
         try:
             values = cf.fetch(*location)
@@ -194,12 +196,12 @@ def _checkCorrectIdentifier(location, alternative_location):
         return values
     return _inner
 
-getCurrentSNR = _checkCorrectIdentifier(
+get_mie_snr = _alternative_location_accessor(
     ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_snr'],
     ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_snr']
 )
 
-getCurrentMieScatteringRation = _checkCorrectIdentifier(
+get_mie_scattering_ratio = _alternative_location_accessor(
     ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/scattering_ratio'],
     ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/fitting_mie_sr']
 )
@@ -293,8 +295,8 @@ locations = {
     'mie_wind_result_QC_flags_1':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags1'],
     'mie_wind_result_QC_flags_2':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags2'],
     'mie_wind_result_QC_flags_3':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/flags3'],
-    'mie_wind_result_SNR':                              getCurrentSNR,
-    'mie_wind_result_scattering_ratio':                 getCurrentMieScatteringRation,
+    'mie_wind_result_SNR':                              get_mie_snr,
+    'mie_wind_result_scattering_ratio':                 get_mie_scattering_ratio,
     'mie_wind_result_extinction':                       ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/extinction'],
     'mie_wind_result_background_high':                  ['/mie_wind_prod_conf_data', -1, 'mie_wind_qc/mie_background_high'],
     'rayleigh_wind_result_HLOS_error':                  ['/rayleigh_wind_prod_conf_data', -1, 'rayleigh_wind_qc/hlos_error_estimate'],
@@ -344,126 +346,36 @@ locations = {
     'rayleigh_profile_albedo_off_nadir':                calc_rayleigh_profile_albedo_off_nadir,
 
     # Temperature masked by mie and rayleigh
-    'mie_aht_22':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_22'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_aht_23':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_23'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_aht_24':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_24'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_aht_25':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_25'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_aht_26':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_26'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_aht_27':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_27'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_18':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_18'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_19':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_19'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_20':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_20'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_21':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_21'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_23':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_23'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_25':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_25'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_27':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_27'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_29':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_29'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'mie_tc_32':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_32'],
-                            ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_22':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_22'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_23':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_23'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_24':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_24'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_25':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_25'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_26':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_26'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_aht_27':       _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/aht_27'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_18':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_18'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_19':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_19'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_20':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_20'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_21':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_21'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_23':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_23'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_25':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_25'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_27':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_27'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_29':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_29'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
-    'rayleigh_tc_32':        _create_temp_granularity(
-                            ['/copied_brc_data', -1, 'm1_temperature/tc_32'],
-                            ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc'],
-                        ),
+    'mie_aht_22':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_22'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_aht_23':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_23'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_aht_24':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_24'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_aht_25':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_25'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_aht_26':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_26'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_aht_27':           _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_27'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_18':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_18'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_19':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_19'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_20':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_20'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_21':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_21'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_23':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_23'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_25':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_25'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_27':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_27'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_29':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_29'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'mie_tc_32':            _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_32'], ['/mie_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_22':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_22'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_23':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_23'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_24':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_24'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_25':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_25'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_26':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_26'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_aht_27':      _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/aht_27'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_18':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_18'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_19':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_19'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_20':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_20'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_21':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_21'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_23':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_23'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_25':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_25'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_27':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_27'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_29':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_29'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
+    'rayleigh_tc_32':       _create_temp_granularity(['/copied_brc_data', -1, 'm1_temperature/tc_32'], ['/rayleigh_geolocation', -1, 'windresult_geolocation/which_cog_l1b_brc']),
 }
 
 
@@ -681,58 +593,3 @@ extractor = L2BMeasurementDataExtractor()
 
 # main extraction function
 extract_data = extractor.extract_data
-
-
-test_file = '/mnt/data/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001/AE_OPER_ALD_U_N_2B_20151001T104454_20151001T121445_0001.DBL'
-
-
-# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_000083999_017071_0001.DBL'
-
-# test_file = '/mnt/data/AE_OPER_ALD_U_N_2A_20101002T000000059_001188000_017071_0001.DBL'
-
-def main():
-    extract_data(
-        test_file, {
-            # 'mie_wind_result_id': {
-            #     'min_value': 1,
-            #     'max_value': 10
-            # },
-
-
-            # 'mie_wind_profile_observation_type': {
-            #     'min_value': 1,
-            #     'max_value': 1
-            # }
-
-            # 'l1B_obs_number': {
-            #     'min_value': 300,
-            #     'max_value': 310,
-            # }
-
-        },
-        mie_grouping_fields=[
-
-        ],
-        rayleigh_grouping_fields=[
-
-        ],
-        mie_profile_fields=[
-            # 'mie_wind_profile_observation_type',
-            # 'mie_wind_profile_wind_result_id'
-        ],
-        rayleigh_profile_fields=[
-
-        ],
-        mie_wind_fields=[
-            # 'mie_wind_result_id'
-        ],
-        rayleigh_wind_fields=[
-
-        ],
-        measurement_fields=[
-            # 'l1B_obs_number'
-        ],
-    )
-
-if __name__ == '__main__':
-    main()
