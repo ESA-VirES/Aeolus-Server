@@ -40,7 +40,8 @@ def calculate_L1B_centroid_time_obs(cf):
     t_start = cf.fetch(*OBSERVATION_LOCATIONS['L1B_start_time_obs'])
     t_centroid = np.zeros(t_start.shape, t_start.dtype)
     t_centroid[:-1] = (t_start[:-1] + t_start[1:]) / 2
-    t_centroid[-1] = t_start[-1] + (t_start[-1] - t_start[-2]) / 2
+    if t_centroid.shape[0] > 1:
+        t_centroid[-1] = t_start[-1] + (t_start[-1] - t_start[-2]) / 2
 
     return t_centroid
 
