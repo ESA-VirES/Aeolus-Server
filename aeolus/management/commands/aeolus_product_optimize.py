@@ -180,6 +180,13 @@ class Command(CommandOutputMixIn, BaseCommand):
                         "'--delete' to remove it or '--refresh' to re-generate "
                         "it." % output_file
                     )
+            elif update:
+                if fields is not None and not data_item:
+                    self.print_wrn(
+                        "Trying to update specific fields for non-existing "
+                        "optimized. Falling back to full generation."
+                    )
+                    fields = None
 
         elif mode == "link":
             if not os.path.exists(output_file):
