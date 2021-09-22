@@ -220,10 +220,11 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                     logger.warn('No such field %s' % (name))
                     continue
 
+                dimensionality = get_dimensionality(values)
+
                 if variable is None:
                     # get the correct dimensionality for the values and
                     # reshape if necessary
-                    dimensionality = get_dimensionality(values)
 
                     if dimensionality == 3:
                         init_num = values.shape[0]
