@@ -82,7 +82,8 @@ class OptimizationError(Exception):
     pass
 
 
-def create_optimized_file(input_file, product_type_name, output_path, update):
+def create_optimized_file(input_file, product_type_name, output_path, update,
+                          fields=None):
     """ Creates an optimized netcdf file for the given product
     """
 
@@ -94,6 +95,15 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
         raise OptimizationError(
             "Product range type '%s' is not supported" % product_type_name
         )
+
+    # check that fields actually exist for that product
+    if fields is not None:
+        for field in fields:
+            for locations in location_groups.values():
+                if field in locations:
+                    break
+            else:
+                raise OptimizationError("Unknown field '%s'" % field)
 
     # select correct file mode
     mode = "w"
@@ -117,7 +127,7 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
             with CODAFile(input_file) as in_cf:
                 gen = _optimize_fields(
                     product_type_name, location_groups, in_cf, out_ds,
-                    update
+                    update, fields
                 )
                 for group_name, name in gen:
                     yield (group_name, name)
@@ -133,7 +143,8 @@ def create_optimized_file(input_file, product_type_name, output_path, update):
         raise
 
 
-def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
+def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
+                     fields=None):
     for group_name, locations in location_groups.items():
         if group_name in out_ds.groups:
             if update:
@@ -144,12 +155,19 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
             group = out_ds.createGroup(group_name)
 
         for name, location in locations.items():
+            # if we have a dedicated list of fields to optimize, we skip if the
+            # current field is not in that list
+            if fields is not None and name not in fields:
+                continue
             # check of the variable already exists. If mode is `update`, simply
             # skip over existing ones. If not, fail the generation.
             # Otherwise just create the variable normally
+            variable = None
             if name in group.variables:
-                if update:
+                if update and fields is None:
                     continue
+                elif update and fields is not None:
+                    variable = group.variables[name]
                 else:
                     raise OptimizationError(
                         'Variable %s already exists for group %s'
@@ -167,24 +185,25 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                     logger.warn('No such field %s' % (name))
                     continue
 
-                shape = (
-                    in_cf.get_size(location[0])[0],
-                    first_values.shape[0]
-                )
+                if variable is None:
+                    shape = (
+                        in_cf.get_size(location[0])[0],
+                        first_values.shape[0]
+                    )
 
-                # make a list of all dimension names and check if
-                # they, are already available, otherwise create them
-                dimnames = [
-                    "arr_%d" % v for v in shape
-                ]
-                for dimname, size in zip(dimnames, shape):
-                    if dimname not in out_ds.dimensions:
-                        out_ds.createDimension(dimname, size)
+                    # make a list of all dimension names and check if
+                    # they, are already available, otherwise create them
+                    dimnames = [
+                        "arr_%d" % v for v in shape
+                    ]
+                    for dimname, size in zip(dimnames, shape):
+                        if dimname not in out_ds.dimensions:
+                            out_ds.createDimension(dimname, size)
 
-                variable = group.createVariable(name, '%s%i' % (
-                    first_values.dtype.kind,
-                    first_values.dtype.itemsize
-                ), dimensions=dimnames)
+                    variable = group.createVariable(name, '%s%i' % (
+                        first_values.dtype.kind,
+                        first_values.dtype.itemsize
+                    ), dimensions=dimnames)
 
                 try:
                     data = access_location(in_cf, location)
@@ -204,7 +223,6 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                 # get the correct dimensionality for the values and
                 # reshape if necessary
                 dimensionality = get_dimensionality(values)
-
                 if dimensionality == 3:
                     init_num = values.shape[0]
                     values = np.vstack(np.hstack(values))
@@ -216,22 +234,23 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update):
                 elif dimensionality == 2:
                     values = np.vstack(values)
 
-                # make a list of all dimension names and check if
-                # they, are already available, otherwise create them
-                dimnames = [
-                    "arr_%d" % v for v in values.shape
-                ]
-                for dimname, size in zip(dimnames, values.shape):
-                    if dimname not in out_ds.dimensions:
-                        out_ds.createDimension(dimname, size)
+                if variable is None:
+                    # make a list of all dimension names and check if
+                    # they, are already available, otherwise create them
+                    dimnames = [
+                        "arr_%d" % v for v in values.shape
+                    ]
+                    for dimname, size in zip(dimnames, values.shape):
+                        if dimname not in out_ds.dimensions:
+                            out_ds.createDimension(dimname, size)
 
-                # create a variable and store the data in it
-                var = group.createVariable(name, '%s%i' % (
-                    values.dtype.kind,
-                    values.dtype.itemsize
-                ), dimensions=dimnames)
+                    # create a variable and store the data in it
+                    variable = group.createVariable(name, '%s%i' % (
+                        values.dtype.kind,
+                        values.dtype.itemsize
+                    ), dimensions=dimnames)
 
-                var[:] = values
+                variable[:] = values
 
 
 def get_dimensionality(values):

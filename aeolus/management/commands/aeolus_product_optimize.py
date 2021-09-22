@@ -84,6 +84,13 @@ class Command(CommandOutputMixIn, BaseCommand):
             )
         )
         parser.add_argument(
+            "-f", "--fields",
+            action="store", dest="fields", nargs="+", default=None,
+            help=(
+                "Limit optimization to the fields in that list."
+            )
+        )
+        parser.add_argument(
             "-o", "--output", "--output-file", dest="output_file", default=None,
             help=(
                 "Specify an output file. By default, the `AEOLUS_OPTIMIZED_DIR` "
@@ -98,7 +105,7 @@ class Command(CommandOutputMixIn, BaseCommand):
     """
 
     @transaction.atomic()
-    def handle(self, identifier, mode, output_file, update, **kwargs):
+    def handle(self, identifier, mode, output_file, update, fields, **kwargs):
         if not identifier:
             raise CommandError("Missing manadatory --identifier")
         try:
@@ -232,9 +239,9 @@ class Command(CommandOutputMixIn, BaseCommand):
                         % e
                     )
 
-            self._create_optimized_file(product, output_file, update)
+            self._create_optimized_file(product, output_file, update, fields)
 
-    def _create_optimized_file(self, product, output_file, update):
+    def _create_optimized_file(self, product, output_file, update, fields):
         identifier = product.identifier
         product_type = product.product_type
 
@@ -251,7 +258,7 @@ class Command(CommandOutputMixIn, BaseCommand):
 
         try:
             group_fields = create_optimized_file(
-                input_file, product_type.name, output_file, update
+                input_file, product_type.name, output_file, update, fields
             )
             for group, field_name in group_fields:
                 self.print_msg("Optimizing %s/%s" % (group, field_name), 2)
