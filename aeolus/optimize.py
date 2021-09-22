@@ -220,23 +220,21 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                     logger.warn('No such field %s' % (name))
                     continue
 
+                # get the correct dimensionality for the values and
+                # reshape if necessary
                 dimensionality = get_dimensionality(values)
+                if dimensionality == 3:
+                    init_num = values.shape[0]
+                    values = np.vstack(np.hstack(values))
+                    values = values.reshape(
+                        values.shape[0] // init_num,
+                        init_num,
+                        values.shape[1]
+                    ).swapaxes(0, 1)
+                elif dimensionality == 2:
+                    values = np.vstack(values)
 
                 if variable is None:
-                    # get the correct dimensionality for the values and
-                    # reshape if necessary
-
-                    if dimensionality == 3:
-                        init_num = values.shape[0]
-                        values = np.vstack(np.hstack(values))
-                        values = values.reshape(
-                            values.shape[0] // init_num,
-                            init_num,
-                            values.shape[1]
-                        ).swapaxes(0, 1)
-                    elif dimensionality == 2:
-                        values = np.vstack(values)
-
                     # make a list of all dimension names and check if
                     # they, are already available, otherwise create them
                     dimnames = [
@@ -252,12 +250,7 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                         values.dtype.itemsize
                     ), dimensions=dimnames)
 
-                if dimensionality == 1:
-                    variable[:] = values
-                elif dimensionality == 2:
-                    variable[:, :] = values
-                elif dimensionality == 3:
-                    variable[:, :, :] = values
+                variable[:] = values
 
 
 def get_dimensionality(values):
