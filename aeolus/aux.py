@@ -34,6 +34,7 @@ import numpy as np
 from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.albedo import sample_nadir
+from aeolus.extraction import exception
 
 
 def _make_calc_albedo_nadir_aux_mrc_rrc(lon_location, lat_location):
@@ -844,7 +845,12 @@ def extract_data(filenames, filters, fields, aux_type):
             calibration_array_mask = None
             for field_name, filter_value in calibration_filters.items():
                 path = locations[field_name][:]
-                field_data = access_location(cf, path)
+
+                try:
+                    field_data = access_location(cf, path)
+                except:
+                    raise exception.InvalidFieldError(field_name, path)
+
                 new_mask = make_mask(
                     field_data,
                     filter_value.get('min'), filter_value.get('max'),
@@ -885,7 +891,11 @@ def extract_data(filenames, filters, fields, aux_type):
             # load all desired values for the requested calibrations
             for field_name in requested_calibration_fields:
                 path = locations[field_name]
-                field_data = access_location(cf, path)
+
+                try:
+                    field_data = access_location(cf, path)
+                except:
+                    raise exception.InvalidFieldError(field_name, path)
 
                 if calibration_nonzero_ids is not None:
                     field_data = field_data[calibration_nonzero_ids]
@@ -906,7 +916,10 @@ def extract_data(filenames, filters, fields, aux_type):
             frequency_array_masks = None
             for field_name, filter_value in frequency_filters.items():
                 path = locations[field_name]
-                field_data = access_location(cf, path)[calibration_ids]
+                try:
+                    field_data = access_location(cf, path)
+                except:
+                    raise exception.InvalidFieldError(field_name, path)
 
                 new_masks = [
                     make_mask(
@@ -963,7 +976,10 @@ def extract_data(filenames, filters, fields, aux_type):
             for field_name in requested_frequency_fields:
                 path = locations[field_name]
 
-                field_data = access_location(cf, path)[calibration_ids]
+                try:
+                    field_data = access_location(cf, path)
+                except:
+                    raise exception.InvalidFieldError(field_name, path)
 
                 if frequency_ids is not None:
                     field_data = [
