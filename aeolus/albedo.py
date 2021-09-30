@@ -67,8 +67,9 @@ def _sample_data_item(year, month, index, lons, lats):
         )
 
     try:
-        # netCDFs are two data items
-        data_item = albedo.arraydata_items.get(field_index=index)
+        # netCDFs are two data items, field index is zero based
+        field_index = index - 1
+        data_item = albedo.arraydata_items.get(field_index=field_index)
     except models.ArrayDataItem.DoesNotExist:
         # when we only have a single TIFF with 2 bands
         data_item = albedo.arraydata_items.get()
@@ -90,8 +91,8 @@ def _sample_data_item(year, month, index, lons, lats):
     for i, coord in enumerate(zip(lons, lats)):
         lon, lat = coord
 
-        px = int(round((lon - o_x) / res_x))
-        py = int(round((lat - o_y) / res_y))
+        px = int((lon - o_x) / res_x)
+        py = int((lat - o_y) / res_y)
         out_data[i] = band.ReadAsArray(px, py, 1, 1)
 
     return out_data

@@ -226,12 +226,12 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
 
         # otherwise add it to the according groups
         else:
-            if 'AUX' in instance.identifier:
+            if instance.identifier.endswith('_public'):
+                group = Group.objects.get(name='aeolus_default')
+                group.permissions.add(perm)
+            else:
                 group = Group.objects.get(name='aeolus_privileged')
                 group.permissions.add(perm)
-
-            group = Group.objects.get(name='aeolus_default')
-            group.permissions.add(perm)
 
 
 @receiver(pre_delete)

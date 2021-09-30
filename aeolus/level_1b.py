@@ -288,7 +288,7 @@ OBSERVATION_LOCATIONS = {
     'mie_error_quantifier':                     ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_mie'],
     'rayleigh_error_quantifier':                ['/product_confidence_data', -1, 'observation_pcd/observation_alt_bin_pcd', -1, 'error_quantifier_rayleigh'],
     'laser_frequency':                          ['/product_confidence_data', -1, 'observation_pcd/avg_laser_frequency_offset'],
-    'average_laser_energy':                     ['/product_confidence_data', -1, 'observation_pcd/average_laser_energy'],
+    'average_laser_energy':                     ['/product_confidence_data', -1, 'observation_pcd/avg_uv_energy'],
     'laser_frequency_offset_std_dev':           ['/product_confidence_data', -1, 'observation_pcd/laser_frequency_offset_std_dev'],
     'uv_energy_std_dev':                        ['/product_confidence_data', -1, 'observation_pcd/uv_energy_std_dev'],
     'mie_ref_pulse_signal_to_noise_ratio':      ['/product_confidence_data', -1, 'observation_pcd/mie_ref_pulse_signal_to_noise_ratio'],
@@ -405,6 +405,7 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
     group_locations = {}
     ica_locations = {}
     sca_locations = {}
+    mca_locations = {}
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):

@@ -36,6 +36,7 @@ from netCDF4 import Dataset
 from aeolus.coda_utils import CODAFile, access_location, NoSuchFieldException
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.extraction import exception
+from aeolus.util import maybe_close
 
 
 class AccumulatedDataExtractor(object):
@@ -122,7 +123,7 @@ class AccumulatedDataExtractor(object):
                 if name in self.measurement_fields_defs
             }
 
-            with cf:
+            with cf, maybe_close(ds):
                 if mie_grouping_fields:
                     mie_grouping_mask, mie_grouping_array_mask = \
                         self._create_type_masks(

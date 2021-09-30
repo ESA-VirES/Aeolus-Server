@@ -31,6 +31,7 @@
 from os.path import dirname, join
 from math import ceil, floor
 from itertools import filterfalse
+from contextlib import contextmanager
 
 # from .colormaps import COLORMAPS as VIRES_COLORMAPS
 # from .contrib.colormaps import cmaps as CONTRIB_COLORMAPS
@@ -140,3 +141,12 @@ def get_color_scale(name):
         return CONTRIB_COLORMAPS[name]
     else: # standard colormap
         return get_cmap(name)
+
+
+@contextmanager
+def maybe_close(handle):
+    """ Wrap a potentially None with a closing context manager.
+    """
+    yield
+    if handle is not None:
+        handle.close()
