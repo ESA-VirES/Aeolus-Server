@@ -38,6 +38,7 @@ from aeolus.coda_utils import (
 )
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.extraction import exception
+from aeolus.util import maybe_close
 
 
 def check_has_groups(cf):
@@ -154,7 +155,7 @@ class MeasurementDataExtractor(object):
                 if name in self.mca_locations
             }
 
-            with cf:
+            with cf, maybe_close(ds):
                 # create a mask for observation data
                 observation_mask = None
                 observation_array_masks = {}
@@ -578,6 +579,8 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
     if is_array:
         return stack_measurement_array(data)
+    else:
+        data = np.vstack(data)
 
     return data
 
