@@ -35,6 +35,7 @@ import os.path
 from uuid import uuid4
 from logging import getLogger, LoggerAdapter
 import json
+import os
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
@@ -170,6 +171,9 @@ class ExtractionProcessBase(AsyncProcessBase):
     range_type_name = None
 
     inputs = AsyncProcessBase.inputs + [
+        ("token_auth", RequestParameter(
+            lambda request: getattr(request, 'token_authentication', False)
+        )),
         ("collection_ids", ComplexData(
             'collection_ids', title="Collection identifiers", abstract=(
                 ""
@@ -209,8 +213,8 @@ class ExtractionProcessBase(AsyncProcessBase):
         )),
     ]
 
-    def execute(self, collection_ids, begin_time, end_time, bbox,
-                filters, output, context=None, **kwargs):
+    def execute(self, token_auth, collection_ids, begin_time,
+                end_time, bbox, filters, output, context=None, **kwargs):
         """ The execution function of the process.
         """
         isasync = context is not None
@@ -224,15 +228,15 @@ class ExtractionProcessBase(AsyncProcessBase):
         time_span = end_time - begin_time
 
         sync_span = getattr(
-            settings, 'AEOLUS_EXTRACTION_SYNC_SPAN', timedelta(weeks=1)
+            settings, 'AEOLUS_EXTRACTION_SYNC_SPAN', timedelta(days=2)
         )
         async_span = getattr(
-            settings, 'AEOLUS_EXTRACTION_ASYNC_SPAN', None
+            settings, 'AEOLUS_EXTRACTION_ASYNC_SPAN', timedelta(weeks=4)
         )
 
         access_logger = self.get_access_logger(**kwargs)
 
-        if isasync and async_span and time_span > async_span:
+        if isasync and async_span and time_span > async_span and not token_auth:
             message = '%s: Exceeding maximum allowed time span.' % (
                 context.identifier,
             )
@@ -308,6 +312,10 @@ class ExtractionProcessBase(AsyncProcessBase):
             for arg_name, value in kwargs.items()
             if arg_name.endswith('fields')
         )
+        # Setting default size limit to 1GB
+        file_size_limit = getattr(
+            settings, 'AEOLUS_DOWNLOAD_SIZE_LIMIT', 1000000000
+        )
 
         # encode as messagepack
         if mime_type == 'application/msgpack':
@@ -377,6 +385,14 @@ class ExtractionProcessBase(AsyncProcessBase):
                                 )
                             )
                             product_count += 1
+
+                            if file_size_limit is not None:
+                                ds.sync()
+                                if os.path.getsize(tmppath) > file_size_limit:
+                                    raise Exception(
+                                        'Downloadfile is exceeding maximum '
+                                        'allowed size'
+                                    )
 
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
