@@ -148,41 +148,6 @@ calc_rayleigh_profile_albedo_off_nadir = _make_calc_albedo_off_nadir(
     'rayleigh_profile_lat_of_DEM_intersection',
 )
 
-
-def _make_grouping_time_accessor(obs_field, measurements_in_obs_field):
-    times_location = ['/meas_product_confid_data', -1, 'start_of_obs_datetime']
-
-    def _inner(cf):
-        observations = access_location(cf, locations[obs_field])
-        measurements_in_observations = access_location(
-            cf, locations[measurements_in_obs_field]
-        )
-        indices = (observations - 1) * 30 + (measurements_in_observations - 1)
-        times = access_location(cf, times_location)
-        return times[indices]
-    return _inner
-
-calc_mie_grouping_start_time = _make_grouping_time_accessor(
-    'mie_grouping_start_obs',
-    'mie_grouping_start_meas_per_obs',
-)
-
-calc_mie_grouping_stop_time = _make_grouping_time_accessor(
-    'mie_grouping_start_obs',
-    'mie_grouping_start_meas_per_obs',
-)
-
-calc_rayleigh_grouping_start_time = _make_grouping_time_accessor(
-    'rayleigh_grouping_start_obs',
-    'rayleigh_grouping_start_meas_per_obs',
-)
-
-calc_rayleigh_grouping_stop_time = _make_grouping_time_accessor(
-    'rayleigh_grouping_start_obs',
-    'rayleigh_grouping_start_meas_per_obs',
-)
-
-
 def _alternative_location_accessor(location, alternative_location):
     def _inner(cf):
         try:
@@ -218,16 +183,12 @@ locations = {
     'mie_grouping_start_meas_per_obs':                  ['/mie_grouping', -1, 'which_l1b_meas_within_this_brc1'],
     'mie_grouping_end_obs':                             ['/mie_grouping', -1, 'which_l1b_brc2'],
     'mie_grouping_end_meas_per_obs':                    ['/mie_grouping', -1, 'which_l1b_meas_within_this_brc2'],
-    'mie_grouping_start_time':                          calc_mie_grouping_start_time,
-    'mie_grouping_stop_time':                           calc_mie_grouping_stop_time,
     'rayleigh_grouping_id':                             ['/rayleigh_grouping', -1, 'grouping_result_id'],
     'rayleigh_grouping_time':                           ['/rayleigh_grouping', -1, 'start_of_obs_datetime'],
     'rayleigh_grouping_start_obs':                      ['/rayleigh_grouping', -1, 'which_l1b_brc1'],
     'rayleigh_grouping_start_meas_per_obs':             ['/rayleigh_grouping', -1, 'which_l1b_meas_within_this_brc1'],
     'rayleigh_grouping_end_obs':                        ['/rayleigh_grouping', -1, 'which_l1b_brc2'],
     'rayleigh_grouping_end_meas_per_obs':               ['/rayleigh_grouping', -1, 'which_l1b_meas_within_this_brc2'],
-    'rayleigh_grouping_start_time':                     calc_rayleigh_grouping_start_time,
-    'rayleigh_grouping_stop_time':                      calc_rayleigh_grouping_stop_time,
     'l1B_num_of_measurements_per_obs':                  ['/meas_product_confid_data', -1, 'l1b_meas_number'],
     'l1B_obs_number':                                   ['/meas_product_confid_data', -1, 'l1b_brc_number'],
     'mie_wind_result_id':                               ['/mie_geolocation', -1, 'wind_result_id'],
@@ -249,14 +210,14 @@ locations = {
     'mie_wind_result_COG_longitude':                    ['/mie_geolocation', -1, 'windresult_geolocation/longitude_cog'],
     'mie_wind_result_stop_longitude':                   ['/mie_geolocation', -1, 'windresult_geolocation/longitude_stop'],
     'mie_wind_result_lat_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/lat_of_dem_intersection'],
-    'mie_profile_lat_of_DEM_intersection':              calc_mie_profile_lat_of_DEM_intersection,
     'mie_wind_result_lon_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/lon_of_dem_intersection'],
-    'mie_profile_lon_of_DEM_intersection':              calc_mie_profile_lon_of_DEM_intersection,
     'mie_wind_result_geoid_separation':                 ['/mie_geolocation', -1, 'windresult_geolocation/wgs84_to_geoid_altitude'],
-    'mie_profile_geoid_separation':                     calc_mie_profile_geoid_separation,
     'mie_wind_result_alt_of_DEM_intersection':          ['/mie_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
-    'mie_profile_alt_of_DEM_intersection':              calc_mie_profile_alt_of_DEM_intersection,
     'mie_wind_result_arg_of_lat_of_DEM_intersection':   ['/mie_geolocation', -1, 'windresult_geolocation/arg_of_lat_of_dem_intersection'],
+    'mie_profile_lat_of_DEM_intersection':              calc_mie_profile_lat_of_DEM_intersection,
+    'mie_profile_lon_of_DEM_intersection':              calc_mie_profile_lon_of_DEM_intersection,
+    'mie_profile_geoid_separation':                     calc_mie_profile_geoid_separation,
+    'mie_profile_alt_of_DEM_intersection':              calc_mie_profile_alt_of_DEM_intersection,
     'rayleigh_wind_result_id':                          ['/rayleigh_geolocation', -1, 'wind_result_id'],
     'rayleigh_wind_profile_wind_result_id':             ['/rayleigh_profile', -1, 'l2b_wind_profiles/wind_result_id_number', -1],
     'rayleigh_wind_result_range_bin_number':            ['/rayleigh_hloswind', -1, 'windresult/which_range_bin'], # TODO ??
@@ -276,14 +237,14 @@ locations = {
     'rayleigh_wind_result_COG_longitude':               ['/rayleigh_geolocation', -1, 'windresult_geolocation/longitude_cog'],
     'rayleigh_wind_result_stop_longitude':              ['/rayleigh_geolocation', -1, 'windresult_geolocation/longitude_stop'],
     'rayleigh_wind_result_lat_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/lat_of_dem_intersection'],
-    'rayleigh_profile_lat_of_DEM_intersection':         calc_rayleigh_profile_lat_of_DEM_intersection,
     'rayleigh_wind_result_lon_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/lon_of_dem_intersection'],
-    'rayleigh_profile_lon_of_DEM_intersection':         calc_rayleigh_profile_lon_of_DEM_intersection,
     'rayleigh_wind_result_geoid_separation':            ['/rayleigh_geolocation', -1, 'windresult_geolocation/wgs84_to_geoid_altitude'],
-    'rayleigh_profile_geoid_separation':                calc_rayleigh_profile_geoid_separation,
     'rayleigh_wind_result_alt_of_DEM_intersection':     ['/rayleigh_geolocation', -1, 'windresult_geolocation/alt_of_dem_intersection'],
-    'rayleigh_profile_alt_of_DEM_intersection':         calc_rayleigh_profile_alt_of_DEM_intersection,
     'rayleigh_wind_result_arg_of_lat_of_DEM_intersection': ['/rayleigh_geolocation', -1, 'windresult_geolocation/arg_of_lat_of_dem_intersection'],
+    'rayleigh_profile_lat_of_DEM_intersection':         calc_rayleigh_profile_lat_of_DEM_intersection,
+    'rayleigh_profile_lon_of_DEM_intersection':         calc_rayleigh_profile_lon_of_DEM_intersection,
+    'rayleigh_profile_geoid_separation':                calc_rayleigh_profile_geoid_separation,
+    'rayleigh_profile_alt_of_DEM_intersection':         calc_rayleigh_profile_alt_of_DEM_intersection,
     # 'l1B_measurement_time':                             [''],  # TODO: not available
     # 'mie_bin_classification':                           [''],  # TODO: not described in XLS sheet
     # 'rayleigh_bin_classification':                      [''],  # TODO: not described in XLS sheet
@@ -386,8 +347,6 @@ MIE_GROUPING_FIELDS = set([
     'mie_grouping_start_meas_per_obs',
     'mie_grouping_end_obs',
     'mie_grouping_end_meas_per_obs',
-    'mie_grouping_start_time',
-    'mie_grouping_stop_time',
 ])
 
 
@@ -398,8 +357,6 @@ RAYLEIGH_GROUPING_FIELDS = set([
     'rayleigh_grouping_start_meas_per_obs',
     'rayleigh_grouping_end_obs',
     'rayleigh_grouping_end_meas_per_obs',
-    'rayleigh_grouping_start_time',
-    'rayleigh_grouping_stop_time',
 ])
 
 MIE_PROFILE_FIELDS = set([
@@ -479,6 +436,7 @@ MIE_WIND_FIELDS = set([
     'mie_wind_result_lat_of_DEM_intersection',
     'mie_wind_result_lon_of_DEM_intersection',
     'mie_wind_result_geoid_separation',
+    'mie_wind_result_arg_of_lat_of_DEM_intersection',
     'mie_wind_result_alt_of_DEM_intersection',
     'mie_wind_result_HLOS_error',
     'mie_wind_result_reference_hlos',
@@ -521,6 +479,7 @@ RAYLEIGH_WIND_FIELDS = set([
     'rayleigh_wind_result_lon_of_DEM_intersection',
     'rayleigh_wind_result_geoid_separation',
     'rayleigh_wind_result_alt_of_DEM_intersection',
+    'rayleigh_wind_result_arg_of_lat_of_DEM_intersection',
     'rayleigh_wind_result_HLOS_error',
     'rayleigh_wind_result_reference_hlos',
     'rayleigh_wind_result_background_high',
