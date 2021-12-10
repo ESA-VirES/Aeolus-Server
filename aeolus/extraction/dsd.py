@@ -66,7 +66,8 @@ def get_dsd(product_or_id, recursive=False, strip=True):
 
     filename = product.product_data_items.first().location
 
-    is_aux = product.product_type.name.startswith('AUX')
+    prod_name = product.product_type.name
+    is_aux = prod_name.startswith('AUX') and not prod_name.startswith('AUX_MET')
 
     paths = AUX_PATHS if is_aux else DATA_PATHS
     with CODAFile(filename) as cf:
