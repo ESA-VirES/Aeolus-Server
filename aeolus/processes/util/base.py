@@ -41,7 +41,7 @@ from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import F, Func
+from django.db.models import F, Func, base
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
@@ -58,6 +58,7 @@ from aeolus import models
 from aeolus.processes.util.context import DummyContext
 from aeolus.processes.util.auth import get_user, get_username
 from aeolus.extraction.dsd import get_dsd
+from aeolus.extraction.mph import get_mph
 from aeolus.util import cached_property
 
 
@@ -357,6 +358,7 @@ class ExtractionProcessBase(AsyncProcessBase):
 
             product_count = 0
             identifiers = []
+            baselines = []
 
             try:
                 with Dataset(tmppath, "w", format="NETCDF4") as ds:
@@ -370,7 +372,8 @@ class ExtractionProcessBase(AsyncProcessBase):
                             self.write_product_data_to_netcdf(ds, file_data)
 
                             identifiers.append(product.identifier)
-
+                            baselines.append(get_mph(product)["baseline"])
+                            
                             if kwargs['dsd_info'] == 'true':
                                 self.add_product_dsd(ds, product)
 
@@ -396,6 +399,7 @@ class ExtractionProcessBase(AsyncProcessBase):
 
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
+                        'baselines': baselines,
                         'filters': filters.data if filters else None,
                         'beginTime': (
                             isoformat(begin_time) if begin_time else None
