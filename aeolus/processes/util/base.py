@@ -41,7 +41,7 @@ from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import F, Func, base
+from django.db.models import F, Func
 
 from eoxserver.core.util.timetools import isoformat
 from eoxserver.services.ows.wps.parameters import (
