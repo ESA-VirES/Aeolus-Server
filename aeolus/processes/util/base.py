@@ -359,6 +359,7 @@ class ExtractionProcessBase(AsyncProcessBase):
             product_count = 0
             identifiers = []
             baselines = []
+            software_vers = []
 
             try:
                 with Dataset(tmppath, "w", format="NETCDF4") as ds:
@@ -373,7 +374,8 @@ class ExtractionProcessBase(AsyncProcessBase):
 
                             identifiers.append(product.identifier)
                             baselines.append(get_mph(product)["baseline"])
-                            
+                            software_vers.append(get_mph(product)["software_ver"])
+
                             if kwargs['dsd_info'] == 'true':
                                 self.add_product_dsd(ds, product)
 
@@ -400,6 +402,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                     ds.history = json.dumps({
                         'inputFiles': identifiers,
                         'baselines': baselines,
+                        'software_vers': software_vers,
                         'filters': filters.data if filters else None,
                         'beginTime': (
                             isoformat(begin_time) if begin_time else None
