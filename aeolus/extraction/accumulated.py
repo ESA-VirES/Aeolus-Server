@@ -47,6 +47,21 @@ class AccumulatedDataExtractor(object):
                      mie_wind_fields, rayleigh_wind_fields, measurement_fields,
                      convert_arrays=False):
 
+        # assert that each requested field exists in its group
+        for group_name, fields in [
+                ('mie_grouping_fields', mie_grouping_fields),
+                ('rayleigh_grouping_fields', rayleigh_grouping_fields),
+                ('mie_profile_fields', mie_profile_fields),
+                ('rayleigh_profile_fields', rayleigh_profile_fields),
+                ('mie_wind_fields', mie_wind_fields),
+                ('rayleigh_wind_fields', rayleigh_wind_fields),
+                ('measurement_fields', measurement_fields)]:
+
+            field_defs = getattr(self, '%s_defs' % group_name)
+            for field in fields:
+                if field not in field_defs:
+                    raise exception.InvalidFieldError(field, group_name)
+
         orig_filters = filters
 
         files = [
