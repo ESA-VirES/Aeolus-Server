@@ -47,9 +47,6 @@ class AccumulatedDataExtractor(object):
                      mie_wind_fields, rayleigh_wind_fields, measurement_fields,
                      convert_arrays=False):
 
-        # filenames = [
-        #     filenames
-        # ] if isinstance(filenames, basestring) else filenames
         orig_filters = filters
 
         files = [
