@@ -173,7 +173,9 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
             if field_name not in ds.variables:
                 data_type_name = '%s%i' % (data.dtype.kind, data.dtype.itemsize)
                 dims = (type_name) if isscalar else (type_name, array_dim)
-                ds.createVariable(field_name, data_type_name, dims)[:] = data
+                ds.createVariable(
+                    field_name, data_type_name, dims, zlib=True
+                )[:] = data
 
             # append to existing variable
             else:
