@@ -333,8 +333,8 @@ OBSERVATION_LOCATIONS = {
     'mie_reference_pulse_quality_flag':         ['/wind_velocity', -1, 'observation_wind_profile/mie_reference_pulse_quality_flag'],
     'mie_bin_integration_times':                ['measurement', -1, 'mie_time_delays', 'bin_layer_integration_time'],
     'mie_bkg_integration_time':                 ['measurement', -1, 'mie_time_delays', 'background_integration_time'],
-    'rayleigh_bin_integration_times':           ['measurement', -1, 'mie_time_delays', 'bin_layer_integration_time'],
-    'rayleigh_bkg_integration_time':            ['measurement', -1, 'mie_time_delays', 'background_integration_time'],
+    'rayleigh_bin_integration_times':           ['measurement', -1, 'rayleigh_time_delays', 'bin_layer_integration_time'],
+    'rayleigh_bkg_integration_time':            ['measurement', -1, 'rayleigh_time_delays', 'background_integration_time'],
 
     # Albedo values:
     'albedo_off_nadir':                         calculate_albedo_off_nadir,
