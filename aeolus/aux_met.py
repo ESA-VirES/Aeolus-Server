@@ -202,16 +202,16 @@ def extract_data(filenames, filters, fields, scalefactor):
 
     for i, (cf, ds) in enumerate(files):
         with cf:
-
             next_cf = files[i + 1][0] if (i + 1) < len(files) else None
-
-            # TODO: handle overlap
             if next_cf and overlaps(cf, next_cf):
                 filters = adjust_overlap(
                     cf, next_cf, deepcopy(orig_filters)
                 )
                 # completely overlapped
                 if filters is None:
+                    # we have to yield an empty dict here, to not get confused
+                    # with iteration
+                    yield {}
                     continue
 
             else:
@@ -241,6 +241,7 @@ def extract_data(filenames, filters, fields, scalefactor):
                 ]),
             )]
 
+            full_data = {}
             for t_name, typed_fields, filters in typed_fields_and_filters:
                 data = defaultdict(list)
 
@@ -302,9 +303,13 @@ def extract_data(filenames, filters, fields, scalefactor):
                                     field_data, array_mask
                                 )
 
+                    print(field_data.shape, array_mask)
+
                     data[field_name] = field_data
 
-                yield t_name, data
+                full_data[t_name] = data
+
+            yield full_data
 
 
 def overlaps(cf, next_cf):
@@ -314,23 +319,23 @@ def overlaps(cf, next_cf):
 
 
 def adjust_overlap(cf, next_cf, filters):
-    stop_time = next_cf.fetch_date('mph/sensing_start')
+    next_start_time = next_cf.fetch_date('mph/sensing_start')
 
     for field in ['time_off_nadir', 'time_nadir']:
-
         if field not in filters:
-            filters[field] = {'max': stop_time}
+            filters[field] = {'max': next_start_time}
 
         else:
-            if 'min' in filters[field] and filters[field]['min'] > stop_time:
+            if 'min' in filters[field] and \
+                    filters[field]['min'] > next_start_time:
                 return None
 
             elif 'max' not in filters[field]:
-                filters[field]['max'] = stop_time
+                filters[field]['max'] = next_start_time
 
             else:
                 filters[field]['max'] = min(
-                    stop_time, filters[field]['max']
+                    next_start_time, filters[field]['max']
                 )
 
     return filters

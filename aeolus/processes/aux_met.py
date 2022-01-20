@@ -137,51 +137,56 @@ class AUXMET12Extract(ExtractionProcessBase, Component):
         out_data = {}
         for collection, data_iterator in out_data_iterator:
             accumulated_data = defaultdict(list)
-            for type_name, data in data_iterator:
-                file_data = dict(**data)
-                for field_name, values in file_data.items():
-                    accumulated_data[field_name].extend(values.tolist())
+            for item in data_iterator:
+                for type_name, data in item.items():
+                    file_data = dict(**data)
+                    for field_name, values in file_data.items():
+                        accumulated_data[field_name].extend(values.tolist())
 
             out_data[collection.identifier] = accumulated_data
 
         return out_data
 
     def write_product_data_to_netcdf(self, ds, file_data):
-        type_name, full_data = file_data
-        if type_name not in ds.dimensions:
-            ds.createDimension(type_name, None)
-            num_records = 0
-        else:
-            num_records = ds.dimensions[type_name].size
-
-        for field_name, data in full_data.items():
-            isscalar = (isinstance(data, str) or data.ndim == 1)
-            arrsize = data.shape[-1] if not isscalar else 0
-            array_dim = 'array_%d' % arrsize
-
-            if arrsize and array_dim not in ds.dimensions:
-                ds.createDimension(array_dim, arrsize)
-
-                if np.ma.is_masked(data):
-                    data.set_fill_value(
-                        netCDF4.default_fillvals.get(
-                            netcdf_dtype(data.dtype)
-                        )
-                    )
-
-            # create new variable (+ dimensions)
-            if field_name not in ds.variables:
-                data_type_name = '%s%i' % (data.dtype.kind, data.dtype.itemsize)
-                dims = (type_name) if isscalar else (type_name, array_dim)
-                ds.createVariable(
-                    field_name, data_type_name, dims, zlib=True
-                )[:] = data
-
-            # append to existing variable
+        print(file_data)
+        for type_name, full_data in file_data.items():
+            if type_name not in ds.dimensions:
+                ds.createDimension(type_name, None)
+                num_records = 0
             else:
-                var = ds[field_name]
-                end = num_records + data.shape[0]
-                var[num_records:end] = data
+                num_records = ds.dimensions[type_name].size
+
+            for field_name, data in full_data.items():
+                isscalar = (isinstance(data, str) or data.ndim == 1)
+                arrsize = data.shape[-1] if not isscalar else 0
+                array_dim = 'array_%d' % arrsize
+
+                if arrsize and array_dim not in ds.dimensions:
+                    ds.createDimension(array_dim, arrsize)
+
+                    if np.ma.is_masked(data):
+                        data.set_fill_value(
+                            netCDF4.default_fillvals.get(
+                                netcdf_dtype(data.dtype)
+                            )
+                        )
+
+                # create new variable (+ dimensions)
+                if field_name not in ds.variables:
+                    data_type_name = '%s%i' % (
+                        data.dtype.kind,
+                        data.dtype.itemsize
+                    )
+                    dims = (type_name) if isscalar else (type_name, array_dim)
+                    ds.createVariable(
+                        field_name, data_type_name, dims, zlib=True
+                    )[:] = data
+
+                # append to existing variable
+                else:
+                    var = ds[field_name]
+                    end = num_records + data.shape[0]
+                    var[num_records:end] = data
 
 
 def netcdf_dtype(numpy_dtype):
