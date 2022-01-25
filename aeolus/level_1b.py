@@ -429,12 +429,13 @@ class L1BMeasurementDataExtractor(MeasurementDataExtractor):
 
     def overlaps(self, cf, next_cf):
         location = MEASUREMENT_LOCATIONS['time']
-
+        # length of time measurement_geolocation changes during the mission
+        # need to check the lenght to know which is the last element to retrieve
         end = cf.fetch_date(
             location[0],
             cf.get_size(location[0])[0] - 1,
             location[2],
-            29,
+            cf.get_size(location[0], 0, location[2])[0] - 1,
             *location[4:]
         )
         begin = next_cf.fetch_date(
