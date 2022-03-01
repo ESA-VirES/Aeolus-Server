@@ -466,21 +466,21 @@ class ExtractionProcessBase(AsyncProcessBase):
         if user.has_perm("coverages.access_%s" % collection.identifier):
             # if user has permission return this collection
             return collection
-        else:
-            # if user does not have permission check for _public collection
-            try:
-                p_collection = Collection.objects.get(identifier=identifier+"_public")
-            except Collection.DoesNotExist:
-                raise PermissionDenied(
-                    "No access to '%s' permitted" % collection.identifier
-                )
             
-            if p_collection and user.has_perm("coverages.access_%s" % p_collection.identifier):
-                return p_collection
-            else:
-                raise PermissionDenied(
-                    "No access to '%s' permitted" % collection.identifier
-                )
+        # if user does not have permission check for _public collection
+        try:
+            p_collection = Collection.objects.get(identifier=identifier+"_public")
+        except Collection.DoesNotExist:
+            raise PermissionDenied(
+                "No access to '%s' permitted" % collection.identifier
+            )
+
+        if user.has_perm("coverages.access_%s" % p_collection.identifier):
+            return p_collection
+            
+        raise PermissionDenied(
+            "No access to '%s' permitted" % collection.identifier
+        )
 
     def get_collection_products(self, collection_ids, db_filters, username):
         user = get_user(username)
