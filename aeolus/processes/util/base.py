@@ -460,22 +460,36 @@ class ExtractionProcessBase(AsyncProcessBase):
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
         return filters
 
-    def get_collection_products(self, collection_ids, db_filters, username):
-        collections = [
-            Collection.objects.get(identifier=identifier)
-            for identifier in collection_ids.data
-        ]
-
-        user = get_user(username)
-
-        if not user:
-            raise PermissionDenied("Not logged in")
-
-        for collection in collections:
-            if not user.has_perm("coverages.access_%s" % collection.identifier):
+    def _find_collection(self, identifier, user):
+        # find collection for identifier
+        collection = Collection.objects.get(identifier=identifier)
+        if user.has_perm("coverages.access_%s" % collection.identifier):
+            # if user has permission return this collection
+            return collection
+        else:
+            # if user does not have permission check for _public collection
+            try:
+                p_collection = Collection.objects.get(identifier=identifier+"_public")
+            except Collection.DoesNotExist:
                 raise PermissionDenied(
                     "No access to '%s' permitted" % collection.identifier
                 )
+            
+            if p_collection and user.has_perm("coverages.access_%s" % p_collection.identifier):
+                return p_collection
+            else:
+                raise PermissionDenied(
+                    "No access to '%s' permitted" % collection.identifier
+                )
+
+    def get_collection_products(self, collection_ids, db_filters, username):
+        user = get_user(username)
+        if not user:
+            raise PermissionDenied("Not logged in")
+        collections = [
+            self._find_collection(identifier, user)
+            for identifier in collection_ids.data
+        ]
 
         add_homogenized = any(
             lookup.startswith('footprint_homogenized')
