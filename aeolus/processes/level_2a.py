@@ -83,7 +83,7 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             L1B_time_meas={'min': begin_time, 'max': end_time},
             group_start_time={'min': begin_time},
             group_end_time={'max': end_time},
-            ICA_time_obs={'min': begin_time, 'max': end_time},
+            # ICA_time_obs={'min': begin_time, 'max': end_time},
             SCA_time_obs={'min': begin_time, 'max': end_time},
             MCA_time_obs={'min': begin_time, 'max': end_time},
             **(filters if filters else {})
