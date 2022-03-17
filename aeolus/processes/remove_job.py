@@ -61,7 +61,6 @@ class RemoveJob(object):
         except Job.DoesNotExist:
             raise InvalidInputValueError('job_id')
 
-        get_async_backends()[0].purge(job.identifier)
-        job.delete()
+        get_async_backends()[0].purge(job.identifier, job.process_id)
 
         return True
