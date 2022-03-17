@@ -112,51 +112,82 @@ class AsyncProcessBase(BaseProcess):
     @staticmethod
     def on_started(context, progress, message):
         """ Callback executed when an asynchronous Job gets started. """
-        job = Job.objects.get(identifier=context.identifier)
-        job.status = Job.STARTED
-        job.started = datetime.now(utc)
-        job.save()
-        context.logger.info(
-            "Job started after %.3gs waiting.",
-            (job.started - job.created).total_seconds()
-        )
+        try:
+            job = Job.objects.get(identifier=context.identifier)
+            job.status = Job.STARTED
+            job.started = datetime.now(utc)
+            job.save()
+            context.logger.info(
+                "Job started after %.3gs waiting.",
+                (job.started - job.created).total_seconds()
+            )
+        except Job.DoesNotExist:
+            context.logger.warning(
+                "Failed to update the job status! The job does not exist!"
+            )
 
     @staticmethod
     def on_succeeded(context, outputs):
         """ Callback executed when an asynchronous Job finishes. """
-        job = Job.objects.get(identifier=context.identifier)
-        job.status = Job.SUCCEEDED
-        job.stopped = datetime.now(utc)
-        job.save()
-        context.logger.info(
-            "Job finished after %.3gs running.",
-            (job.stopped - job.started).total_seconds()
-        )
+        try:
+            job = Job.objects.get(identifier=context.identifier)
+            job.status = Job.SUCCEEDED
+            job.stopped = datetime.now(utc)
+            job.save()
+            context.logger.info(
+                "Job finished after %.3gs running.",
+                (job.stopped - job.started).total_seconds()
+            )
+        except Job.DoesNotExist:
+            context.logger.warning(
+                "Failed to update the job status! The job does not exist!"
+            )
 
     @staticmethod
     def on_failed(context, exception):
         """ Callback executed when an asynchronous Job fails. """
-        job = Job.objects.get(identifier=context.identifier)
-        job.status = Job.FAILED
-        job.stopped = datetime.now(utc)
-        job.save()
-        context.logger.info(
-            "Job failed after %.3gs running.",
-            (job.stopped - job.started).total_seconds()
-        )
+        try:
+            job = Job.objects.get(identifier=context.identifier)
+            job.status = Job.FAILED
+            job.stopped = datetime.now(utc)
+            job.save()
+            context.logger.info(
+                "Job failed after %.3gs running.",
+                (job.stopped - job.started).total_seconds()
+            )
+        except Job.DoesNotExist:
+            context.logger.warning(
+                "Failed to update the job status! The job does not exist!"
+            )
+
+    @staticmethod
+    def discard(context):
+        """ Callback discarding Job's resources """
+        try:
+            Job.objects.get(identifier=context.identifier).delete()
+            context.logger.info("Job removed.")
+        except Job.DoesNotExist:
+            pass
 
     def initialize(self, context, inputs, outputs, parts):
         """ Asynchronous process initialization. """
+        context.logger.info(
+            "Received %s asynchronous WPS request from %s.",
+            self.identifier, inputs['\\username'] or "an anonymous user"
+        )
+
         user = get_user(inputs['\\username'])
         active_jobs_count = Job.objects.filter(
             owner=user, status__in=(Job.ACCEPTED, Job.STARTED)
         ).count()
 
         if active_jobs_count >= MAX_ACTIVE_JOBS:
-            raise ServerBusy(
+            message = (
                 "Maximum number of allowed active asynchronous download "
                 "requests exceeded!"
             )
+            context.logger.warning("Job rejected! %s", message)
+            raise ServerBusy(message)
 
         # create DB record for this WPS job
         job = Job()
