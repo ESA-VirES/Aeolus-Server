@@ -27,15 +27,17 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-
+import os
+import os.path
 from datetime import datetime, timedelta
 from io import BytesIO
 import tempfile
-import os.path
 from uuid import uuid4
 from logging import getLogger, LoggerAdapter
 import json
-import os
+import msgpack
+from netCDF4 import Dataset, stringtochar
+import numpy
 
 from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
@@ -48,19 +50,17 @@ from eoxserver.services.ows.wps.parameters import (
     ComplexData, FormatJSON, CDObject, BoundingBoxData, LiteralData,
     FormatBinaryRaw, CDFile, Reference, RequestParameter
 )
-from eoxserver.services.ows.wps.exceptions import ServerBusy
+from eoxserver.services.ows.wps.exceptions import (
+    InvalidInputValueError, InvalidOutputDefError, ServerBusy,
+)
 from eoxserver.resources.coverages.models import Collection, Product
-import msgpack
-from netCDF4 import Dataset, stringtochar
-import numpy as np
 
-from aeolus import models
+from aeolus.models import Job
 from aeolus.processes.util.context import DummyContext
 from aeolus.processes.util.auth import get_user, get_username
 from aeolus.extraction.dsd import get_dsd
 from aeolus.extraction.mph import get_mph
 from aeolus.util import cached_property
-
 
 MAX_ACTIVE_JOBS = 2
 
@@ -73,31 +73,47 @@ def get_remote_addr(request):
     return request.META.get('REMOTE_ADDR')
 
 
-class AccessLoggerAdapter(LoggerAdapter):
-    """ Logger adapter adding extra fields required by the access logger. """
-
-    def __init__(self, logger, username=None, remote_addr=None, **kwargs):
-        super().__init__(logger, {
-            "remote_addr": remote_addr if remote_addr else "-",
-            "username": username if username else "-",
-        })
-
-
-class AsyncProcessBase(object):
+class BaseProcess():
+    """ Base process class
     """
-    """
-    asynchronous = True
+    identifier = None
 
     inputs = [
         ("username", RequestParameter(get_username)),
         ("remote_addr", RequestParameter(get_remote_addr)),
     ]
 
+    class AccessLoggerAdapter(LoggerAdapter):
+        """ Logger adapter adding extra fields required by the access logger. """
+
+        def __init__(self, logger, username=None, remote_addr=None, **kwargs):
+            super().__init__(logger, {
+                "remote_addr": remote_addr if remote_addr else "-",
+                "username": username if username else "-",
+            })
+
+    def get_access_logger(self, *args, **kwargs):
+        """ Get access logger wrapped by the AccessLoggerAdapter """
+        return self.AccessLoggerAdapter(self._access_logger, *args, **kwargs)
+
+    @cached_property
+    def _access_logger(self):
+        """ Get raw access logger. """
+        return getLogger(
+            "access.wps.%s" % self.__class__.__module__.split(".")[-1]
+        )
+
+
+class AsyncProcessBase(BaseProcess):
+    """ Base asynchronous WPS process class.
+    """
+    asynchronous = True
+
     @staticmethod
     def on_started(context, progress, message):
         """ Callback executed when an asynchronous Job gets started. """
-        job = models.Job.objects.get(identifier=context.identifier)
-        job.status = models.Job.STARTED
+        job = Job.objects.get(identifier=context.identifier)
+        job.status = Job.STARTED
         job.started = datetime.now(utc)
         job.save()
         context.logger.info(
@@ -108,8 +124,8 @@ class AsyncProcessBase(object):
     @staticmethod
     def on_succeeded(context, outputs):
         """ Callback executed when an asynchronous Job finishes. """
-        job = models.Job.objects.get(identifier=context.identifier)
-        job.status = models.Job.SUCCEEDED
+        job = Job.objects.get(identifier=context.identifier)
+        job.status = Job.SUCCEEDED
         job.stopped = datetime.now(utc)
         job.save()
         context.logger.info(
@@ -120,8 +136,8 @@ class AsyncProcessBase(object):
     @staticmethod
     def on_failed(context, exception):
         """ Callback executed when an asynchronous Job fails. """
-        job = models.Job.objects.get(identifier=context.identifier)
-        job.status = models.Job.FAILED
+        job = Job.objects.get(identifier=context.identifier)
+        job.status = Job.FAILED
         job.stopped = datetime.now(utc)
         job.save()
         context.logger.info(
@@ -129,22 +145,11 @@ class AsyncProcessBase(object):
             (job.stopped - job.started).total_seconds()
         )
 
-    def get_access_logger(self, *args, **kwargs):
-        """ Get access logger wrapped by the AccessLoggerAdapter """
-        return AccessLoggerAdapter(self._access_logger, *args, **kwargs)
-
-    @cached_property
-    def _access_logger(self):
-        """ Get raw access logger. """
-        return getLogger(
-            "access.wps.%s" % self.__class__.__module__.split(".")[-1]
-        )
-
     def initialize(self, context, inputs, outputs, parts):
         """ Asynchronous process initialization. """
         user = get_user(inputs['\\username'])
-        active_jobs_count = models.Job.objects.filter(
-            owner=user, status__in=(models.Job.ACCEPTED, models.Job.STARTED)
+        active_jobs_count = Job.objects.filter(
+            owner=user, status__in=(Job.ACCEPTED, Job.STARTED)
         ).count()
 
         if active_jobs_count >= MAX_ACTIVE_JOBS:
@@ -154,8 +159,8 @@ class AsyncProcessBase(object):
             )
 
         # create DB record for this WPS job
-        job = models.Job()
-        job.status = models.Job.ACCEPTED
+        job = Job()
+        job.status = Job.ACCEPTED
         job.owner = user
         job.process_id = self.identifier
         job.identifier = context.identifier
@@ -242,13 +247,14 @@ class ExtractionProcessBase(AsyncProcessBase):
                 context.identifier,
             )
             access_logger.error(message)
-            raise Exception(message)
-        elif not isasync and time_span > sync_span:
+            raise InvalidInputValueError('end_time', message)
+
+        if not isasync and time_span > sync_span:
             message = '%s: Exceeding maximum allowed time span.' % (
                 context.identifier,
             )
             access_logger.error(message)
-            raise Exception(message)
+            raise InvalidInputValueError('end_time', message)
 
         # log the request
         access_logger.info(
@@ -267,9 +273,12 @@ class ExtractionProcessBase(AsyncProcessBase):
             begin_time, end_time, bbox, filters, **kwargs
         )
 
-        collection_products = self.get_collection_products(
-            collection_ids, db_filters, kwargs["username"]
-        )
+        try:
+            collection_products = self.get_collection_products(
+                collection_ids, db_filters, kwargs["username"]
+            )
+        except PermissionDenied as error:
+            raise InvalidInputValueError('collection_ids', str(error)) from error
 
         collection_product_counts = dict(
             (collection.identifier, products.count())
@@ -349,7 +358,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                 encoded, filename=out_filename, **output
             )
 
-        elif mime_type == 'application/netcdf':
+        if mime_type == 'application/netcdf':
             if not isasync:
                 uid = str(uuid4())
                 tmppath = os.path.join(tempfile.gettempdir(), uid) + '.nc'
@@ -440,6 +449,10 @@ class ExtractionProcessBase(AsyncProcessBase):
                 remove_file=True, **output
             )
 
+        raise InvalidOutputDefError(
+            'output', "Unexpected output format %r requested!" % mime_type
+        )
+
     def get_db_filters(self, begin_time, end_time, bbox, filters, **kwargs):
         db_filters = dict(
             begin_time__lte=end_time,
@@ -466,7 +479,7 @@ class ExtractionProcessBase(AsyncProcessBase):
         if user.has_perm("coverages.access_%s" % collection.identifier):
             # if user has permission return this collection
             return collection
-            
+
         # if user does not have permission check for _public collection
         try:
             p_collection = Collection.objects.get(identifier=identifier+"_public")
@@ -477,7 +490,7 @@ class ExtractionProcessBase(AsyncProcessBase):
 
         if user.has_perm("coverages.access_%s" % p_collection.identifier):
             return p_collection
-            
+
         raise PermissionDenied(
             "No access to '%s' permitted" % collection.identifier
         )
@@ -542,7 +555,7 @@ class ExtractionProcessBase(AsyncProcessBase):
                     grp.createDimension(dimname, len(values[0]))
                     var = grp.createVariable(name, 'S1', ('dsd', dimname))
 
-                    values = stringtochar(np.array([
+                    values = stringtochar(numpy.array([
                         bytes(v, 'ascii') for v in values
                     ]))
                 else:
