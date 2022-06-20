@@ -745,23 +745,16 @@ def fetch_ground_points(codafile, product_type=None):
 
     elif product_type == 'AUX_MET':
         items = sorted(zip(
-            # np.concatenate(
-                list(codafile.fetch(*locations['time_off_nadir'])) +
-                list(codafile.fetch(*locations['time_nadir'])),
-            # ),
-            # np.concatenate(
-                list(codafile.fetch(*locations['latitude_off_nadir'])) +
-                list(codafile.fetch(*locations['latitude_nadir'])),
-            # ),
-            # np.concatenate(
-                list(codafile.fetch(*locations['latitude_off_nadir'])) +
-                list(codafile.fetch(*locations['latitude_nadir'])),
-            # ),
+            list(codafile.fetch(*locations['time_off_nadir'])) +
+            list(codafile.fetch(*locations['time_nadir'])),
+            list(codafile.fetch(*locations['longitude_off_nadir'])) +
+            list(codafile.fetch(*locations['longitude_nadir'])),
+            list(codafile.fetch(*locations['latitude_off_nadir'])) +
+            list(codafile.fetch(*locations['latitude_nadir'])),
         ), key=lambda i: i[0])
 
         return [
-            (lon if lon < 180 else lon - 360, lat)
-            for _, lon, lat in items
+            (lon , lat) for _, lon, lat in items
         ]
 
     else:
