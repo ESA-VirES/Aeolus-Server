@@ -63,11 +63,12 @@ class Command(CommandOutputMixIn, BaseCommand):
         if created:
             # get permissions for "open" collections
             permissions = auth.Permission.objects.filter(
-                codename__startswith='access_'
-            ).exclude(
-                codename__startswith='access_AUX'
-            ).exclude(
-                codename__startswith='access_user_collection'
+                codename__in=[
+                    'access_ALD_U_N_1B_public',
+                    'access_ALD_U_N_2B_public',
+                    'access_ALD_U_N_2C_public',
+                    'access_ADAM_albedo'
+                ]
             )
             group.permissions = permissions
             group.save()
@@ -87,9 +88,32 @@ class Command(CommandOutputMixIn, BaseCommand):
         if created:
             # get permissions for "open" collections
             permissions = auth.Permission.objects.filter(
-                codename__startswith='access_'
-            ).exclude(
-                codename__startswith='access_user_collection'
+                codename__in=[
+                    'access_ALD_U_N_1B',
+                    'access_ALD_U_N_2B',
+                    'access_ALD_U_N_2C',
+                    'access_ADAM_albedo',
+                    'access_AUX_ISR_1B',
+                    'access_AUX_MET_12',
+                    'access_AUX_MRC_1B',
+                    'access_AUX_RRC_1B',
+                    'access_AUX_ZWC_1B',
+                ]
+            )
+            group.permissions = permissions
+            group.save()
+            self.print_msg("Created group %s" % group.name)
+
+        # special calval group
+        group, created = auth.Group.objects.get_or_create(
+            name='aeolus_calval'
+        )
+        if created:
+            # get permissions for "open" collections
+            permissions = auth.Permission.objects.filter(
+                codename__in= [
+                    'access_ALD_U_N_1A',
+                ]
             )
             group.permissions = permissions
             group.save()

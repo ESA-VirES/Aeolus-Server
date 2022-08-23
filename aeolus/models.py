@@ -229,6 +229,10 @@ def post_save_receiver(sender, instance, created, *args, **kwargs):
             if instance.identifier.endswith('_public'):
                 group = Group.objects.get(name='aeolus_default')
                 group.permissions.add(perm)
+            elif instance.identifier in ['ALD_U_N_1A']:
+                # Using list for check for possible future new entries
+                group = Group.objects.get(name='aeolus_calval')
+                group.permissions.add(perm)
             else:
                 group = Group.objects.get(name='aeolus_privileged')
                 group.permissions.add(perm)
