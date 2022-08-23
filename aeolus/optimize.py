@@ -257,10 +257,8 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                         values.dtype.itemsize
                     ), dimensions=dimnames)
 
-
-                # TODO: Need to investigate when this is necessary
-                #if dimensionality in (2, 3):
-                #    values = np.hstack(np.hstack(values))
+                if len(dimensionality) in (2, 3):
+                    values = np.hstack(np.hstack(values))
 
                 variable[:] = values.reshape(full_shape)
 
