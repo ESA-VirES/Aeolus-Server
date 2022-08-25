@@ -61,7 +61,7 @@ class Command(CommandOutputMixIn, BaseCommand):
             name='aeolus_default'
         )
         if created:
-            # get permissions for "open" collections
+            # get permissions for public collections
             permissions = auth.Permission.objects.filter(
                 codename__in=[
                     'access_ALD_U_N_1B_public',
@@ -86,7 +86,7 @@ class Command(CommandOutputMixIn, BaseCommand):
             name='aeolus_privileged'
         )
         if created:
-            # get permissions for "open" collections
+            # get permissions for privileged collections
             permissions = auth.Permission.objects.filter(
                 codename__in=[
                     'access_ALD_U_N_1B',
@@ -104,12 +104,12 @@ class Command(CommandOutputMixIn, BaseCommand):
             group.save()
             self.print_msg("Created group %s" % group.name)
 
-        # special calval group
+        # special l1a_access group
         group, created = auth.Group.objects.get_or_create(
-            name='aeolus_calval'
+            name='aeolus_l1a_access'
         )
         if created:
-            # get permissions for "open" collections
+            # get permissions for l1a data
             permissions = auth.Permission.objects.filter(
                 codename__in= [
                     'access_ALD_U_N_1A',
