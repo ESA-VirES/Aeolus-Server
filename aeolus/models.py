@@ -158,13 +158,14 @@ def post_migrate_receiver(*args, **kwargs):
         name='aeolus_default'
     )
 
-    # get permissions for "open" collections, but exclude user collections
-    # and restricted collections
+    # get permissions for public collections
     permissions = Permission.objects.filter(
-        codename__startswith='access_',
-        codename__endswith='public',
-    ).exclude(
-        codename__startswith='access_user_collection'
+        codename__in=[
+            'access_ALD_U_N_1B_public',
+            'access_ALD_U_N_2B_public',
+            'access_ALD_U_N_2C_public',
+            'access_ADAM_albedo'
+        ]
     )
     group.permissions.set(permissions)
     group.save()
@@ -178,14 +179,32 @@ def post_migrate_receiver(*args, **kwargs):
         name='aeolus_privileged'
     )
 
-    # get permissions for "open" collections, but exclude user collections
+    # get permissions for privileged collections
     permissions = Permission.objects.filter(
-        codename__startswith='access_'
-    ).exclude(
-        codename__startswith='access_user_collection'
-    ).exclude(
-        codename__startswith='access_',
-        codename__endswith='public',
+        codename__in=[
+            'access_ALD_U_N_1B',
+            'access_ALD_U_N_2B',
+            'access_ALD_U_N_2C',
+            'access_ADAM_albedo',
+            'access_AUX_ISR_1B',
+            'access_AUX_MET_12',
+            'access_AUX_MRC_1B',
+            'access_AUX_RRC_1B',
+            'access_AUX_ZWC_1B',
+        ]
+    )
+    group.permissions.set(permissions)
+    group.save()
+
+    group, _ = Group.objects.get_or_create(
+        name='aeolus_l1a_access'
+    )
+
+    # get permissions for l1a data
+    permissions = Permission.objects.filter(
+        codename__in=[
+            'access_ALD_U_N_1A',
+        ]
     )
     group.permissions.set(permissions)
     group.save()
