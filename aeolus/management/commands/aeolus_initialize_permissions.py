@@ -70,7 +70,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                     'access_ADAM_albedo'
                 ]
             )
-            group.permissions = permissions
+            group.permissions.set(permissions)
             group.save()
 
             self.print_msg("Created group %s" % group.name)
@@ -100,7 +100,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                     'access_AUX_ZWC_1B',
                 ]
             )
-            group.permissions = permissions
+            group.permissions.set(permissions)
             group.save()
             self.print_msg("Created group %s" % group.name)
 
@@ -115,7 +115,7 @@ class Command(CommandOutputMixIn, BaseCommand):
                     'access_ALD_U_N_1A',
                 ]
             )
-            group.permissions = permissions
+            group.permissions.set(permissions)
             group.save()
             self.print_msg("Created group %s" % group.name)
 
