@@ -32,10 +32,12 @@ from collections import defaultdict
 import numpy as np
 import netCDF4
 from eoxserver.services.ows.wps.parameters import LiteralData
+import logging
 
 from aeolus.processes.util.bbox import translate_bbox
 from aeolus.processes.util.base import ExtractionProcessBase
 
+logger = logging.getLogger(__name__)
 
 class MeasurementDataExtractProcessBase(ExtractionProcessBase):
     """ This process extracts Observations and Measurements from the ADM-Aeolus
@@ -187,6 +189,22 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
 
         return out_data
 
+    def get_full_shape(self, values):
+        shape = list(values.shape)
+        values_slice = values
+        while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
+            values_slice = values_slice[0]
+            shape.extend(values_slice.shape)
+        return shape
+
+    def get_dimensionality(self, values):
+        dims = [len(values.shape)]
+        values_slice = values
+        while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
+            values_slice = values_slice[0]
+            dims.append(len(values_slice.shape))
+        return dims
+
     def write_product_data_to_netcdf(self, ds, file_data):
         observation_data = file_data[0]
         measurement_data = file_data[1]
@@ -239,6 +257,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     continue
 
                 isscalar = values[0].ndim == 0
+                dimensionality = self.get_dimensionality(values)
+                full_shape = self.get_full_shape(values)
 
                 if np.ma.is_masked(values):
                     values.set_fill_value(
@@ -248,27 +268,47 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     )
 
                 if not isscalar:
-                    values = np.vstack(values)
+                    if dimensionality == [1,2]:
+                        values = np.array([x for x in values])
+                    elif len(dimensionality) == 3:
+                        init_num = values.shape[0]
+                        values = np.vstack(np.hstack(values))
+                        values = values.reshape(
+                            values.shape[0] // init_num,
+                            init_num,
+                            values.shape[1]
+                        ).swapaxes(0, 1)
+                    elif len(dimensionality) == 2:
+                        values = np.vstack(values)
 
                 if name not in group.variables:
                     # check if a dimension for that array was already created.
                     # Create one, if it not yet existed
 
                     array_dim_name = None
-                    if not isscalar:
-                        array_dim_size = values.shape[-1]
-                        array_dim_name = "array_%d" % array_dim_size
-                        if array_dim_name not in ds.dimensions:
-                            ds.createDimension(array_dim_name, array_dim_size)
+                    dimnames = [
+                        "array_%d" % v for v in values.shape[1:]
+                    ]
+                    for dimname, size in zip(dimnames, values.shape[1:]):
+                        if dimname not in ds.dimensions:
+                            ds.createDimension(dimname, size)
+                    array_dim_size = values.shape[-1]
 
-                    variable = ds.createVariable(
-                        '/observations/%s' % name, netcdf_dtype(values.dtype), (
-                            'observation'
-                        ) if isscalar else (
-                            'observation', array_dim_name
-                        )
-                    )
-                    variable[:] = values
+                    dimensions = ['observation']
+                    if not isscalar:
+                        dimensions = ['observation'] + dimnames
+
+                    variable = group.createVariable(name, '%s%i' % (
+                        values.dtype.kind,
+                        values.dtype.itemsize
+                    ), dimensions=dimensions)
+
+                    if not isscalar:
+                        if len(dimensionality) in (2, 3):
+                            values = np.hstack(np.hstack(values))
+                        variable[:] = values.reshape(full_shape)
+                    else:
+                        variable[:] = values
                 else:
                     var = group[name]
                     end = num_observations + values.shape[0]

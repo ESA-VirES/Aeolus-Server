@@ -1,4 +1,17 @@
 [{
+    "name": "ALD_U_N_1A",
+    "//TODO": "implement",
+    "data_type": "Byte",
+    "bands": [{
+        "name": "test",
+        "identifier": "test",
+        "description": "",
+        "definition": "",
+        "gdal_interpretation": "Undefined",
+        "nil_values": [],
+        "uom": "?"
+    }]
+},{
     "name": "ALD_U_N_1B",
     "data_type": "Byte",
     "bands": [{
