@@ -34,6 +34,7 @@ from netCDF4 import Dataset
 import numpy as np
 
 from aeolus.coda_utils import CODAFile, access_location, NoSuchFieldException
+from aeolus import level_1a
 from aeolus import level_1b
 from aeolus import level_2a
 from aeolus import level_2b
@@ -46,6 +47,10 @@ logger = logging.getLogger(__name__)
 
 # range-type -> CODA file locations
 LOCATIONS = {
+    'ALD_U_N_1A': {
+        'OBSERVATION_DATA': level_1a.OBSERVATION_LOCATIONS,
+        'MEASUREMENT_DATA': level_1a.MEASUREMENT_LOCATIONS,
+    },
     'ALD_U_N_1B': {
         'OBSERVATION_DATA': level_1b.OBSERVATION_LOCATIONS,
         'MEASUREMENT_DATA': level_1b.MEASUREMENT_LOCATIONS,
@@ -153,7 +158,6 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                 raise OptimizationError('Group %s already exists' % group_name)
         else:
             group = out_ds.createGroup(group_name)
-
         for name, location in locations.items():
             # if we have a dedicated list of fields to optimize, we skip if the
             # current field is not in that list
@@ -223,7 +227,10 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                 # get the correct dimensionality for the values and
                 # reshape if necessary
                 dimensionality = get_dimensionality(values)
-                if dimensionality == 3:
+                full_shape = get_full_shape(values)
+                if dimensionality == [1,2]:
+                    values = np.array([x for x in values])
+                elif len(dimensionality) == 3:
                     init_num = values.shape[0]
                     values = np.vstack(np.hstack(values))
                     values = values.reshape(
@@ -231,7 +238,7 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                         init_num,
                         values.shape[1]
                     ).swapaxes(0, 1)
-                elif dimensionality == 2:
+                elif len(dimensionality) == 2:
                     values = np.vstack(values)
 
                 if variable is None:
@@ -250,19 +257,26 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                         values.dtype.itemsize
                     ), dimensions=dimnames)
 
-                if dimensionality in (2, 3):
+                if len(dimensionality) in (2, 3):
                     values = np.hstack(np.hstack(values))
 
-                variable[:] = values.reshape(variable.shape)
+                variable[:] = values.reshape(full_shape)
 
+
+def get_full_shape(values):
+    shape = list(values.shape)
+    values_slice = values
+    while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
+        values_slice = values_slice[0]
+        shape.extend(values_slice.shape)
+    return shape
 
 def get_dimensionality(values):
     """
     """
-    num = 1
+    dims = [len(values.shape)]
     values_slice = values
     while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
         values_slice = values_slice[0]
-        num += 1
-
-    return num
+        dims.append(len(values_slice.shape))
+    return dims

@@ -53,6 +53,19 @@ def _get_ground_path(codafile):
     """
 
     product_type = codafile.product_type
+    if product_type == 'ALD_U_N_1A':
+        ground_points = zip(
+            codafile.fetch(
+                '/geolocation', -1,
+                'observation_geolocation/geolocation_of_dem_intersection/'
+                'longitude_of_dem_intersection'
+            ),
+            codafile.fetch(
+                '/geolocation', -1,
+                'observation_geolocation/geolocation_of_dem_intersection/'
+                'latitude_of_dem_intersection'
+            )
+        )
     if product_type == 'ALD_U_N_1B':
         ground_points = zip(
             codafile.fetch(

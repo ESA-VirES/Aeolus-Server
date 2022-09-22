@@ -61,15 +61,16 @@ class Command(CommandOutputMixIn, BaseCommand):
             name='aeolus_default'
         )
         if created:
-            # get permissions for "open" collections
+            # get permissions for public collections
             permissions = auth.Permission.objects.filter(
-                codename__startswith='access_'
-            ).exclude(
-                codename__startswith='access_AUX'
-            ).exclude(
-                codename__startswith='access_user_collection'
+                codename__in=[
+                    'access_ALD_U_N_1B_public',
+                    'access_ALD_U_N_2B_public',
+                    'access_ALD_U_N_2C_public',
+                    'access_ADAM_albedo'
+                ]
             )
-            group.permissions = permissions
+            group.permissions.set(permissions)
             group.save()
 
             self.print_msg("Created group %s" % group.name)
@@ -85,13 +86,36 @@ class Command(CommandOutputMixIn, BaseCommand):
             name='aeolus_privileged'
         )
         if created:
-            # get permissions for "open" collections
+            # get permissions for privileged collections
             permissions = auth.Permission.objects.filter(
-                codename__startswith='access_'
-            ).exclude(
-                codename__startswith='access_user_collection'
+                codename__in=[
+                    'access_ALD_U_N_1B',
+                    'access_ALD_U_N_2B',
+                    'access_ALD_U_N_2C',
+                    'access_ADAM_albedo',
+                    'access_AUX_ISR_1B',
+                    'access_AUX_MET_12',
+                    'access_AUX_MRC_1B',
+                    'access_AUX_RRC_1B',
+                    'access_AUX_ZWC_1B',
+                ]
             )
-            group.permissions = permissions
+            group.permissions.set(permissions)
+            group.save()
+            self.print_msg("Created group %s" % group.name)
+
+        # special l1a_access group
+        group, created = auth.Group.objects.get_or_create(
+            name='aeolus_l1a_access'
+        )
+        if created:
+            # get permissions for l1a data
+            permissions = auth.Permission.objects.filter(
+                codename__in= [
+                    'access_ALD_U_N_1A',
+                ]
+            )
+            group.permissions.set(permissions)
             group.save()
             self.print_msg("Created group %s" % group.name)
 
