@@ -162,6 +162,7 @@ def post_migrate_receiver(*args, **kwargs):
     permissions = Permission.objects.filter(
         codename__in=[
             'access_ALD_U_N_1B_public',
+            'access_ALD_U_N_2A_public',
             'access_ALD_U_N_2B_public',
             'access_ALD_U_N_2C_public',
             'access_ADAM_albedo'
