@@ -365,7 +365,21 @@ MCA_LOCATIONS = {
     'MCA_time_obs':                                 ['/mca_optical_properties', -1, 'starttime'],
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
-    'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
+    'MCA_lidar_ratio':                              ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
+}
+
+MLE_LOCATIONS = {
+    'MLE_time_obs':                                 ['/sca_mle_opt_properties', -1, 'starttime'],
+    'MLE_extinction':                               ['/sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'extinction'],
+    'MLE_backscatter':                              ['/sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'backscatter'],
+    'MLE_lidar_ratio':                              ['/sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'lr'],
+}
+
+MLE_SUB_LOCATIONS = {
+    'MLE_SUB_time_obs':                                 ['/sca_mlesub_opt_properties', -1, 'starttime'],
+    'MLE_SUB_extinction':                               ['/sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'extinction'],
+    'MLE_SUB_backscatter':                              ['/sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'backscatter'],
+    'MLE_SUB_lidar_ratio':                              ['/sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'lr'],
 }
 
 ARRAY_FIELDS = set([
@@ -406,6 +420,8 @@ class L2AMeasurementDataExtractor(MeasurementDataExtractor):
     ica_locations = ICA_LOCATIONS
     sca_locations = SCA_LOCATIONS
     mca_locations = MCA_LOCATIONS
+    mle_locations = MLE_LOCATIONS
+    mle_sub_locations = MLE_SUB_LOCATIONS
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):

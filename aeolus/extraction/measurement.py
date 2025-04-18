@@ -60,7 +60,7 @@ class MeasurementDataExtractor(object):
 
     def extract_data(self, filenames, filters,
                      observation_fields, measurement_fields, group_fields,
-                     ica_fields, sca_fields, mca_fields,
+                     ica_fields, sca_fields, mca_fields, mle_fields, mle_sub_fields,
                      simple_observation_filters=False):
         """ Extract the data from the given filename(s) and apply the given
             filters.
@@ -73,7 +73,9 @@ class MeasurementDataExtractor(object):
             list(self.group_locations.keys()) +
             list(self.ica_locations.keys()) +
             list(self.sca_locations.keys()) +
-            list(self.mca_locations.keys()),
+            list(self.mca_locations.keys()) +
+            list(self.mle_locations.keys()) +
+            list(self.mle_sub_locations.keys()),
             'filter'
         )
         check_fields(
@@ -107,6 +109,8 @@ class MeasurementDataExtractor(object):
             out_ica_data = defaultdict(list)
             out_sca_data = defaultdict(list)
             out_mca_data = defaultdict(list)
+            out_mle_data = defaultdict(list)
+            out_mle_sub_data = defaultdict(list)
 
             next_cf = files[i + 1][0] if (i + 1) < len(files) else None
 
@@ -153,6 +157,18 @@ class MeasurementDataExtractor(object):
                 name: value
                 for name, value in filters.items()
                 if name in self.mca_locations
+            }
+
+            mle_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mle_locations
+            }
+
+            mle_sub_filters = {
+                name: value
+                for name, value in filters.items()
+                if name in self.mle_locations
             }
 
             with cf, maybe_close(ds):
@@ -457,9 +473,130 @@ class MeasurementDataExtractor(object):
 
                     out_mca_data[field_name] = data
 
+                # handle MLE filters/fields
+                mle_mask = None
+                mle_array_mask = None
+                for field_name, filter_value in mle_filters.items():
+                    location = self.mle_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'MLE_DATA', field_name, location
+                    )
+
+                    new_mask = make_mask(
+                        data, filter_value.get('min'), filter_value.get('max'),
+                        field_name in self.array_fields
+                    )
+
+                    mle_mask = combine_mask(new_mask, mle_mask)
+
+                    if field_name in self.array_fields:
+                        data = np.vstack(data)
+                        new_array_mask = make_array_mask(
+                            data, **filter_value
+                        )
+                        mle_array_mask = combine_mask(
+                            new_array_mask, mle_array_mask
+                        )
+
+                if mle_mask is not None:
+                    filtered_mle_ids = np.nonzero(mle_mask)
+                    if mle_array_mask is not None:
+                        mle_array_mask = mle_array_mask[
+                            filtered_mle_ids
+                        ]
+                else:
+                    filtered_mle_ids = None
+
+                if mle_array_mask is not None:
+                    # for np.ma.MaskedArrays we need True/False the other way
+                    # around
+                    mle_array_mask = np.logical_not(
+                        mle_array_mask
+                    )
+
+                # fetch the requested mle fields, filter accordingly and
+                # write to the output dict
+                for field_name in mle_fields:
+                    location = self.mle_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'MLE_DATA', field_name, location
+                    )
+
+                    if filtered_mle_ids is not None:
+                        data = data[filtered_mle_ids]
+
+                    if data.shape[0] and field_name in self.array_fields:
+                        data = np.vstack(data)
+                        data = np.ma.MaskedArray(data, mle_array_mask)
+
+                    out_mle_data[field_name] = data
+
+                # handle MLE_SUB filters/fields
+                mle_sub_mask = None
+                mle_sub_array_mask = None
+                for field_name, filter_value in mle_sub_filters.items():
+                    location = self.mle_sub_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'MLE_SUB_DATA', field_name, location
+                    )
+
+                    new_mask = make_mask(
+                        data, filter_value.get('min'), filter_value.get('max'),
+                        field_name in self.array_fields
+                    )
+
+                    mle_sub_mask = combine_mask(new_mask, mle_sub_mask)
+
+                    if field_name in self.array_fields:
+                        data = np.vstack(data)
+                        new_array_mask = make_array_mask(
+                            data, **filter_value
+                        )
+                        mle_sub_array_mask = combine_mask(
+                            new_array_mask, mle_sub_array_mask
+                        )
+
+                if mle_sub_mask is not None:
+                    filtered_mle_sub_ids = np.nonzero(mle_sub_mask)
+                    if mle_sub_array_mask is not None:
+                        mle_sub_array_mask = mle_sub_array_mask[
+                            filtered_mle_sub_ids
+                        ]
+                else:
+                    filtered_mle_sub_ids = None
+
+                if mle_sub_array_mask is not None:
+                    # for np.ma.MaskedArrays we need True/False the other way
+                    # around
+                    mle_sub_array_mask = np.logical_not(
+                        mle_sub_array_mask
+                    )
+
+                # fetch the requested mle fields, filter accordingly and
+                # write to the output dict
+                for field_name in mle_sub_fields:
+                    location = self.mle_sub_locations[field_name]
+
+                    data = optimized_access(
+                        cf, ds, 'MLE_SUB_DATA', field_name, location
+                    )
+
+                    if filtered_mle_sub_ids is not None:
+                        data = data[filtered_mle_sub_ids]
+
+                    if data.shape[0] and field_name in self.array_fields:
+                        data = np.vstack(data)
+                        data = np.ma.MaskedArray(data, mle_sub_array_mask)
+
+                    out_mle_sub_data[field_name] = data
+
                 yield (
                     out_observation_data, out_measurement_data,
-                    out_group_data, out_ica_data, out_sca_data, out_mca_data
+                    out_group_data, out_ica_data, out_sca_data, out_mca_data,
+                    out_mle_data, out_mle_sub_data,
                 )
 
     def _read_measurements(self, cf, ds, measurement_fields, filters,

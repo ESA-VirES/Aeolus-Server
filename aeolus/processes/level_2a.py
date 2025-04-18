@@ -72,6 +72,16 @@ class Level2AExtract(MeasurementDataExtractProcessBase, Component):
             title="Data variables",
             abstract="Comma-separated list of the extracted data variables."
         )),
+        ("mle_fields", LiteralData(
+            'mle_fields', str, optional=True, default=None,
+            title="Data variables",
+            abstract="Comma-separated list of the extracted data variables."
+        )),
+        ("mle_sub_fields", LiteralData(
+            'mle_sub_fields', str, optional=True, default=None,
+            title="Data variables",
+            abstract="Comma-separated list of the extracted data variables."
+        )),
     ]
 
     def get_data_filters(self, begin_time, end_time, bbox, filters, **kwargs):
