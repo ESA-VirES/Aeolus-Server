@@ -369,6 +369,7 @@ MCA_LOCATIONS = {
 }
 
 MLE_LOCATIONS = {
+    'MLE_QC_flag':                                  ['/sca_mle_pcd', -1, 'profile_pcd_bins', -1, 'qc'],
     'MLE_time_obs':                                 ['/sca_mle_opt_properties', -1, 'starttime'],
     'MLE_extinction':                               ['/sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'extinction'],
     'MLE_backscatter':                              ['/sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'backscatter'],
@@ -376,6 +377,7 @@ MLE_LOCATIONS = {
 }
 
 MLE_SUB_LOCATIONS = {
+    'MLE_SUB_QC_flag':                                  ['/sca_mlesub_pcd', -1, 'sca_mlesub_pcd_bins', -1, 'qc'],
     'MLE_SUB_time_obs':                                 ['/sca_mlesub_opt_properties', -1, 'starttime'],
     'MLE_SUB_extinction':                               ['/sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'extinction'],
     'MLE_SUB_backscatter':                              ['/sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'backscatter'],
