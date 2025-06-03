@@ -182,7 +182,7 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
             yield (group_name, name)
 
             if product_type_name == 'AUX_MET_12' and len(location) > 3:
-                first = location[:1] + [0] + location[2:]
+                first = (*location[:1], 0, *location[2:])
                 try:
                     first_values = access_location(in_cf, first)
                 except NoSuchFieldException:

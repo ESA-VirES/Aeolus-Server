@@ -44,42 +44,42 @@ from aeolus.filtering import make_mask, make_array_mask, combine_mask
 # ------------------------------------------------------------------------------
 
 LOCATIONS = {
-    'time_off_nadir':                               ['/geo_off_nadir', -1, 'amd_datetime'],
-    'latitude_off_nadir':                           ['/geo_off_nadir', -1, 'amd_latitude'],
-    'longitude_off_nadir':                          ['/geo_off_nadir', -1, 'amd_longitude'],
-    'surface_wind_component_u_off_nadir':           ['/met_off_nadir', -1, 'amd_us'],
-    'surface_wind_component_v_off_nadir':           ['/met_off_nadir', -1, 'amd_vs'],
-    'surface_pressure_off_nadir':                   ['/met_off_nadir', -1, 'amd_ps'],
-    'surface_altitude_off_nadir':                   ['/met_off_nadir', -1, 'amd_zs'],
-    'layer_validity_flag_off_nadir':                ['/met_off_nadir', -1, 'profile_data', -1, 'amd_validity_flag'],
-    'layer_pressure_off_nadir':                     ['/met_off_nadir', -1, 'profile_data', -1, 'amd_pnom'],
-    'layer_altitude_off_nadir':                     ['/met_off_nadir', -1, 'profile_data', -1, 'amd_znom'],
-    'layer_temperature_off_nadir':                  ['/met_off_nadir', -1, 'profile_data', -1, 'amd_t'],
-    'layer_wind_component_u_off_nadir':             ['/met_off_nadir', -1, 'profile_data', -1, 'amd_u'],
-    'layer_wind_component_v_off_nadir':             ['/met_off_nadir', -1, 'profile_data', -1, 'amd_v'],
-    'layer_rel_humidity_off_nadir':                 ['/met_off_nadir', -1, 'profile_data', -1, 'amd_rh'],
-    'layer_spec_humidity_off_nadir':                ['/met_off_nadir', -1, 'profile_data', -1, 'amd_q'],
-    'layer_cloud_cover_off_nadir':                  ['/met_off_nadir', -1, 'profile_data', -1, 'amd_cc'],
-    'layer_cloud_liquid_water_content_off_nadir':   ['/met_off_nadir', -1, 'profile_data', -1, 'amd_clwc'],
-    'layer_cloud_ice_water_content_off_nadir':      ['/met_off_nadir', -1, 'profile_data', -1, 'amd_ciwc'],
-    'time_nadir':                                   ['/geo_nadir', -1, 'amd_datetime'],
-    'latitude_nadir':                               ['/geo_nadir', -1, 'amd_latitude'],
-    'longitude_nadir':                              ['/geo_nadir', -1, 'amd_longitude'],
-    'surface_wind_component_u_nadir':               ['/met_nadir', -1, 'amd_us'],
-    'surface_wind_component_v_nadir':               ['/met_nadir', -1, 'amd_vs'],
-    'surface_pressure_nadir':                       ['/met_nadir', -1, 'amd_ps'],
-    'surface_altitude_nadir':                       ['/met_nadir', -1, 'amd_zs'],
-    'layer_validity_flag_nadir':                    ['/met_nadir', -1, 'profile_data', -1, 'amd_validity_flag'],
-    'layer_pressure_nadir':                         ['/met_nadir', -1, 'profile_data', -1, 'amd_pnom'],
-    'layer_altitude_nadir':                         ['/met_nadir', -1, 'profile_data', -1, 'amd_znom'],
-    'layer_temperature_nadir':                      ['/met_nadir', -1, 'profile_data', -1, 'amd_t'],
-    'layer_wind_component_u_nadir':                 ['/met_nadir', -1, 'profile_data', -1, 'amd_u'],
-    'layer_wind_component_v_nadir':                 ['/met_nadir', -1, 'profile_data', -1, 'amd_v'],
-    'layer_rel_humidity_nadir':                     ['/met_nadir', -1, 'profile_data', -1, 'amd_rh'],
-    'layer_spec_humidity_nadir':                    ['/met_nadir', -1, 'profile_data', -1, 'amd_q'],
-    'layer_cloud_cover_nadir':                      ['/met_nadir', -1, 'profile_data', -1, 'amd_cc'],
-    'layer_cloud_liquid_water_content_nadir':       ['/met_nadir', -1, 'profile_data', -1, 'amd_clwc'],
-    'layer_cloud_ice_water_content_nadir':          ['/met_nadir', -1, 'profile_data', -1, 'amd_ciwc'],
+    'time_off_nadir':                               ('geo_off_nadir', -1, 'amd_datetime'),
+    'latitude_off_nadir':                           ('geo_off_nadir', -1, 'amd_latitude'),
+    'longitude_off_nadir':                          ('geo_off_nadir', -1, 'amd_longitude'),
+    'surface_wind_component_u_off_nadir':           ('met_off_nadir', -1, 'amd_us'),
+    'surface_wind_component_v_off_nadir':           ('met_off_nadir', -1, 'amd_vs'),
+    'surface_pressure_off_nadir':                   ('met_off_nadir', -1, 'amd_ps'),
+    'surface_altitude_off_nadir':                   ('met_off_nadir', -1, 'amd_zs'),
+    'layer_validity_flag_off_nadir':                ('met_off_nadir', -1, 'profile_data', -1, 'amd_validity_flag'),
+    'layer_pressure_off_nadir':                     ('met_off_nadir', -1, 'profile_data', -1, 'amd_pnom'),
+    'layer_altitude_off_nadir':                     ('met_off_nadir', -1, 'profile_data', -1, 'amd_znom'),
+    'layer_temperature_off_nadir':                  ('met_off_nadir', -1, 'profile_data', -1, 'amd_t'),
+    'layer_wind_component_u_off_nadir':             ('met_off_nadir', -1, 'profile_data', -1, 'amd_u'),
+    'layer_wind_component_v_off_nadir':             ('met_off_nadir', -1, 'profile_data', -1, 'amd_v'),
+    'layer_rel_humidity_off_nadir':                 ('met_off_nadir', -1, 'profile_data', -1, 'amd_rh'),
+    'layer_spec_humidity_off_nadir':                ('met_off_nadir', -1, 'profile_data', -1, 'amd_q'),
+    'layer_cloud_cover_off_nadir':                  ('met_off_nadir', -1, 'profile_data', -1, 'amd_cc'),
+    'layer_cloud_liquid_water_content_off_nadir':   ('met_off_nadir', -1, 'profile_data', -1, 'amd_clwc'),
+    'layer_cloud_ice_water_content_off_nadir':      ('met_off_nadir', -1, 'profile_data', -1, 'amd_ciwc'),
+    'time_nadir':                                   ('geo_nadir', -1, 'amd_datetime'),
+    'latitude_nadir':                               ('geo_nadir', -1, 'amd_latitude'),
+    'longitude_nadir':                              ('geo_nadir', -1, 'amd_longitude'),
+    'surface_wind_component_u_nadir':               ('met_nadir', -1, 'amd_us'),
+    'surface_wind_component_v_nadir':               ('met_nadir', -1, 'amd_vs'),
+    'surface_pressure_nadir':                       ('met_nadir', -1, 'amd_ps'),
+    'surface_altitude_nadir':                       ('met_nadir', -1, 'amd_zs'),
+    'layer_validity_flag_nadir':                    ('met_nadir', -1, 'profile_data', -1, 'amd_validity_flag'),
+    'layer_pressure_nadir':                         ('met_nadir', -1, 'profile_data', -1, 'amd_pnom'),
+    'layer_altitude_nadir':                         ('met_nadir', -1, 'profile_data', -1, 'amd_znom'),
+    'layer_temperature_nadir':                      ('met_nadir', -1, 'profile_data', -1, 'amd_t'),
+    'layer_wind_component_u_nadir':                 ('met_nadir', -1, 'profile_data', -1, 'amd_u'),
+    'layer_wind_component_v_nadir':                 ('met_nadir', -1, 'profile_data', -1, 'amd_v'),
+    'layer_rel_humidity_nadir':                     ('met_nadir', -1, 'profile_data', -1, 'amd_rh'),
+    'layer_spec_humidity_nadir':                    ('met_nadir', -1, 'profile_data', -1, 'amd_q'),
+    'layer_cloud_cover_nadir':                      ('met_nadir', -1, 'profile_data', -1, 'amd_cc'),
+    'layer_cloud_liquid_water_content_nadir':       ('met_nadir', -1, 'profile_data', -1, 'amd_clwc'),
+    'layer_cloud_ice_water_content_nadir':          ('met_nadir', -1, 'profile_data', -1, 'amd_ciwc'),
 }
 
 
@@ -313,15 +313,15 @@ def extract_data(filenames, filters, fields, scalefactor):
 
 
 def overlaps(cf, next_cf):
-    end_time = cf.fetch_date('mph/sensing_stop')
-    begin_time = next_cf.fetch_date('mph/sensing_start')
+    end_time = cf.fetch_date('/mph/sensing_stop')
+    begin_time = next_cf.fetch_date('/mph/sensing_start')
     return end_time > begin_time
 
 
 def adjust_overlap(cf, next_cf, filters):
-    next_start_time = next_cf.fetch_date('mph/sensing_start')
+    next_start_time = next_cf.fetch_date('/mph/sensing_start')
 
-    for field in ['time_off_nadir', 'time_nadir']:
+    for field in ('time_off_nadir', 'time_nadir'):
         if field not in filters:
             filters[field] = {'max': next_start_time}
 
