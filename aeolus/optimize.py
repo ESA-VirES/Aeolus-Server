@@ -251,6 +251,13 @@ def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
                         if dimname not in out_ds.dimensions:
                             out_ds.createDimension(dimname, size)
 
+                    # fix string object arrays
+                    if values.dtype.kind == 'O':
+                        if isinstance(values[0], str):
+                            values = values.astype("U")
+                        else:
+                            raise TypeError("Data type not serializable as NetCDF array.")
+
                     # create a variable and store the data in it
                     variable = group.createVariable(name, '%s%i' % (
                         values.dtype.kind,
@@ -268,8 +275,10 @@ def get_full_shape(values):
     values_slice = values
     while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
         values_slice = values_slice[0]
+        if not hasattr(values_slice, 'shape'):
+            break
         shape.extend(values_slice.shape)
-    return shape
+    return tuple(shape)
 
 def get_dimensionality(values):
     """
@@ -278,5 +287,7 @@ def get_dimensionality(values):
     values_slice = values
     while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
         values_slice = values_slice[0]
+        if not hasattr(values_slice, 'shape'):
+            break
         dims.append(len(values_slice.shape))
     return dims
