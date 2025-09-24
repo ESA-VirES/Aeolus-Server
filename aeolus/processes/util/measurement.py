@@ -605,7 +605,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     end = num_mcas + values.shape[0]
                     var[num_mcas:end] = values
         if mle_data:
-            group = ds.createGroup('mca')
+            group = ds.createGroup('mle')
 
             for name, values in mle_data.items():
                 if not values.shape[0]:
@@ -658,7 +658,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     end = num_mles + values.shape[0]
                     var[num_mles:end] = values
         if mle_sub_data:
-            group = ds.createGroup('mca')
+            group = ds.createGroup('mle_sub')
 
             for name, values in mle_sub_data.items():
                 if not values.shape[0]:

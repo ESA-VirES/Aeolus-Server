@@ -168,7 +168,7 @@ class MeasurementDataExtractor(object):
             mle_sub_filters = {
                 name: value
                 for name, value in filters.items()
-                if name in self.mle_locations
+                if name in self.mle_sub_locations
             }
 
             with cf, maybe_close(ds):
