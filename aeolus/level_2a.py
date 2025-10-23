@@ -365,7 +365,7 @@ MCA_LOCATIONS = {
     'MCA_time_obs':                                 ['/mca_optical_properties', -1, 'starttime'],
     'MCA_clim_BER':                                 ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'],
     'MCA_extinction':                               ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'],
-    'MCA_lidar_ratio':                              ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
+    'MCA_LOD':                                      ['/mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'],
 }
 
 MLE_LOCATIONS = {
