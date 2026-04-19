@@ -118,6 +118,16 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         else:
             mca_fields = []
 
+        if kw.get('mle_fields'):
+            mle_fields = kw['mle_fields'].split(',')
+        else:
+            mle_fields = []
+
+        if kw.get('mle_sub_fields'):
+            mle_sub_fields = kw['mle_sub_fields'].split(',')
+        else:
+            mle_sub_fields = []
+
         def get_optimized_data_item(product):
             try:
                 return product.optimized_data_item
@@ -148,6 +158,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 ica_fields=ica_fields,
                 sca_fields=sca_fields,
                 mca_fields=mca_fields,
+                mle_fields=mle_fields,
+                mle_sub_fields=mle_sub_fields,
                 simple_observation_filters=True,
             ))
             for collection, products in collection_products
@@ -157,6 +169,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         out_data = {}
         for collection, data_iterator in out_data_iterator:
             accumulated_data = [
+                defaultdict(list),
+                defaultdict(list),
                 defaultdict(list),
                 defaultdict(list),
                 defaultdict(list),
@@ -183,6 +197,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                 ica_data=accumulated_data[3],
                 sca_data=accumulated_data[4],
                 mca_data=accumulated_data[5],
+                mle_data=accumulated_data[6],
+                mle_sub_data=accumulated_data[7],
             )
 
             out_data[collection.identifier] = collection_data
@@ -212,6 +228,8 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
         ica_data = file_data[3]
         sca_data = file_data[4]
         mca_data = file_data[5]
+        mle_data = file_data[6]
+        mle_sub_data = file_data[7]
 
         if observation_data and 'observation' not in ds.dimensions:
             ds.createDimension('observation', None)
@@ -248,6 +266,18 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             num_mcas = 0
         elif mca_data:
             num_mcas = ds.dimensions['mca_dim'].size
+
+        if mle_data and 'mle_dim' not in ds.dimensions:
+            ds.createDimension('mle_dim', None)
+            num_mles = 0
+        elif mle_data:
+            num_mles = ds.dimensions['mle_dim'].size
+
+        if mle_sub_data and 'mle_sub_dim' not in ds.dimensions:
+            ds.createDimension('mle_sub_dim', None)
+            num_mle_subs = 0
+        elif mle_sub_data:
+            num_mle_subs = ds.dimensions['mle_sub_dim'].size
 
         if observation_data:
             group = ds.createGroup('observations')
@@ -574,7 +604,112 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
                     var = group[name]
                     end = num_mcas + values.shape[0]
                     var[num_mcas:end] = values
+        if mle_data:
+            group = ds.createGroup('mle')
 
+            for name, values in mle_data.items():
+                if not values.shape[0]:
+                    continue
+
+                isscalar = values[0].ndim == 0
+
+                if np.ma.is_masked(values):
+                    values.set_fill_value(
+                        netCDF4.default_fillvals.get(
+                            netcdf_dtype(values.dtype)
+                        )
+                    )
+
+                if isscalar:
+                    values = np.hstack(values)
+                else:
+                    values = np.vstack(values)
+
+                if name not in group.variables:
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
+                        if np.ma.is_masked(values):
+                            values.set_fill_value(
+                                netCDF4.default_fillvals.get(
+                                    netcdf_dtype(values.dtype)
+                                )
+                            )
+
+                    var = ds.createVariable(
+                        '/mle/%s' % name, netcdf_dtype(values.dtype), (
+                            'mle_dim',
+                        ) if isscalar else (
+                            'mle_dim',
+                            array_dim_name,
+                        )
+                    )
+
+                    var[:] = values
+
+                else:
+                    var = group[name]
+                    end = num_mles + values.shape[0]
+                    var[num_mles:end] = values
+        if mle_sub_data:
+            group = ds.createGroup('mle_sub')
+
+            for name, values in mle_sub_data.items():
+                if not values.shape[0]:
+                    continue
+
+                isscalar = values[0].ndim == 0
+
+                if np.ma.is_masked(values):
+                    values.set_fill_value(
+                        netCDF4.default_fillvals.get(
+                            netcdf_dtype(values.dtype)
+                        )
+                    )
+
+                if isscalar:
+                    values = np.hstack(values)
+                else:
+                    values = np.vstack(values)
+
+                if name not in group.variables:
+                    # check if a dimension for that array was already created.
+                    # Create one, if it not yet existed
+                    array_dim_name = None
+                    if not isscalar:
+                        array_dim_size = values.shape[-1]
+                        array_dim_name = "array_%d" % array_dim_size
+                        if array_dim_name not in ds.dimensions:
+                            ds.createDimension(array_dim_name, array_dim_size)
+
+                        if np.ma.is_masked(values):
+                            values.set_fill_value(
+                                netCDF4.default_fillvals.get(
+                                    netcdf_dtype(values.dtype)
+                                )
+                            )
+
+                    var = ds.createVariable(
+                        '/mle_sub/%s' % name, netcdf_dtype(values.dtype), (
+                            'mle_sub_dim',
+                        ) if isscalar else (
+                            'mle_sub_dim',
+                            array_dim_name,
+                        )
+                    )
+
+                    var[:] = values
+
+                else:
+                    var = group[name]
+                    end = num_mle_subs + values.shape[0]
+                    var[num_mle_subs:end] = values
 
 def netcdf_dtype(numpy_dtype):
     return '%s%i' % (numpy_dtype.kind, numpy_dtype.itemsize)

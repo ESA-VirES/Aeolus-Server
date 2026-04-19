@@ -343,18 +343,20 @@ SCA_LOCATIONS = {
     'SCA_middle_bin_BER_variance':                  ('sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'ber_variance'),
     'SCA_middle_bin_cloud_mask':                    ('sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'cloud_mask'),
     'SCA_middle_bin_lr_variance':                   ('sca_pcd', -1, 'profile_pcd_mid_bins', -1, 'lr_variance'),
+    'SCA_middle_bin_extinction':                    ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'extinction'),
+    'SCA_middle_bin_backscatter':                   ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'backscatter'),
+    'SCA_middle_bin_LOD':                           ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lod'),
+    'SCA_middle_bin_BER':                           ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'),
+    'SCA_middle_bin_lr':                            ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lr'),
     'SCA_middle_bin_Kray':                          ('sca_pcd', -1, 'Kray'),
     'SCA_middle_bin_Kmie':                          ('sca_pcd', -1, 'Kmie'),
     'SCA_time_obs':                                 ('sca_optical_properties', -1, 'starttime'),
     'SCA_extinction':                               ('sca_optical_properties', -1, 'sca_optical_properties', -1, 'extinction'),
     'SCA_backscatter':                              ('sca_optical_properties', -1, 'sca_optical_properties', -1, 'backscatter'),
+    'SCA_lr':                                       ('sca_optical_properties', -1, 'sca_optical_properties', -1, 'lr'),
     'SCA_LOD':                                      ('sca_optical_properties', -1, 'sca_optical_properties', -1, 'lod'),
     'SCA_SR':                                       ('sca_optical_properties', -1, 'sca_optical_properties', -1, 'sr'),
     'SCA_middle_bin_altitude_obs':                  ('sca_optical_properties', -1, 'geolocation_middle_bins', -1, 'altitude'),
-    'SCA_middle_bin_extinction':                    ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'extinction'),
-    'SCA_middle_bin_backscatter':                   ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'backscatter'),
-    'SCA_middle_bin_LOD':                           ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'lod'),
-    'SCA_middle_bin_BER':                           ('sca_optical_properties', -1, 'sca_optical_properties_mid_bins', -1, 'ber'),
     'SCA_attenuated_molecular_backscatter':         ('sca_optical_properties', -1, 'attenuated_backscatter_values', (-1, -1), 'attenuated_molecular_backscatter'),
     'SCA_attenuated_particulate_backscatter':       ('sca_optical_properties', -1, 'attenuated_backscatter_values', (-1, -1), 'attenuated_particulate_backscatter'),
     'SCA_longitude_of_DEM_intersection':            calculate_SCA_longitude_of_DEM_intersection,
@@ -366,6 +368,22 @@ MCA_LOCATIONS = {
     'MCA_clim_BER':                                 ('mca_optical_properties', -1, 'mca_optical_properties', -1, 'climber'),
     'MCA_extinction':                               ('mca_optical_properties', -1, 'mca_optical_properties', -1, 'extinction'),
     'MCA_LOD':                                      ('mca_optical_properties', -1, 'mca_optical_properties', -1, 'lod'),
+}
+
+MLE_LOCATIONS = {
+    'MLE_QC_flag':                                  ('sca_mle_pcd', -1, 'profile_pcd_bins', -1, 'qc'),
+    'MLE_time_obs':                                 ('sca_mle_opt_properties', -1, 'starttime'),
+    'MLE_extinction':                               ('sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'extinction'),
+    'MLE_backscatter':                              ('sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'backscatter'),
+    'MLE_lidar_ratio':                              ('sca_mle_opt_properties', -1, 'sca_mle_optical_properties', -1, 'lr'),
+}
+
+MLE_SUB_LOCATIONS = {
+    'MLE_SUB_QC_flag':                                  ('sca_mlesub_pcd', -1, 'sca_mlesub_pcd_bins', -1, 'qc'),
+    'MLE_SUB_time_obs':                                 ('sca_mlesub_opt_properties', -1, 'starttime'),
+    'MLE_SUB_extinction':                               ('sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'extinction'),
+    'MLE_SUB_backscatter':                              ('sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'backscatter'),
+    'MLE_SUB_lidar_ratio':                              ('sca_mlesub_opt_properties', -1, 'sca_mle_optical_properties_bins', -1, 'lr'),
 }
 
 ARRAY_FIELDS = set([
@@ -406,6 +424,8 @@ class L2AMeasurementDataExtractor(MeasurementDataExtractor):
     ica_locations = ICA_LOCATIONS
     sca_locations = SCA_LOCATIONS
     mca_locations = MCA_LOCATIONS
+    mle_locations = MLE_LOCATIONS
+    mle_sub_locations = MLE_SUB_LOCATIONS
     array_fields = ARRAY_FIELDS
 
     def overlaps(self, cf, next_cf):
