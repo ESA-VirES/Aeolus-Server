@@ -212,7 +212,7 @@ def calculate_albedo_off_nadir_meas(cf, observation_id=-1):
 
 
 def calculate_SCA_longitude_of_DEM_intersection(cf):
-    sca_mask = cf.fetch('meas_pcd', -1, 'l2a_processing_qc/sca_applied')
+    sca_mask = cf.fetch('meas_pcd', -1, 'l2a_processing_qc', 'sca_applied')
     values = access_location(cf,
         OBSERVATION_LOCATIONS['longitude_of_DEM_intersection_obs']
     )
@@ -220,7 +220,7 @@ def calculate_SCA_longitude_of_DEM_intersection(cf):
 
 
 def calculate_SCA_latitude_of_DEM_intersection(cf):
-    sca_mask = cf.fetch('meas_pcd', -1, 'l2a_processing_qc/sca_applied')
+    sca_mask = cf.fetch('meas_pcd', -1, 'l2a_processing_qc', 'sca_applied')
     values = access_location(cf,
         OBSERVATION_LOCATIONS['latitude_of_DEM_intersection_obs']
     )
@@ -279,8 +279,8 @@ GROUP_LOCATIONS = {
     'group_start_time':                             ('group_pcd', -1, 'starttime'),
     'group_end_time':                               calculate_group_end_time,
     'group_centroid_time':                          calculate_group_centroid_time,
-    'group_middle_bin_start_altitude':              ('group_optical_properties', -1, 'group_geolocation_middle_bins/start_altitude'),
-    'group_middle_bin_stop_altitude':               ('group_optical_properties', -1, 'group_geolocation_middle_bins/stop_altitude'),
+    'group_middle_bin_start_altitude':              ('group_optical_properties', -1, 'group_geolocation_middle_bins', 'start_altitude'),
+    'group_middle_bin_stop_altitude':               ('group_optical_properties', -1, 'group_geolocation_middle_bins', 'stop_altitude'),
     'group_start_obs':                              ('group_pcd', -1, 'brc_start'),
     'group_start_meas_obs':                         ('group_pcd', -1, 'measurement_start'),
     'group_end_obs':                                ('group_pcd', -1, 'brc_end'),
@@ -299,19 +299,19 @@ GROUP_LOCATIONS = {
     'group_middle_bin_LOD_variance_bottom':         ('group_pcd', -1, 'mid_particle_lod_variance_bot'),
     'group_middle_bin_BER_variance_bottom':         ('group_pcd', -1, 'mid_particle_ber_variance_bot'),
 
-    'group_extinction':                             ('group_optical_properties', -1, 'group_optical_property/group_extinction'),
-    'group_backscatter':                            ('group_optical_properties', -1, 'group_optical_property/group_backscatter'),
-    'group_LOD':                                    ('group_optical_properties', -1, 'group_optical_property/group_lod'),
-    'group_SR':                                     ('group_optical_properties', -1, 'group_optical_property/group_sr'),
-    'group_middle_bin_extinction_top':              ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_extinction_top'),
-    'group_middle_bin_backscatter_top':             ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_backscatter_top'),
-    'group_middle_bin_LOD_top':                     ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_lod_top'),
-    'group_middle_bin_BER_top':                     ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_ber_top'),
-    'group_middle_bin_extinction_bottom':           ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_extinction_bot'),
-    'group_middle_bin_backscatter_bottom':          ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_backscatter_bot'),
-    'group_middle_bin_LOD_bottom':                  ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_lod_bot'),
-    'group_middle_bin_BER_bottom':                  ('group_optical_properties', -1, 'group_optical_property_middle_bins/mid_ber_bot'),
-    # 'scene_classification_aladin_cloud_flag':       (''), # TODO: multiple possibilities: 'scene_classification', -1, 'aladin_cloud_flag/clrh', 'scene_classification', -1, 'aladin_cloud_flag/clsr', 'scene_classification', -1, 'aladin_cloud_flag/downclber', 'scene_classification', -1, 'aladin_cloud_flag/topclber'
+    'group_extinction':                             ('group_optical_properties', -1, 'group_optical_property', 'group_extinction'),
+    'group_backscatter':                            ('group_optical_properties', -1, 'group_optical_property', 'group_backscatter'),
+    'group_LOD':                                    ('group_optical_properties', -1, 'group_optical_property', 'group_lod'),
+    'group_SR':                                     ('group_optical_properties', -1, 'group_optical_property', 'group_sr'),
+    'group_middle_bin_extinction_top':              ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_extinction_top'),
+    'group_middle_bin_backscatter_top':             ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_backscatter_top'),
+    'group_middle_bin_LOD_top':                     ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_lod_top'),
+    'group_middle_bin_BER_top':                     ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_ber_top'),
+    'group_middle_bin_extinction_bottom':           ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_extinction_bot'),
+    'group_middle_bin_backscatter_bottom':          ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_backscatter_bot'),
+    'group_middle_bin_LOD_bottom':                  ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_lod_bot'),
+    'group_middle_bin_BER_bottom':                  ('group_optical_properties', -1, 'group_optical_property_middle_bins', 'mid_ber_bot'),
+    # 'scene_classification_aladin_cloud_flag':       (''), # TODO: multiple possibilities: 'scene_classification', -1, 'aladin_cloud_flag', 'clrh', 'scene_classification', -1, 'aladin_cloud_flag', 'clsr', 'scene_classification', -1, 'aladin_cloud_flag', 'downclber', 'scene_classification', -1, 'aladin_cloud_flag', 'topclber'
     'scene_classification_NWP_cloud_flag':          ('scene_classification', -1, 'nwp_cloud_flag'),
     'scene_classification_group_class_reliability': ('scene_classification', -1, 'l2a_group_class_reliability'),
 }
