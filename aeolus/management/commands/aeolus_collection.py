@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# Aeolus collection management command
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +24,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=missing-docstring, too-few-public-methods
 
-from os.path import join, dirname
+from logging import getLogger
+from ._common import Supercommand
+from ._aeolus_collection.list import ListCollectionSubcommand
+from ._aeolus_collection.import_ import ImportCollectionSubcommand
+from ._aeolus_collection.export import ExportCollectionSubcommand
+from ._aeolus_collection.init_permissions import InitPermissionsCollectionSubcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
+class Command(Supercommand):
+
+    help = "Aeolus collection type management command"
+
+    commands = {
+        command.name: command(getLogger(f"{__name__}.{command.name}"))
+        for command in [
+            ListCollectionSubcommand,
+            ImportCollectionSubcommand,
+            ExportCollectionSubcommand,
+            InitPermissionsCollectionSubcommand,
+        ]
+    }

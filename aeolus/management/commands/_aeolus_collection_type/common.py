@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# Aeolus collection type management - common utilities
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +24,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=abstract-method, no-self-use
 
-from os.path import join, dirname
+from eoxserver.resources.coverages.models import CollectionType
+from .._common import Subcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
+class CollectionTypeSelectionSubcommand(Subcommand):
+    """ Aeolus collection type selection subcommand. """
+
+    def add_arguments(self, parser):
+        parser.add_argument("identifier", nargs="*")
+
+    def select_collection_types(self, **kwargs):
+        """ Get list of matched collections types. """
+        query = CollectionType.objects.all()
+        identifiers = set(kwargs['identifier'])
+        if identifiers:
+            query = query.filter(name__in=identifiers)
+        return query

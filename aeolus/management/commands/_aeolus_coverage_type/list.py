@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# List Aeolus coverage types
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +24,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=missing-docstring
 
-from os.path import join, dirname
+from .common import CoverageTypeSelectionSubcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
+class ListCoverageTypeSubcommand(CoverageTypeSelectionSubcommand):
+    name = "list"
+    help = "List Aeolus coverage types"
+
+    description = "List identifiers of registered coverage types."
+
+    def handle(self, **kwargs):
+        for coverage_type in self.select_coverage_types(**kwargs):
+            print(coverage_type.name)
