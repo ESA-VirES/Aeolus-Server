@@ -83,19 +83,19 @@ class ImportCollectionSubcommand(Subcommand):
         if created_count or total_count == 0:
             self.info(
                 "%d of %d collection%s created.", created_count, len(data),
-                "s" if created_count > 1 else ""
+                "s" if created_count != 1 else ""
             )
 
         if updated_count:
             self.info(
                 "%d of %d collection%s updated.", updated_count, len(data),
-                "s" if updated_count > 1 else ""
+                "s" if updated_count != 1 else ""
             )
 
         if failed_count:
             self.info(
                 "%d of %d collection%s failed ", failed_count, len(data),
-                "s" if failed_count > 1 else ""
+                "s" if failed_count != 1 else ""
             )
         sys.exit(failed_count)
 
