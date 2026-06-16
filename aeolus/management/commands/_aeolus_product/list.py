@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# List Aeolus product
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +24,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=missing-docstring
 
-from os.path import join, dirname
+from eoxserver.resources.coverages.models import Product
+from .._aeolus_product.common import ObjectSelectionSubcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
-ALBEDO_COVERAGE_ID_TEMPLATE = "ADAM_albedo_{year:04d}_{month:02d}"
-ALBEDO_COVERAGE_TYPE_ID = "ADAM_albedo"
-ALBEDO_COLLECTION_ID = "ADAM_albedo"
-ALBEDO_GRID_ID = "ADAM_albedo"
+class ListProductSubcommand(ObjectSelectionSubcommand):
+    name = "list"
+    help = "List Aeolus products"
+
+    description = "List identifiers of registered products."
+
+    def handle(self, **kwargs):
+        objects = self.select_objects(Product.objects.all(), **kwargs)
+        for object_ in objects:
+            has_collection = False
+            for collection in object_.collections.all():
+                print(f"{collection.identifier}/{object_.identifier}")
+                has_collection = True
+            if not has_collection:
+                print(f"<none>/{object_.identifier}")

@@ -28,11 +28,13 @@
 # ------------------------------------------------------------------------------
 
 import os
+from datetime import datetime, timezone
 
 import numpy as np
 
 from eoxserver.resources.coverages import models
 from eoxserver.contrib import gdal
+from aeolus.data import ALBEDO_COLLECTION_ID
 
 
 # we have to use this in order to make the albedo NetCDFs readable
@@ -58,13 +60,18 @@ def sample_nadir(year, month, lons, lats):
 
 
 def _sample_data_item(year, month, index, lons, lats):
-    identifier = 'ADAM_albedo_%d_%d' % (year, month)
+
     try:
-        albedo = models.Coverage.objects.get(identifier=identifier)
-    except models.Coverage.DoesNotExist:
-        raise AlbedoFileError('No albedo file for %d/%d registered.' % (
-            year, month)
+        albedo = models.Coverage.objects.get(
+            collection__identifier=ALBEDO_COLLECTION_ID,
+            begin_time=datetime(
+                year=year, month=month, day=1, tzinfo=timezone.utc
+            )
         )
+    except models.Coverage.DoesNotExist:
+        raise AlbedoFileError(
+            f"No albedo file for {year:04d}/{month:02d} registered."
+        ) from None
 
     try:
         # netCDFs are two data items, field index is zero based

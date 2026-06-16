@@ -47,6 +47,10 @@ class RegistrationError(Exception):
     pass
 
 
+class AlreadyRegistered(RegistrationError):
+    pass
+
+
 def _get_ground_path(codafile):
     """ Extracts the ground track of the product file as a multiline string.
         All points are translated to be within longitude -180 to +180.
@@ -255,9 +259,10 @@ def register_collection(identifier):
     pass
 
 
-def register_albedo(filename, year, month, replace=False):
-    """
-    """
+def register_albedo(
+    identifier, filename, year, month, coverage_type, grid_name, replace=False,
+):
+
     try:
         ds = gdal.Open(filename)
     except Exception as e:
@@ -305,13 +310,6 @@ def register_albedo(filename, year, month, replace=False):
 
     extent = (-180, -90, 180, 90)
 
-    try:
-        coverage_type = coverages.CoverageType.objects.get(name='ADAM_albedo')
-    except coverages.CoverageType.DoesNotExist:
-        raise RegistrationError('Could not find Albedo range type.')
-
-    identifier = 'ADAM_albedo_%d_%d' % (year, month)
-
     exists = coverages.Coverage.objects.filter(
         identifier=identifier
     ).exists()
@@ -321,12 +319,12 @@ def register_albedo(filename, year, month, replace=False):
                 identifier=identifier
             ).delete()
         else:
-            raise RegistrationError(
+            raise AlreadyRegistered(
                 'Albedo file for %d/%d already registered' % (year, month)
             )
 
     grid, _ = coverages.Grid.objects.get_or_create(
-        name="Albedo_grid",
+        name=grid_name,
         coordinate_reference_system='EPSG:4326',
         axis_1_name='x',
         axis_2_name='y',
