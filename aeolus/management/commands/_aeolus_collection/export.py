@@ -66,9 +66,31 @@ def serialize_collection(collection):
     data = {
         "identifier": collection.identifier,
         "collectionType": collection.collection_type.name,
+        "productCount": collection.products.count(),
+        "coverageCount": collection.coverages.count(),
     }
     if allowed_users:
         data["allowedUsers"] = allowed_users
     if allowed_groups:
         data["allowedGroups"] = allowed_groups
+    if collection.grid:
+        data["grid"] = collection.grid.name
+    data["beginTime"] = serialize_timestamp(collection.begin_time)
+    data["endTime"] = serialize_timestamp(collection.end_time)
+    data["footprint"] = serialize_footprint(collection.footprint)
     return data
+
+
+def serialize_timestamp(value):
+    if value is None:
+        return None
+    return value.isoformat().replace("+00:00","Z")
+
+
+def serialize_footprint(value):
+    if value is None:
+        return None
+    return {
+        "srid": value.srid,
+        "geometry": json.loads(value.json)
+    }

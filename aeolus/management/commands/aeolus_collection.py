@@ -32,6 +32,7 @@ from ._aeolus_collection.list import ListCollectionSubcommand
 from ._aeolus_collection.import_ import ImportCollectionSubcommand
 from ._aeolus_collection.export import ExportCollectionSubcommand
 from ._aeolus_collection.init_permissions import InitPermissionsCollectionSubcommand
+from ._aeolus_collection.update_metadata import UpdateMetadataCollectionSubcommand
 
 
 class Command(Supercommand):
@@ -45,5 +46,6 @@ class Command(Supercommand):
             ImportCollectionSubcommand,
             ExportCollectionSubcommand,
             InitPermissionsCollectionSubcommand,
+            UpdateMetadataCollectionSubcommand,
         ]
     }

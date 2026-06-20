@@ -31,7 +31,7 @@ from .._common import Subcommand
 
 
 class CollectionSelectionSubcommand(Subcommand):
-    """ Aeolus collection type selection subcommand. """
+    """ Aeolus collection selection subcommand. """
 
     def add_arguments(self, parser):
         parser.add_argument("identifier", nargs="*")
@@ -49,9 +49,8 @@ class CollectionSelectionSubcommand(Subcommand):
     def select_collections(self, **kwargs):
         """ Get list of matched collections types. """
         query = Collection.objects.all()
-        identifiers = set(kwargs["identifier"])
-        if identifiers:
-            query = query.filter(identifier__in=identifiers)
+        query = self._select_collections_by_id(query, **kwargs)
+
         collection_type_names = set(kwargs.get("collection_type_name") or ())
         if collection_type_names:
             query = query.fileter(
@@ -62,4 +61,32 @@ class CollectionSelectionSubcommand(Subcommand):
             query = query.exclude(
                 collection_type__name__in=collection_type_names
             )
+        return query
+
+    def _select_collections_by_id(self, query, **kwargs):
+        identifiers = set(kwargs['identifier'])
+        if identifiers:
+            query = query.filter(identifier__in=identifiers)
+        return query
+
+
+class CollectionSelectionSubcommandProtected(CollectionSelectionSubcommand):
+    """ Aeolus collection selection subcommand requiring --all if no id given. """
+
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+        parser.add_argument(
+            "-a", "--all", dest="select_all", action="store_true", default=False,
+            help="Select all objects."
+        )
+
+    def _select_collections_by_id(self, query, **kwargs):
+        identifiers = set(kwargs['identifier'])
+        if identifiers or not kwargs['select_all']:
+            query = query.filter(identifier__in=identifiers)
+            if not identifiers:
+                self.warning(
+                    "No identifier is specified and no object will be selected. "
+                    "Use the --all option to select all matched items."
+                )
         return query
