@@ -26,6 +26,7 @@
 #-------------------------------------------------------------------------------
 # pylint: disable=abstract-method, no-self-use
 
+from django.db import transaction
 from eoxserver.resources.coverages.models import collection_exclude_eo_object
 from .._common import Subcommand, time_spec
 
@@ -126,16 +127,3 @@ class ObjectSelectionSubcommandProtected(ObjectSelectionSubcommand):
                     "Use the --all option to remove all matched items."
                 )
         return query
-
-
-def deregister_object(object_, logger, update_collections=True, **options):
-    collections = {
-        collection.identifier: collection
-        for collection in object_.collections.all()
-    }
-    object_.delete()
-    if update_collections:
-        for collection in collections.values():
-            collection_exclude_eo_object(collection, object_, **options)
-            logger.info("collection %s updated", collection.identifier)
-    return collections

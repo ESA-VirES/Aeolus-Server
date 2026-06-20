@@ -28,15 +28,12 @@
 
 import sys
 from traceback import print_exc
-from django.db import transaction
-from eoxserver.resources.coverages.models import (
-    Coverage,
-    collection_collect_metadata,
+from eoxserver.resources.coverages.models import Coverage
+from aeolus.management.api.coverage import (
+    deregister_coverage,
+    update_coverage_collection,
 )
-from .._aeolus_product.common import (
-    ObjectSelectionSubcommandProtected,
-    deregister_object,
-)
+from .._aeolus_product.common import ObjectSelectionSubcommandProtected
 
 
 class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
@@ -47,8 +44,13 @@ class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
         super().add_arguments(parser)
         parser.add_argument(
             "--defer-collection-update", dest="defer_collection_update",
-            action="store_true", default=False,
-            help="Defer collection updates once all objects are removed."
+            action="store_true", default=True,
+            help="Defer collection updates once all objects are inserted."
+        )
+        parser.add_argument(
+            "--instant-collection-update", dest="defer_collection_update",
+            action="store_false",
+            help="Perform collection when the objects are inserted."
         )
 
     def handle(self, **kwargs):
@@ -84,6 +86,18 @@ class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
             finally:
                 total_count += 1
 
+        if defer_collection_update:
+            for collection in collections.values():
+                try:
+                    update_coverage_collection(collection, logger=self.logger)
+                except Exception as error:
+                    if kwargs.get("traceback"):
+                        print_exc(file=sys.stderr)
+                    self.error(
+                        "Failed to update collection %s! %s",
+                        collection.identifier, error
+                    )
+
         if removed_count or total_count == 0:
             self.info(
                 "%d of %d matched coverage%s de-registered.",
@@ -96,29 +110,4 @@ class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
                 failed_count, total_count, "s" if failed_count != 1 else ""
             )
 
-        if defer_collection_update:
-            for collection in collections.values():
-                try:
-                    update_collection(collection, logger=self.logger)
-                except Exception as error:
-                    if kwargs.get("traceback"):
-                        print_exc(file=sys.stderr)
-                    self.error(
-                        "Failed to update collection %s! %s",
-                        collection.identifier, error
-                    )
-
         sys.exit(failed_count)
-
-
-@transaction.atomic
-def deregister_coverage(coverage, logger, **options):
-    collections = deregister_object(coverage, logger, **options)
-    logger.info("coverage %s deregistered", coverage.identifier)
-    return collections
-
-
-@transaction.atomic
-def update_collection(collection, logger, **options):
-    collection_collect_metadata(collection, **options)
-    logger.info("collection %s updated", collection.identifier)

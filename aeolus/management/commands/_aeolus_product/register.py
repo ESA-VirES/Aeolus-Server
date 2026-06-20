@@ -27,19 +27,17 @@
 # pylint: disable=missing-docstring
 
 import sys
-import logging
-from os.path import splitext, basename
 from traceback import print_exc
 from dataclasses import dataclass
-from typing import List
-from django.db import transaction
-from eoxserver.resources.coverages.models import (
-    Collection, Product, collection_insert_eo_object,
+from aeolus.management.api.product import (
+    DEF_SIMPLIFICATION_TOLERANCE,
+    get_product_id,
+    register_product,
+    update_product_collection,
+    get_product_collection,
+    get_allowed_product_types,
 )
-from aeolus.registration import register_product as register_aeolus_product
 from .._common import Subcommand
-
-DEF_SIMPLIFICATION_TOLERANCE = 0.2
 
 
 class RegisterProductSubcommand(Subcommand):
@@ -87,6 +85,16 @@ class RegisterProductSubcommand(Subcommand):
             action="store_false", default=True,
             help="Do not simplify footprint geometry."
         )
+        parser.add_argument(
+            "--defer-collection-update", dest="defer_collection_update",
+            action="store_true", default=True,
+            help="Defer collection updates once all objects are inserted."
+        )
+        parser.add_argument(
+            "--instant-collection-update", dest="defer_collection_update",
+            action="store_false",
+            help="Perform collection when the objects are inserted."
+        )
 
     def handle(self, **kwargs):
         data_files = kwargs["product-file"]
@@ -95,8 +103,10 @@ class RegisterProductSubcommand(Subcommand):
         simplification_tolerance = (
             kwargs["simplification_tolerance"] if kwargs["simplify"] else None
         )
+        defer_collection_update = kwargs["defer_collection_update"]
 
-        collection = get_collection(collection_id)
+        collection = get_product_collection(collection_id)
+        allowed_product_types = get_allowed_product_types(collection)
 
         counter = Counter()
 
@@ -107,6 +117,8 @@ class RegisterProductSubcommand(Subcommand):
                     collection, product_id, data_file,
                     update_existing=update_existing,
                     simplification_tolerance=simplification_tolerance,
+                    defer_collection_update=defer_collection_update,
+                    allowed_product_types=allowed_product_types,
                     logger=self.logger
                 )
             except Exception as error:
@@ -129,122 +141,41 @@ class RegisterProductSubcommand(Subcommand):
             finally:
                 counter.total += 1
 
+        if defer_collection_update:
+            try:
+                update_product_collection(collection, logger=self.logger)
+            except Exception as error:
+                if kwargs.get("traceback"):
+                    print_exc(file=sys.stderr)
+                self.error(
+                    "Failed to update collection %s! %s",
+                    collection.identifier, error
+                )
+
         counter.print_report(lambda msg: print(msg, file=sys.stderr))
 
         sys.exit(counter.failed > 0)
 
 
+
+def _get_allowed_product_types(collection):
+    collection_type = collection.collection_type
+    if collection_type:
+        return set(
+            product_type.identifier
+            for product_type in collection_type.allowed_product_types
+        )
+    return None
+
+
 @dataclass
-class Result:
-    product: Product
-    created: bool
-    removed: List[str] # < Python 3.9
-    linked_to_collection: List[str] # < Python 3.9
-
-
-def register_product(
-    collection, identifier, filename,
-    update_existing=False,
-    simplification_tolerance=DEF_SIMPLIFICATION_TOLERANCE,
-    logger=None
-):
-    if not logger:
-        logger = logging.getLogger(__name__)
-
-    result = _register_product(
-        collection=collection,
-        identifier=identifier,
-        filename=filename,
-        update_existing=update_existing,
-        simplification_tolerance=simplification_tolerance,
-    )
-
-    for product_id in result.removed:
-        logger.info("product %s deregistered", product_id)
-
-    if result.created:
-        logger.info("product %s registered", identifier)
-    else:
-        logger.debug("product %s exists", identifier)
-
-    for collection_id in result.linked_to_collection:
-        logger.info(
-            "product %s linked to collection %s",
-            identifier, collection_id,
-        )
-
-    return result
-
-
-@transaction.atomic
-def _register_product(
-    collection, identifier, filename,
-    update_existing=False,
-    simplification_tolerance=DEF_SIMPLIFICATION_TOLERANCE,
-):
-    created = False
-    removed = []
-    linked_to_collection = []
-
-    if update_existing:
-        if _remove_existing_product(identifier):
-            removed.append(identifier)
-        product = None
-    else:
-        product = _get_existing_product(identifier)
-
-    if not product:
-        product = register_aeolus_product(
-            filename, overrides={"identifier": identifier},
-            footprint_simplification_tolerance=simplification_tolerance
-        )
-        created = True
-
-    if not product.collections.filter(pk=collection.pk).exists():
-        collection_insert_eo_object(collection, product)
-        linked_to_collection.append(collection.identifier)
-
-    return Result(
-        product=product,
-        created=created,
-        removed=removed,
-        linked_to_collection=linked_to_collection,
-    )
-
-
-def _remove_existing_product(identifier):
-    count, _ = Product.objects.filter(identifier=identifier).delete()
-    return count > 0
-
-
-def _get_existing_product(identifier):
-    try:
-        return Product.objects.get(identifier=identifier)
-    except Product.DoesNotExist:
-        return None
-
-
-def get_collection(identifier):
-    try:
-        return Collection.objects.get(identifier=identifier)
-    except Collection.DoesNotExist:
-        raise ValueError("Invalid collection identifier!") from None
-
-
-def get_product_id(filename):
-    """ Get the product identifier. """
-    return splitext(basename(filename))[0]
-
-
-class Counter():
-
-    def __init__(self):
-        self.total = 0
-        self.inserted = 0
-        #self.updated = 0
-        self.removed = 0
-        self.skipped = 0
-        self.failed = 0
+class Counter:
+    total: int = 0
+    inserted: int = 0
+    #updated: int = 0
+    removed: int = 0
+    skipped: int = 0
+    failed: int = 0
 
     def print_report(self, print_fcn):
 

@@ -27,20 +27,23 @@
 # pylint: disable=missing-docstring, too-few-public-methods
 
 import sys
-import json
-import os.path
-from typing import List
+from traceback import print_exc
 from dataclasses import dataclass
-from django.db import transaction
-from eoxserver.resources.coverages.models import (
-    Collection, Coverage, CoverageType, collection_insert_eo_object,
-)
-from aeolus.registration import register_albedo
 from aeolus.data import (
     ALBEDO_COVERAGE_ID_TEMPLATE,
     ALBEDO_COVERAGE_TYPE_ID,
     ALBEDO_COLLECTION_ID,
     ALBEDO_GRID_ID,
+)
+from aeolus.management.api.coverage import (
+    get_coverage_type,
+    get_coverage_collection,
+    get_allowed_coverage_types,
+    update_coverage_collection,
+)
+from aeolus.management.api.albedo import (
+    AlbedoSources,
+    register_albedo_coverage,
 )
 from .._common import Subcommand
 
@@ -87,193 +90,115 @@ class RegisterAlbedoSubcommand(Subcommand):
                 "By default, the registration is skipped."
             )
         )
+        parser.add_argument(
+            "--defer-collection-update", dest="defer_collection_update",
+            action="store_true", default=True,
+            help="Defer collection updates once all objects are inserted."
+        )
+        parser.add_argument(
+            "--instant-collection-update", dest="defer_collection_update",
+            action="store_false",
+            help="Perform collection when the objects are inserted."
+        )
 
     def handle(self, **kwargs):
-        ignore_registered = kwargs["ignore_registered"]
+        update_existing = not kwargs["ignore_registered"]
         albedo_spec = AlbedoSources.load_from_json(
             kwargs["albedo_spec"], kwargs["base_path"]
         )
-        collection = _get_collection(kwargs["collection_id"])
-        coverage_type = _get_coverage_type(kwargs["coverage_type_id"])
+        collection = get_coverage_collection(kwargs["collection_id"])
+        allowed_coverage_types = get_allowed_coverage_types(collection)
+        coverage_type = get_coverage_type(kwargs["coverage_type_id"])
         grid_name = kwargs["grid_id"]
         id_template = kwargs["id_template"]
+        defer_collection_update = kwargs["defer_collection_update"]
+
+        if allowed_coverage_types is not None:
+            if coverage_type.name not in allowed_coverage_types:
+                raise ValueError(f"Invalid coverage type {coverage_type.name}")
+
+        counter = Counter()
 
         for year in range(albedo_spec.start_year, albedo_spec.end_year + 1):
             for dataset in albedo_spec.datasets:
-                register_albedo_coverage(
-                    collection=collection,
-                    coverage_type=coverage_type,
-                    grid_name=grid_name,
-                    identifier=id_template.format(
+                coverage_id = id_template.format(year=year, month=dataset.month)
+                try:
+                    result = register_albedo_coverage(
+                        collection=collection,
+                        coverage_type=coverage_type,
+                        grid_name=grid_name,
+                        identifier=coverage_id,
+                        filename=dataset.path,
                         year=year,
                         month=dataset.month,
-                    ),
-                    filename=dataset.path,
-                    year=year,
-                    month=dataset.month,
-                    ignore_registered=ignore_registered,
-                    logger=self.logger
+                        update_existing=update_existing,
+                        defer_collection_update=defer_collection_update,
+                        allowed_coverage_types=allowed_coverage_types,
+                        logger=self.logger
+                    )
+                except Exception as error:
+                    if kwargs.get("traceback"):
+                        print_exc(file=sys.stderr)
+                    self.error(
+                        "Registration of coverage %s/%s failed! %s",
+                        collection.identifier, coverage_id, error
+                    )
+                    collection.refresh_from_db()
+                    counter.failed += 1
+                    result = None
+
+                else:
+                    counter.removed += len(result.removed)
+                    if result.created:
+                        counter.inserted += 1
+                    else:
+                        counter.skipped += 1
+                finally:
+                    counter.total += 1
+
+        if defer_collection_update:
+            try:
+                update_coverage_collection(collection, logger=self.logger)
+            except Exception as error:
+                if kwargs.get("traceback"):
+                    print_exc(file=sys.stderr)
+                self.error(
+                    "Failed to update collection %s! %s",
+                    collection.identifier, error
                 )
 
-@dataclass
-class Result:
-    coverage: Coverage
-    created: bool
-    removed: List[str] # < Python 3.9
-    linked_to_collection: List[str] # < Python 3.9
+        counter.print_report(lambda msg: print(msg, file=sys.stderr))
 
-
-def register_albedo_coverage(
-    collection, coverage_type, identifier, filename, year, month,
-    grid_name, ignore_registered, logger,
-):
-    result = _register_albedo_coverage(
-        collection=collection,
-        coverage_type=coverage_type,
-        identifier=identifier,
-        filename=filename,
-        year=year,
-        month=month,
-        grid_name=grid_name,
-        ignore_registered=ignore_registered,
-    )
-
-    for coverage_id in result.removed:
-        logger.info("coverage %s deregistered", coverage_id)
-
-    if result.created:
-        logger.info("coverage %s registered", identifier)
-    else:
-        logger.debug("coverage %s exists", identifier)
-
-    for collection_id in result.linked_to_collection:
-        logger.info(
-            "coverage %s linked to collection %s",
-            identifier, collection_id,
-        )
-
-    return result
-
-
-@transaction.atomic
-def _register_albedo_coverage(
-    collection, coverage_type, identifier, filename, year, month,
-    grid_name, ignore_registered,
-):
-    created = False
-    removed = []
-    linked_to_collection = []
-
-    if not ignore_registered:
-        if _remove_existing_coverage(identifier):
-            removed.append(identifier)
-        coverage = None
-    else:
-        coverage = _get_existing_coverage(identifier)
-
-    if not coverage:
-        coverage = register_albedo(
-            coverage_type=coverage_type,
-            grid_name=grid_name,
-            identifier=identifier,
-            filename=filename,
-            year=year,
-            month=month,
-            replace=False,
-        )
-        created = True
-
-    if not coverage.collections.filter(pk=collection.pk).exists():
-        collection_insert_eo_object(collection, coverage)
-        linked_to_collection.append(collection.identifier)
-
-    return Result(
-        coverage=coverage,
-        created=created,
-        removed=removed,
-        linked_to_collection=linked_to_collection,
-
-    )
-
-
-def _get_collection(identifier):
-    try:
-        return Collection.objects.get(identifier=identifier)
-    except Collection.DoesNotExist:
-        raise ValueError("Invalid collection identifier!") from None
-
-
-def _get_coverage_type(name):
-    try:
-        return CoverageType.objects.get(name=name)
-    except CoverageType.DoesNotExist:
-        raise ValueError("Invalid coverage type name!") from None
-
-
-def _remove_existing_coverage(identifier):
-    count, _ = Coverage.objects.filter(identifier=identifier).delete()
-    return count > 0
-
-
-def _get_existing_coverage(identifier):
-    try:
-        return Coverage.objects.get(identifier=identifier)
-    except Coverage.DoesNotExist:
-        return None
+        sys.exit(counter.failed > 0)
 
 
 @dataclass
-class AlbedoSource:
-    month: int
-    path: str
+class Counter:
+    total: int = 0
+    inserted: int = 0
+    #updated: int = 0
+    removed: int = 0
+    skipped: int = 0
+    failed: int = 0
 
-    @classmethod
-    def parse_from_dict(cls, data, base_directory=None):
-        if base_directory:
-            base_directory = os.path.abspath(base_directory)
-        month = int(data["month"])
-        if month < 1 or month > 12:
-            raise ValueError("Invalid month value.")
-        path = os.path.normpath(os.path.join(
-            base_directory or os.getcwd(), data["path"]
-        ))
-        return cls(month, path)
+    def print_report(self, print_fcn):
 
+        def _plural(value):
+            return "s" if value != 1 else ""
 
-@dataclass
-class AlbedoSources:
-    start_year: int
-    end_year: int
-    datasets: List[AlbedoSource] # < Python 3.9
+        if self.inserted > 0 or self.total == 0:
+            print_fcn(f"{self.inserted} of {self.total} coverage{_plural(self.total)} registered.")
 
-    @classmethod
-    def load_from_json(cls, filename, base_directory=None):
-        if filename == "-":
-            return cls.parse_from_dict(
-                json.load(sys.stdin),
-                base_directory=base_directory
+        #if self.updated > 0:
+        #    print_fcn(f"{self.updated} of {self.total} coverage{_plural(self.total)} updated.")
+
+        if self.skipped > 0:
+            print_fcn(f"{self.skipped} of {self.total} coverage{_plural(self.total)} skipped.")
+
+        if self.removed > 0:
+            print_fcn(f"{self.removed} coverage{_plural(self.removed)} de-registered.")
+
+        if self.failed > 0:
+            print_fcn(
+                f"Failed to register {self.failed} of {self.total} coverage{_plural(self.total)}."
             )
-        with open(filename, "rb") as file:
-            return cls.parse_from_dict(
-                json.load(file),
-                base_directory=(
-                    base_directory or os.path.dirname(filename)
-                )
-            )
-
-    @classmethod
-    def parse_from_dict(cls, data, base_directory=None):
-        if data["type"] != "AlbedoSources":
-            raise ValueError("Invalid Albedo specification.")
-        start_year = int(data["years"]["start"])
-        end_year = int(data["years"]["end"])
-        if end_year < start_year:
-            raise ValueError("Invalid Albedo specification.")
-        return cls(
-            start_year,
-            end_year,
-            datasets = [
-                AlbedoSource.parse_from_dict(item, base_directory=base_directory)
-                for item in data["monthlyDatasets"]
-            ],
-        )
