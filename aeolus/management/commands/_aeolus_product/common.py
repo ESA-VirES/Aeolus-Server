@@ -24,10 +24,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
-# pylint: disable=abstract-method, no-self-use
+# pylint: disable=abstract-method
 
-from django.db import transaction
-from eoxserver.resources.coverages.models import collection_exclude_eo_object
+from os.path import isfile
 from .._common import Subcommand, time_spec
 
 
@@ -41,7 +40,15 @@ class ObjectSelectionSubcommand(Subcommand):
             dest="collection", action="append",
             help=(
                 "Optional filter on the collection. "
-                "Multiple ollections are allowed."
+                "Multiple collections are allowed."
+            )
+        )
+        parser.add_argument(
+            "-t", "--type", "--product-type",
+            dest="type", action="append",
+            help=(
+                "Optional filter on the product type. "
+                "Multiple product types are allowed."
             )
         )
         parser.add_argument(
@@ -68,17 +75,29 @@ class ObjectSelectionSubcommand(Subcommand):
             "--updated-before", type=time_spec, required=False,
             help="Select objects whose record has been updated before the given date."
         )
+        parser.add_argument(
+            "--invalid-only", dest="invalid_only", action="store_true",
+            default=False, help="Select invalid products missing a data-file."
+        )
 
     def select_objects(self, query, **kwargs):
         """ Get list of matched objects. """
 
-        query = query.prefetch_related("collections")
+        query = (
+            query
+            .select_related("product_type", "optimized_data_item")
+            .prefetch_related("product_data_items", "collections")
+        )
 
         query = self._select_objects_by_id(query, **kwargs)
 
         collections = set(kwargs["collection"] or [])
         if collections:
             query = query.filter(collections__identifier__in=collections)
+
+        product_types = set(kwargs["type"] or [])
+        if product_types:
+            query = query.filter(product_type__name__in=product_types)
 
         if kwargs["after"]:
             query = query.filter(begin_time__gte=kwargs["after"])
@@ -97,6 +116,9 @@ class ObjectSelectionSubcommand(Subcommand):
 
         if kwargs["updated_before"]:
             query = query.filter(updated__lt=kwargs["updated_before"])
+
+        if kwargs["invalid_only"]:
+            query = filter_invalid(query, self.logger)
 
         return query
 
@@ -127,3 +149,39 @@ class ObjectSelectionSubcommandProtected(ObjectSelectionSubcommand):
                     "Use the --all option to remove all matched items."
                 )
         return query
+
+
+def filter_invalid(products, logger=None):
+    """ Filter invalid products. """
+    for product in products:
+        if is_invalid(product, logger):
+            yield product
+
+
+def is_invalid(product, logger=None):
+    """ Return true is products is invalid. """
+    count = 0
+    for data_item in product.product_data_items.all():
+        count += 1
+        location = data_item.location
+        if not (location and isfile(location)):
+            logger.warning(
+                "Invalid product %s detected! File %s does not exist!",
+                product.identifier, location
+            )
+            return True
+
+    if count == 0:
+        logger.warning(
+            "Invalid product %s detected! No data item!", product.identifier
+        )
+        return True
+
+    if count > 1:
+        logger.warning(
+            "Invalid product %s detected! Multiple data items!",
+            product.identifier
+        )
+        return True
+
+    return False

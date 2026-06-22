@@ -157,17 +157,6 @@ class RegisterProductSubcommand(Subcommand):
         sys.exit(counter.failed > 0)
 
 
-
-def _get_allowed_product_types(collection):
-    collection_type = collection.collection_type
-    if collection_type:
-        return set(
-            product_type.identifier
-            for product_type in collection_type.allowed_product_types
-        )
-    return None
-
-
 @dataclass
 class Counter:
     total: int = 0

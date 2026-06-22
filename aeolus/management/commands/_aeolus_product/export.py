@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 #
-# Export Aeolus collections
+# Export Aeolus products
 #
 # Authors: Martin Paces <martin.paces@eox.at>
 #-------------------------------------------------------------------------------
@@ -28,16 +28,17 @@
 
 import sys
 import json
-from django.contrib.auth.models import Permission
+from django.core.exceptions import ObjectDoesNotExist
+from eoxserver.resources.coverages.models import Product
 from .._common import JSON_OPTS
-from .common import CollectionSelectionSubcommand
+from .._aeolus_product.common import ObjectSelectionSubcommand
 
 
-class ExportCollectionSubcommand(CollectionSelectionSubcommand):
+class ExportProductSubcommand(ObjectSelectionSubcommand):
     name = "export"
-    help = "Export Aeolus collections"
+    help = "Export Aeolus products"
 
-    description = "Export registered collections in JSON format."
+    description = "Export Aeolus product in JSON format."
 
     def add_arguments(self, parser):
         super().add_arguments(parser)
@@ -55,40 +56,63 @@ class ExportCollectionSubcommand(CollectionSelectionSubcommand):
 
     def handle(self, **kwargs):
         export_footprint = kwargs["export_footprint"]
-        data = [
-            serialize_collection(
-                collection, export_footprint=export_footprint
-            )
-            for collection in self.select_collections(**kwargs)
-        ]
+
+        def _serialize(objects):
+            for object_ in objects:
+                has_collection = False
+                for collection in object_.collections.all():
+                    yield serialize_product(
+                        collection, object_, export_footprint=export_footprint,
+                    )
+                    has_collection = True
+                if not has_collection:
+                    yield serialize_product(
+                        None, object_, export_footprint=export_footprint,
+                    )
+
+        data = list(_serialize(
+            self.select_objects(Product.objects.all(), **kwargs)
+        ))
         filename = kwargs["filename"]
         with (sys.stdout if filename == "-" else open(filename, "w", encoding="utf-8")) as file_:
             json.dump(data, file_, **JSON_OPTS)
 
 
-def serialize_collection(collection, export_footprint=False):
-    """ Serialize collection object. """
-    permission = Permission.objects.get(codename=f"access_{collection.identifier}")
-    allowed_users = [user.username for user in permission.user_set.all()]
-    allowed_groups = [group.name for group in permission.group_set.all()]
+def serialize_product(collection, product, export_footprint=False):
     data = {
-        "identifier": collection.identifier,
-        "collectionType": collection.collection_type.name,
-        "productCount": collection.products.count(),
-        "coverageCount": collection.coverages.count(),
+        "identifier": product.identifier,
+        "collection": collection.identifier if collection else None,
+        "productType": (
+            product.product_type.name if product.product_type else None
+        ),
+        "beginTime": serialize_timestamp(product.begin_time),
+        "endTime": serialize_timestamp(product.end_time),
+        "created": serialize_timestamp(product.inserted),
+        "updated": serialize_timestamp(product.updated),
+        "dataItems": [
+            serialize_data_item(data_item)
+            for data_item in product.product_data_items.all()
+        ],
     }
-    if allowed_users:
-        data["allowedUsers"] = allowed_users
-    if allowed_groups:
-        data["allowedGroups"] = allowed_groups
-    if collection.grid:
-        data["grid"] = collection.grid.name
-    data["beginTime"] = serialize_timestamp(collection.begin_time)
-    data["endTime"] = serialize_timestamp(collection.end_time)
+
+    try:
+        data["dataItems"].append(
+            serialize_data_item(product.optimized_data_item, item_type="optimized")
+        )
+    except ObjectDoesNotExist:
+        pass
+
     if export_footprint:
-        data["footprint"] = serialize_footprint(collection.footprint)
+        data["footprint"] = serialize_footprint(product.footprint)
     return data
 
+
+def serialize_data_item(data_item, item_type="source"):
+    return {
+        "type": item_type,
+        "format": data_item.format,
+        "location": data_item.location,
+    }
 
 def serialize_timestamp(value):
     if value is None:

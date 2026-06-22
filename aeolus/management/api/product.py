@@ -71,6 +71,28 @@ def get_allowed_product_types(collection):
     return None
 
 
+def unlink_product_from_collection(collection, product, logger,
+                                   update_collection=True):
+    """ Unlink product from a collection. """
+    with transaction.atomic():
+        collection.products.remove(product)
+        if update_collection:
+            collection_collect_metadata(
+                collection,
+                collect_footprint=True,
+                collect_begin_time=True,
+                collect_end_time=True,
+                use_extent=True,
+                product_summary=True,
+                coverage_summary=False,
+            )
+
+    logger.info(
+        "product %s unlinked from collection %s",
+        product.identifier, collection.identifier
+    )
+
+
 def update_product_collection(collection, logger):
     """ Update product collection metadata after product change. """
     with transaction.atomic():
@@ -131,6 +153,14 @@ def register_product(
             product = None
         else:
             product = _get_existing_product(identifier)
+
+        if product:
+            # force product de-registration if the location changed
+            data_items = list(product.product_data_items.all())
+            if len(data_items) != 1 or data_items[0].location != filename:
+                product.delete()
+                removed.append(identifier)
+                product = None
 
         if not product:
             product = register_aeolus_product(

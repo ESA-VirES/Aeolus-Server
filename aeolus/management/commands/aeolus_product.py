@@ -29,6 +29,8 @@
 from logging import getLogger
 from ._common import Supercommand
 from ._aeolus_product.list import ListProductSubcommand
+from ._aeolus_product.export import ExportProductSubcommand
+from ._aeolus_product.import_ import ImportProductSubcommand
 from ._aeolus_product.register import RegisterProductSubcommand
 from ._aeolus_product.deregister import DeregisterProductSubcommand
 
@@ -41,6 +43,8 @@ class Command(Supercommand):
         command.name: command(getLogger(f"{__name__}.{command.name}"))
         for command in [
             ListProductSubcommand,
+            ImportProductSubcommand,
+            ExportProductSubcommand,
             RegisterProductSubcommand,
             DeregisterProductSubcommand,
         ]
