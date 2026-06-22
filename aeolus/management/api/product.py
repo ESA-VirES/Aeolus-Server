@@ -37,7 +37,12 @@ from eoxserver.resources.coverages.models import (
     collection_collect_metadata,
     ManagementError,
 )
-from aeolus.registration import register_product as register_aeolus_product
+from aeolus.registration import (
+    read_aeolus_product_metadata,
+    simplify_footprint,
+    update_product,
+    update_product_data_item,
+)
 from .eo_object import deregister_object
 
 DEF_SIMPLIFICATION_TOLERANCE = 0.2
@@ -127,7 +132,8 @@ def deregister_product(product, logger, update_collections=True):
 class Result:
     """ Results of the Aeolus product registration. """
     product: Product
-    created: bool
+    inserted: bool
+    updated: bool
     removed: List[str] # < Python 3.9
     linked_to_collection: List[str] # < Python 3.9
 
@@ -142,32 +148,38 @@ def register_product(
 ):
     """ Register Aeolus product. """
 
+    def _read_metadata(filename):
+        metadata = read_aeolus_product_metadata(filename)
+        metadata["footprint"] = simplify_footprint(
+            metadata["footprint"],
+            simplification_tolerance=simplification_tolerance,
+        )
+        return metadata
+
     def _register_product():
-        created = False
+        inserted = False
+        updated = False
         removed = []
         linked_to_collection = []
 
-        if update_existing:
-            if _remove_existing_product(identifier):
-                removed.append(identifier)
-            product = None
-        else:
-            product = _get_existing_product(identifier)
+        product = _get_existing_product(identifier)
 
-        if product:
-            # force product de-registration if the location changed
-            data_items = list(product.product_data_items.all())
-            if len(data_items) != 1 or data_items[0].location != filename:
-                product.delete()
-                removed.append(identifier)
-                product = None
+        if not product or update_existing:
+            metadata = _read_metadata(filename)
 
-        if not product:
-            product = register_aeolus_product(
-                filename, overrides={"identifier": identifier},
-                footprint_simplification_tolerance=simplification_tolerance
+            if not product:
+                product = Product(identifier=identifier)
+                inserted = True
+            else:
+                updated = True
+
+            update_product(product=product, metadata=metadata)
+
+            update_product_data_item(
+                product=product,
+                location=filename,
+                format_=metadata["format"] or "",
             )
-            created = True
 
         if allowed_product_types is not None and product.product_type:
             if product.product_type.name not in allowed_product_types:
@@ -197,7 +209,8 @@ def register_product(
 
         return Result(
             product=product,
-            created=created,
+            inserted=inserted,
+            updated=updated,
             removed=removed,
             linked_to_collection=linked_to_collection,
         )
@@ -211,8 +224,10 @@ def register_product(
     for product_id in result.removed:
         logger.info("product %s deregistered", product_id)
 
-    if result.created:
+    if result.inserted:
         logger.info("product %s registered", identifier)
+    elif result.updated:
+        logger.info("product %s updated", identifier)
     else:
         logger.debug("product %s exists", identifier)
 

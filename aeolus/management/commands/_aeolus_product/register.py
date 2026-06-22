@@ -134,8 +134,10 @@ class RegisterProductSubcommand(Subcommand):
 
             else:
                 counter.removed += len(result.removed)
-                if result.created:
+                if result.inserted:
                     counter.inserted += 1
+                elif result.updated:
+                    counter.updated += 1
                 else:
                     counter.skipped += 1
             finally:
@@ -161,7 +163,7 @@ class RegisterProductSubcommand(Subcommand):
 class Counter:
     total: int = 0
     inserted: int = 0
-    #updated: int = 0
+    updated: int = 0
     removed: int = 0
     skipped: int = 0
     failed: int = 0
@@ -174,8 +176,8 @@ class Counter:
         if self.inserted > 0 or self.total == 0:
             print_fcn(f"{self.inserted} of {self.total} product{_plural(self.total)} registered.")
 
-        #if self.updated > 0:
-        #    print_fcn(f"{self.updated} of {self.total} product{_plural(self.total)} updated.")
+        if self.updated > 0:
+            print_fcn(f"{self.updated} of {self.total} product{_plural(self.total)} updated.")
 
         if self.skipped > 0:
             print_fcn(f"{self.skipped} of {self.total} product{_plural(self.total)} skipped.")

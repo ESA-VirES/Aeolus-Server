@@ -130,7 +130,7 @@ class ImportProductSubcommand(ObjectSelectionSubcommand):
 
         counter.print_summary(self.info)
 
-        sys.exit(counter.failed)
+        sys.exit(counter.total_failed)
 
     def _import_products(self, records, counter, update_existing=False,
                          traceback=False, simplification_tolerance=None, **_):
@@ -187,7 +187,7 @@ class ImportProductSubcommand(ObjectSelectionSubcommand):
             try:
                 result = _import_product(record)
             except Exception as error:
-                counter.imported_failed += 1
+                counter.failed += 1
                 if traceback:
                     print_exc(file=sys.stderr)
                 self.error(
@@ -195,16 +195,17 @@ class ImportProductSubcommand(ObjectSelectionSubcommand):
                     collection_id, identifier, error
                 )
             else:
-                if result.created:
-                    counter.imported += 1
+                if result.inserted:
+                    counter.inserted += 1
+                elif result.updated:
+                    counter.updated += 1
                 else:
-                    counter.imported_skipped += 1
+                    counter.skipped += 1
                 counter.removed += len(result.removed)
             finally:
                 counter.total += 1
 
         return collections
-
 
     def _remove_products(self, records, products, counter, traceback=None, **_):
         """ Remove products not present in the imported product records. """
@@ -280,16 +281,17 @@ class Counter():
 
     total: int = 0
     imported: int = 0
-    imported_skipped: int = 0
-    imported_failed: int = 0
+    updated: int = 0
+    skipped: int = 0
+    failed: int = 0
     removed: int = 0
     removed_failed: int = 0
     unlinked: int = 0
     unlinked_failed: int = 0
 
     @property
-    def failed(self):
-        return self.imported_failed + self.removed_failed + self.unlinked_failed
+    def total_failed(self):
+        return self.failed + self.removed_failed + self.unlinked_failed
 
     def print_summary(self, print_function):
 
@@ -300,18 +302,25 @@ class Counter():
                 "s" if self.imported != 1 else ""
             )
 
-        if self.imported_skipped:
+        if self.updated > 0:
             print_function(
-                "%d of %d product%s skipped.",
-                self.imported_skipped, self.total,
-                "s" if self.imported_skipped != 1 else ""
+                "%d of %d product%s updated.",
+                self.updated, self.total,
+                "s" if self.imported != 1 else ""
             )
 
-        if self.imported_failed:
+        if self.skipped:
+            print_function(
+                "%d of %d product%s skipped.",
+                self.skipped, self.total,
+                "s" if self.skipped != 1 else ""
+            )
+
+        if self.failed:
             print_function(
                 "%d of %d product%s failed to be registered",
-                self.imported_failed, self.total,
-                "s" if self.imported_failed != 1 else ""
+                self.failed, self.total,
+                "s" if self.failed != 1 else ""
             )
 
         if self.removed:
