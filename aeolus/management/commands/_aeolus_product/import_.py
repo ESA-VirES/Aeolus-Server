@@ -280,7 +280,7 @@ class ImportProductSubcommand(ObjectSelectionSubcommand):
 class Counter():
 
     total: int = 0
-    imported: int = 0
+    inserted: int = 0
     updated: int = 0
     skipped: int = 0
     failed: int = 0
@@ -295,18 +295,18 @@ class Counter():
 
     def print_summary(self, print_function):
 
-        if self.imported or self.total == 0:
+        if self.inserted or self.total == 0:
             print_function(
                 "%d of %d product%s registered.",
-                self.imported, self.total,
-                "s" if self.imported != 1 else ""
+                self.inserted, self.total,
+                "s" if self.inserted != 1 else ""
             )
 
         if self.updated > 0:
             print_function(
                 "%d of %d product%s updated.",
                 self.updated, self.total,
-                "s" if self.imported != 1 else ""
+                "s" if self.inserted != 1 else ""
             )
 
         if self.skipped:
