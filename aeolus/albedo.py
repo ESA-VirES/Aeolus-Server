@@ -63,7 +63,7 @@ def _sample_data_item(year, month, index, lons, lats):
 
     try:
         albedo = models.Coverage.objects.get(
-            collection__identifier=ALBEDO_COLLECTION_ID,
+            collections__identifier=ALBEDO_COLLECTION_ID,
             begin_time=datetime(
                 year=year, month=month, day=1, tzinfo=timezone.utc
             )
