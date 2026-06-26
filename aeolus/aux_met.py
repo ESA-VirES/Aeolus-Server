@@ -174,7 +174,7 @@ AUX_FILE_TYPE_PATH = (
 
 def _array_to_list(data):
     if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
+        isobject = data.dtype == object
         data = data.tolist()
         if isobject:
             data = [

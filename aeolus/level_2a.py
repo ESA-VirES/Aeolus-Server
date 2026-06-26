@@ -108,7 +108,7 @@ def calculate_mie_altitude_obs(cf):
     """ horizontal averaging
     """
     mie_altitude_meas = cf.fetch(*MEASUREMENT_LOCATIONS['mie_altitude_meas'])
-    mie_altitude_obs = np.zeros((mie_altitude_meas.shape[0],), np.object)
+    mie_altitude_obs = np.zeros((mie_altitude_meas.shape[0],), object)
 
     for i, alts in enumerate(mie_altitude_meas):
         mie_altitude_obs[i] = np.average(alts, axis=0)
@@ -123,7 +123,7 @@ def calculate_rayleigh_altitude_obs(cf):
         *MEASUREMENT_LOCATIONS['rayleigh_altitude_meas']
     )
     rayleigh_altitude_obs = np.zeros(
-        (rayleigh_altitude_meas.shape[0],), np.object
+        (rayleigh_altitude_meas.shape[0],), object
     )
 
     for i, alts in enumerate(rayleigh_altitude_meas):
