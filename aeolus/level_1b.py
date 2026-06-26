@@ -590,7 +590,7 @@ extract_data = extractor.extract_data
 #                 )
 #                 for measurement, mask in izip(data, measurement_mask)
 #             ]
-#             data = np.empty(len(tmp_data), dtype=np.object)
+#             data = np.empty(len(tmp_data), dtype=object)
 #             data[:] = tmp_data
 
 #         # convert to simple list instead of numpy array if requested

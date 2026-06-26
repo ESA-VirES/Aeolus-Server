@@ -779,7 +779,7 @@ def between(value, min_value=None, max_value=None):
 
 def _array_to_list(data):
     if isinstance(data, np.ndarray):
-        isobject = data.dtype == np.object
+        isobject = data.dtype == object
         data = data.tolist()
         if isobject:
             data = [
@@ -1083,7 +1083,7 @@ def main():
     # #         value = cf.fetch(*path)
     # #         if isinstance(value, np.ndarray):
     # #             shape = []
-    # #             while value.dtype == np.object:
+    # #             while value.dtype == object:
     # #                 value = np.stack(value)
     # #                 shape.extend(value.shape)
 
