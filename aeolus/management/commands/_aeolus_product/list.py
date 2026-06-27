@@ -27,17 +27,17 @@
 # pylint: disable=missing-docstring
 
 from eoxserver.resources.coverages.models import Product
-from .._aeolus_product.common import ObjectSelectionSubcommand
+from .._aeolus_product.common import ProductSelectionSubcommand
 
 
-class ListProductSubcommand(ObjectSelectionSubcommand):
+class ListProductSubcommand(ProductSelectionSubcommand):
     name = "list"
     help = "List Aeolus products"
 
     description = "List identifiers of registered products."
 
     def handle(self, **kwargs):
-        objects = self.select_objects(Product.objects.all(), **kwargs)
+        objects = self.select_products(Product.objects.all(), **kwargs)
         for object_ in objects:
             has_collection = False
             for collection in object_.collections.all():

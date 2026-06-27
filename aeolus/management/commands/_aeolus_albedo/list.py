@@ -27,21 +27,21 @@
 # pylint: disable=missing-docstring
 
 from eoxserver.resources.coverages.models import Coverage
-from .._aeolus_product.common import ObjectSelectionSubcommand
+from .common import CoverageSelectionSubcommand
 
 
-class ListCoverageSubcommand(ObjectSelectionSubcommand):
+class ListCoverageSubcommand(CoverageSelectionSubcommand):
     name = "list"
     help = "List Aeolus coverages"
 
     description = "List identifiers of registered coverages."
 
     def handle(self, **kwargs):
-        objects = self.select_objects(Coverage.objects.all(), **kwargs)
-        for object_ in objects:
+        coverages = self.select_coverages(Coverage.objects.all(), **kwargs)
+        for coverage in coverages:
             has_collection = False
-            for collection in object_.collections.all():
-                print(f"{collection.identifier}/{object_.identifier}")
+            for collection in coverage.collections.all():
+                print(f"{collection.identifier}/{coverage.identifier}")
                 has_collection = True
             if not has_collection:
-                print(f"<none>/{object_.identifier}")
+                print(f"<none>/{coverage.identifier}")

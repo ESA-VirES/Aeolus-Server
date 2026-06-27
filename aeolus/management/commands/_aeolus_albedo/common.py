@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------------------
 #
-# Aeolus product management - common utilities
+# Aeolus coverage management - common utilities
 #
 # Authors: Martin Paces <martin.paces@eox.at>
 #-------------------------------------------------------------------------------
@@ -30,8 +30,8 @@ from os.path import isfile
 from .._common import Subcommand, time_spec
 
 
-class ProductSelectionSubcommand(Subcommand):
-    """ Aeolus product selection subcommand. """
+class CoverageSelectionSubcommand(Subcommand):
+    """ Aeolus coverage selection subcommand. """
     SELECT_RELATED = []
     PREFETCH_RELATED = []
 
@@ -46,11 +46,11 @@ class ProductSelectionSubcommand(Subcommand):
             )
         )
         parser.add_argument(
-            "-t", "--type", "--product-type",
+            "-t", "--type", "--coverage-type",
             dest="type", action="append",
             help=(
-                "Optional filter on the product type. "
-                "Multiple product types are allowed."
+                "Optional filter on the coverage type. "
+                "Multiple coverage types are allowed."
             )
         )
         parser.add_argument(
@@ -79,11 +79,11 @@ class ProductSelectionSubcommand(Subcommand):
         )
         parser.add_argument(
             "--invalid-only", dest="invalid_only", action="store_true",
-            default=False, help="Select invalid products missing a data-file."
+            default=False, help="Select invalid coverages missing a data-file."
         )
 
-    def select_products(self, query, **kwargs):
-        """ Get matched products. """
+    def select_coverages(self, query, **kwargs):
+        """ Get matched coverages. """
 
         if self.SELECT_RELATED:
             query = query.select_related(*self.SELECT_RELATED)
@@ -91,15 +91,15 @@ class ProductSelectionSubcommand(Subcommand):
         if self.PREFETCH_RELATED:
             query = query.prefetch_related(*self.PREFETCH_RELATED)
 
-        query = self._select_products_by_id(query, **kwargs)
+        query = self._select_coverages_by_id(query, **kwargs)
 
         collections = set(kwargs["collection"] or [])
         if collections:
             query = query.filter(collections__identifier__in=collections)
 
-        product_types = set(kwargs["type"] or [])
-        if product_types:
-            query = query.filter(product_type__name__in=product_types)
+        coverage_types = set(kwargs["type"] or [])
+        if coverage_types:
+            query = query.filter(coverage_type__name__in=coverage_types)
 
         if kwargs["after"]:
             query = query.filter(begin_time__gte=kwargs["after"])
@@ -124,15 +124,15 @@ class ProductSelectionSubcommand(Subcommand):
 
         return query
 
-    def _select_products_by_id(self, query, **kwargs):
+    def _select_coverages_by_id(self, query, **kwargs):
         identifiers = set(kwargs["identifier"])
         if identifiers:
             query = query.filter(identifier__in=identifiers)
         return query
 
 
-class ProductSelectionSubcommandProtected(ProductSelectionSubcommand):
-    """ Aeolus product selection subcommand requiring --all if no id given. """
+class CoverageSelectionSubcommandProtected(CoverageSelectionSubcommand):
+    """ Aeolus coverage selection subcommand requiring --all if no id given. """
 
     def add_arguments(self, parser):
         super().add_arguments(parser)
@@ -141,7 +141,7 @@ class ProductSelectionSubcommandProtected(ProductSelectionSubcommand):
             help="Select all objects."
         )
 
-    def _select_products_by_id(self, query, **kwargs):
+    def _select_coverages_by_id(self, query, **kwargs):
         identifiers = set(kwargs['identifier'])
         if identifiers or not kwargs['select_all']:
             query = query.filter(identifier__in=identifiers)
@@ -153,36 +153,36 @@ class ProductSelectionSubcommandProtected(ProductSelectionSubcommand):
         return query
 
 
-def filter_invalid(products, logger=None):
-    """ Filter invalid products. """
-    for product in products:
-        if is_invalid(product, logger):
-            yield product
+def filter_invalid(coverages, logger=None):
+    """ Filter invalid coverages. """
+    for coverage in coverages:
+        if is_invalid(coverage, logger):
+            yield coverage
 
 
-def is_invalid(product, logger=None):
-    """ Return true is products is invalid. """
+def is_invalid(coverage, logger=None):
+    """ Return true is coverages is invalid. """
     count = 0
-    for data_item in product.product_data_items.all():
+    for data_item in coverage.coverage_data_items.all():
         count += 1
         location = data_item.location
         if not (location and isfile(location)):
             logger.warning(
-                "Invalid product %s detected! File %s does not exist!",
-                product.identifier, location
+                "Invalid coverage %s detected! File %s does not exist!",
+                coverage.identifier, location
             )
             return True
 
     if count == 0:
         logger.warning(
-            "Invalid product %s detected! No data item!", product.identifier
+            "Invalid coverage %s detected! No data item!", coverage.identifier
         )
         return True
 
     if count > 1:
         logger.warning(
-            "Invalid product %s detected! Multiple data items!",
-            product.identifier
+            "Invalid coverage %s detected! Multiple data items!",
+            coverage.identifier
         )
         return True
 

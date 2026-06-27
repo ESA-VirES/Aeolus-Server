@@ -33,10 +33,10 @@ from aeolus.management.api.product import (
     deregister_product,
     update_product_collection,
 )
-from .common import ObjectSelectionSubcommandProtected
+from .common import ProductSelectionSubcommandProtected
 
 
-class DeregisterProductSubcommand(ObjectSelectionSubcommandProtected):
+class DeregisterProductSubcommand(ProductSelectionSubcommandProtected):
     name = "deregister"
     help = "Deregister Aeolus products."
 
@@ -54,7 +54,7 @@ class DeregisterProductSubcommand(ObjectSelectionSubcommandProtected):
         )
 
     def handle(self, **kwargs):
-        objects = self.select_objects(Product.objects.all(), **kwargs)
+        objects = self.select_products(Product.objects.all(), **kwargs)
         self.deregister_products(objects, **kwargs)
 
     def deregister_products(self, products, **kwargs):

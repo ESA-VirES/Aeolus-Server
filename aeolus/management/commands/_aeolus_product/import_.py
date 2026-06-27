@@ -41,12 +41,15 @@ from aeolus.management.api.product import (
     get_product_collection,
     get_allowed_product_types,
 )
-from .._aeolus_product.common import ObjectSelectionSubcommand
+from .._aeolus_product.common import ProductSelectionSubcommand
 
 
-class ImportProductSubcommand(ObjectSelectionSubcommand):
+class ImportProductSubcommand(ProductSelectionSubcommand):
     name = "import"
     help = "Import Aeolus products from a JSON file."
+
+    SELECT_RELATED = ["product_type", "optimized_data_item"]
+    PREFETCH_RELATED = ["collections", "product_data_items"]
 
     def add_arguments(self, parser):
         super().add_arguments(parser)
@@ -86,12 +89,8 @@ class ImportProductSubcommand(ObjectSelectionSubcommand):
         )
 
     def handle(self, **kwargs):
-        products = self.select_objects((
-                Product.objects.all()
-                .select_related("product_type", "optimized_data_item")
-                .prefetch_related("product_data_items")
-            ), **kwargs
-        )
+        products = self.select_products(Product.objects.all(), **kwargs)
+
         remove_missing = kwargs["remove_missing"]
         update_existing = kwargs["update_existing"]
         simplification_tolerance = (

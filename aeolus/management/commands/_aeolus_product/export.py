@@ -31,14 +31,17 @@ import json
 from django.core.exceptions import ObjectDoesNotExist
 from eoxserver.resources.coverages.models import Product
 from .._common import JSON_OPTS
-from .._aeolus_product.common import ObjectSelectionSubcommand
+from .._aeolus_product.common import ProductSelectionSubcommand
 
 
-class ExportProductSubcommand(ObjectSelectionSubcommand):
+class ExportProductSubcommand(ProductSelectionSubcommand):
     name = "export"
     help = "Export Aeolus products"
 
     description = "Export Aeolus product in JSON format."
+
+    SELECT_RELATED = ["product_type", "optimized_data_item"]
+    PREFETCH_RELATED = ["collections", "product_data_items"]
 
     def add_arguments(self, parser):
         super().add_arguments(parser)
@@ -71,7 +74,7 @@ class ExportProductSubcommand(ObjectSelectionSubcommand):
                     )
 
         data = list(_serialize(
-            self.select_objects(Product.objects.all(), **kwargs)
+            self.select_products(Product.objects.all(), **kwargs)
         ))
         filename = kwargs["filename"]
         with (sys.stdout if filename == "-" else open(filename, "w", encoding="utf-8")) as file_:

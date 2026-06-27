@@ -33,10 +33,10 @@ from aeolus.management.api.coverage import (
     deregister_coverage,
     update_coverage_collection,
 )
-from .._aeolus_product.common import ObjectSelectionSubcommandProtected
+from .common import CoverageSelectionSubcommandProtected
 
 
-class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
+class DeregisterCoverageSubcommand(CoverageSelectionSubcommandProtected):
     name = "deregister"
     help = "Deregister Aeolus coverages."
 
@@ -45,17 +45,17 @@ class DeregisterCoverageSubcommand(ObjectSelectionSubcommandProtected):
         parser.add_argument(
             "--defer-collection-update", dest="defer_collection_update",
             action="store_true", default=True,
-            help="Defer collection updates once all objects are inserted."
+            help="Defer collection updates once all coverages are inserted."
         )
         parser.add_argument(
             "--instant-collection-update", dest="defer_collection_update",
             action="store_false",
-            help="Perform collection when the objects are inserted."
+            help="Perform collection when the coverages are inserted."
         )
 
     def handle(self, **kwargs):
-        objects = self.select_objects(Coverage.objects.all(), **kwargs)
-        self.deregister_coverages(objects, **kwargs)
+        coverages = self.select_coverages(Coverage.objects.all(), **kwargs)
+        self.deregister_coverages(coverages, **kwargs)
 
     def deregister_coverages(self, coverages, **kwargs):
         defer_collection_update = kwargs["defer_collection_update"]
