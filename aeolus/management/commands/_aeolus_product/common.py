@@ -27,6 +27,7 @@
 # pylint: disable=abstract-method
 
 from os.path import isfile
+from django.db.models import Q
 from .._common import Subcommand, time_spec
 
 
@@ -37,6 +38,14 @@ class ProductSelectionSubcommand(Subcommand):
 
     def add_arguments(self, parser):
         parser.add_argument("identifier", nargs="*")
+        parser.add_argument(
+            "-l", "--location",
+            dest="location", action="append",
+            help=(
+                "Select product by the given location."
+                "Multiple locations are allowed."
+            )
+        )
         parser.add_argument(
             "-c", "--collection",
             dest="collection", action="append",
@@ -118,6 +127,12 @@ class ProductSelectionSubcommand(Subcommand):
 
         if kwargs["updated_before"]:
             query = query.filter(updated__lt=kwargs["updated_before"])
+
+        if kwargs["location"]:
+            query = query.filter(
+                Q(product_data_items__location__in=kwargs["location"]) |
+                Q(optimized_data_item__location_in=kwargs["location"])
+            )
 
         if kwargs["invalid_only"]:
             query = filter_invalid(query, self.logger)
