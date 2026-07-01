@@ -157,7 +157,7 @@ def calculate_group_centroid_time(cf):
 
 
 def location_for_observation(location, observation_id):
-    return [location[0], observation_id] + location[2:]
+    return (location[0], observation_id, *location[2:])
 
 
 def calculate_albedo_off_nadir(cf, observation_id=None):

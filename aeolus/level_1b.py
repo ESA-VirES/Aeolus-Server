@@ -39,7 +39,7 @@ from aeolus.extraction.measurement import (
 def location_for_observation(location, observation_id):
     if location[1] == observation_id:
         return location
-    return [location[0], observation_id] + location[2:]
+    return (location[0], observation_id, *location[2:])
 
 
 def calc_rayleigh_signal_intensity(cf, observation_id=None):
