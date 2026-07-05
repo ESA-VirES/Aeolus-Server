@@ -108,12 +108,12 @@ class Counter:
         if self.optimized_file_missing > 0 or self.total == 0:
             print_fcn(
                 f"{self.optimized_file_missing} of {self.optimized} "
-                f"optimized products{_plural(self.optimized)} missing the data file!"
+                f"optimized product{_plural(self.optimized)} missing the data file!"
             )
 
         if self.not_optimized_file_exists > 0 or self.total == 0:
             print_fcn(
                 f"{self.not_optimized_file_exists} of {self.not_optimized} "
-                f"not optimized products{_plural(self.not_optimized)} "
+                f"not optimized product{_plural(self.not_optimized)} "
                 "unlinked data file found."
             )
