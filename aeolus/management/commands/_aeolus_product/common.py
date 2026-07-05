@@ -28,6 +28,7 @@
 
 from os.path import isfile
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 from .._common import Subcommand, time_spec
 
 
@@ -90,6 +91,19 @@ class ProductSelectionSubcommand(Subcommand):
             "--invalid-only", dest="invalid_only", action="store_true",
             default=False, help="Select invalid products missing a data-file."
         )
+        parser.add_argument(
+            "--optimized", dest="list_optimized", action="store_true",
+            default=False, help="Select optimized products."
+        )
+        parser.add_argument(
+            "--not-optimized", dest="list_not_optimized", action="store_true",
+            default=False, help="Select not optimized products."
+        )
+        parser.add_argument(
+            "--optimized-invalid", dest="list_optimized_invalid",
+            action="store_true", default=False,
+            help="Select optimized products without an actual optimized file."
+        )
 
     def select_products(self, query, **kwargs):
         """ Get matched products. """
@@ -133,6 +147,15 @@ class ProductSelectionSubcommand(Subcommand):
                 Q(product_data_items__location__in=kwargs["location"]) |
                 Q(optimized_data_item__location_in=kwargs["location"])
             )
+
+        if kwargs["list_optimized"] or kwargs["list_optimized_invalid"]:
+            query = query.filter(optimized_data_item__isnull=False)
+
+        if kwargs["list_not_optimized"]:
+            query = query.filter(optimized_data_item__isnull=True)
+
+        if kwargs["list_optimized_invalid"]:
+            query = filter_invalid_optimized(query, self.logger)
 
         if kwargs["invalid_only"]:
             query = filter_invalid(query, self.logger)
@@ -201,4 +224,28 @@ def is_invalid(product, logger=None):
         )
         return True
 
+    return False
+
+
+def filter_invalid_optimized(products, logger=None):
+    """ Filter invalid optimized data files. """
+    for product in products:
+        if is_invalid_optimized(product, logger):
+            yield product
+
+
+def is_invalid_optimized(product, logger):
+    """ Return true is optimized data file is invalid. """
+    try:
+        data_item = product.optimized_data_item
+    except ObjectDoesNotExist:
+        return False
+
+    location = data_item.location
+    if not (location and isfile(location)):
+        logger.warning(
+            "Invalid product %s optimization detected! File %s does not exist!",
+            product.identifier, location
+        )
+        return True
     return False

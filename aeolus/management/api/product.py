@@ -25,11 +25,14 @@
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
 
+# pylint: disable=missing-docstring,too-many-arguments,too-many-positional-arguments
+
 import logging
-from os.path import splitext, basename
+from os.path import exists, splitext, basename, join
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from django.db import transaction
+from django.conf import settings
 from eoxserver.resources.coverages.models import (
     Collection,
     Product,
@@ -37,6 +40,7 @@ from eoxserver.resources.coverages.models import (
     collection_collect_metadata,
     ManagementError,
 )
+from aeolus.models import OptimizedProductDataItem
 from aeolus.registration import (
     read_aeolus_product_metadata,
     simplify_footprint,
@@ -46,6 +50,8 @@ from aeolus.registration import (
 from .eo_object import deregister_object
 
 DEF_SIMPLIFICATION_TOLERANCE = 0.2
+DEF_OUTPUT_DIR_TEMPLATE = getattr(settings, 'AEOLUS_OPTIMIZED_DIR', None)
+DEF_OPTIMIZED_FORMAT = "application/netcdf"
 
 
 def get_product_id(filename):
@@ -98,6 +104,112 @@ def unlink_product_from_collection(collection, product, logger,
     )
 
 
+def get_optimized_product_filename(collection, product,
+                                   directory_template=DEF_OUTPUT_DIR_TEMPLATE):
+    """ Build the optimized product filename. """
+    directory = directory_template.format(
+        product_type=product.product_type.name,
+        collection=collection.identifier,
+    )
+    return join(directory, f"{product.identifier}.nc")
+
+
+def link_optimized_data_file_to_product(
+    product, location, format=DEF_OPTIMIZED_FORMAT, logger=None,
+):
+    assert location is not None
+
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    with transaction.atomic():
+        result = set_optimized_data_item(
+            product=product,
+            location=location,
+            format=format,
+        )
+
+    if result.created or result.updated:
+        logger.info(
+            "optimized data file %s linked to product %s",
+            location, product.identifier
+        )
+        return True
+    return False
+
+
+def unlink_optimized_data_file_from_product(product, logger=None):
+
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    with transaction.atomic():
+        result = set_optimized_data_item(
+            product=product,
+            location=None,
+            format=None,
+        )
+
+    if result.removed:
+        logger.info(
+            "optimized data file %s unlinked from product %s",
+            result.data_item.location, product.identifier
+        )
+        return True
+    return False
+
+
+@dataclass
+class SetOptimizedDataItemResult:
+    data_item: Optional[OptimizedProductDataItem] = None
+    created: bool = False
+    updated: bool = False
+    removed: bool = False
+
+
+def set_optimized_data_item(product, location, format=DEF_OPTIMIZED_FORMAT):
+
+    result = SetOptimizedDataItemResult()
+
+    data_item = get_optimized_data_item(product)
+
+    if data_item:
+        if location is not None:
+            if (data_item.location, data_item.format) != (location, format):
+                # update existing optimized product link
+                data_item.location = location
+                data_item.format = format
+                data_item.full_clean()
+                data_item.save()
+                result.updated = True
+        else:
+            # unlink optimized product
+            data_item.delete()
+            result.removed = True
+
+    elif location is not None:
+        # create new optimized product link
+        data_item = OptimizedProductDataItem(
+            product=product,
+            location=location,
+            format=format,
+        )
+        data_item.full_clean()
+        data_item.save()
+        result.created = True
+
+    result.data_item = data_item
+
+    return result
+
+
+def get_optimized_data_item(product):
+    try:
+        return product.optimized_data_item
+    except OptimizedProductDataItem.DoesNotExist:
+        return None
+
+
 def update_product_collection(collection, logger):
     """ Update product collection metadata after product change. """
     with transaction.atomic():
@@ -136,6 +248,8 @@ class Result:
     updated: bool
     removed: List[str] # < Python 3.9
     linked_to_collection: List[str] # < Python 3.9
+    optimized_linked: bool
+    optimized_filename: Optional[str]
 
 
 def register_product(
@@ -144,6 +258,8 @@ def register_product(
     simplification_tolerance=DEF_SIMPLIFICATION_TOLERANCE,
     defer_collection_update=False,
     allowed_product_types=None,
+    link_optimized=False,
+    optimized_directory_template=DEF_OUTPUT_DIR_TEMPLATE,
     logger=None
 ):
     """ Register Aeolus product. """
@@ -161,6 +277,8 @@ def register_product(
         updated = False
         removed = []
         linked_to_collection = []
+        optimized_linked = False
+        optimized_filename = None
 
         product = _get_existing_product(identifier)
 
@@ -207,12 +325,26 @@ def register_product(
                 )
             linked_to_collection.append(collection.identifier)
 
+        print(f"{link_optimized=}")
+        if link_optimized:
+            optimized_filename = get_optimized_product_filename(
+                collection, product, optimized_directory_template,
+            )
+            print(f"{optimized_filename=}")
+            if exists(optimized_filename):
+                print(f"optimized EXISTS ")
+                result = set_optimized_data_item(product, optimized_filename)
+                optimized_linked = result.created or result.updated
+                print(f"{result=}")
+
         return Result(
             product=product,
             inserted=inserted,
             updated=updated,
             removed=removed,
             linked_to_collection=linked_to_collection,
+            optimized_linked=optimized_linked,
+            optimized_filename=optimized_filename,
         )
 
     if not logger:
@@ -235,6 +367,12 @@ def register_product(
         logger.info(
             "product %s linked to collection %s",
             identifier, collection_id,
+        )
+
+    if result.optimized_linked:
+        logger.info(
+            "optimized datafile %s linked to product %s",
+            result.optimized_filename, identifier,
         )
 
     return result

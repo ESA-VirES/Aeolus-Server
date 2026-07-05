@@ -31,6 +31,7 @@ from traceback import print_exc
 from dataclasses import dataclass
 from aeolus.management.api.product import (
     DEF_SIMPLIFICATION_TOLERANCE,
+    DEF_OUTPUT_DIR_TEMPLATE,
     get_product_id,
     register_product,
     update_product_collection,
@@ -95,6 +96,18 @@ class RegisterProductSubcommand(Subcommand):
             action="store_false",
             help="Perform collection when the objects are inserted."
         )
+        parser.add_argument(
+            "--link-optimized", dest="link_optimized",
+            action="store_true", default=False,
+            help="Link optimized data file if available."
+        )
+        parser.add_argument(
+            "--optimized-directory",
+            required=(DEF_OUTPUT_DIR_TEMPLATE is None),
+            default=DEF_OUTPUT_DIR_TEMPLATE,
+            dest="optimized_directory_template",
+            help="Optimized directory template.",
+        )
 
     def handle(self, **kwargs):
         data_files = kwargs["product-file"]
@@ -104,6 +117,8 @@ class RegisterProductSubcommand(Subcommand):
             kwargs["simplification_tolerance"] if kwargs["simplify"] else None
         )
         defer_collection_update = kwargs["defer_collection_update"]
+        link_optimized = kwargs["link_optimized"]
+        optimized_directory_template = kwargs["optimized_directory_template"]
 
         collection = get_product_collection(collection_id)
         allowed_product_types = get_allowed_product_types(collection)
@@ -119,6 +134,8 @@ class RegisterProductSubcommand(Subcommand):
                     simplification_tolerance=simplification_tolerance,
                     defer_collection_update=defer_collection_update,
                     allowed_product_types=allowed_product_types,
+                    link_optimized=link_optimized,
+                    optimized_directory_template=optimized_directory_template,
                     logger=self.logger
                 )
             except Exception as error:

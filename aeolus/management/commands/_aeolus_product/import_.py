@@ -40,6 +40,8 @@ from aeolus.management.api.product import (
     update_product_collection,
     get_product_collection,
     get_allowed_product_types,
+    link_optimized_data_file_to_product,
+    unlink_optimized_data_file_from_product,
 )
 from .._aeolus_product.common import ProductSelectionSubcommand
 
@@ -176,7 +178,19 @@ class ImportProductSubcommand(ProductSelectionSubcommand):
             if collection_id in result.linked_to_collection:
                 collections[collection_id] = collection
 
-            # TODO: optimised products
+            optimized_data_item = data_items.get("optimized")
+            if optimized_data_item:
+                link_optimized_data_file_to_product(
+                    result.product,
+                    location=optimized_data_item["location"],
+                    format=optimized_data_item["format"],
+                    logger=self.logger,
+                )
+            else:
+                unlink_optimized_data_file_from_product(
+                    result.product,
+                    logger=self.logger,
+                )
 
             return result
 

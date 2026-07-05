@@ -33,6 +33,9 @@ from ._aeolus_product.export import ExportProductSubcommand
 from ._aeolus_product.import_ import ImportProductSubcommand
 from ._aeolus_product.register import RegisterProductSubcommand
 from ._aeolus_product.deregister import DeregisterProductSubcommand
+from ._aeolus_product.optimize import OptimizeProductSubcommand
+from ._aeolus_product.optimized_unlink import OptimizedUnlinkProductSubcommand
+from ._aeolus_product.optimized_stats import OptimizedStatsProductSubcommand
 
 
 class Command(Supercommand):
@@ -47,5 +50,8 @@ class Command(Supercommand):
             ExportProductSubcommand,
             RegisterProductSubcommand,
             DeregisterProductSubcommand,
+            OptimizeProductSubcommand,
+            OptimizedUnlinkProductSubcommand,
+            OptimizedStatsProductSubcommand,
         ]
     }
