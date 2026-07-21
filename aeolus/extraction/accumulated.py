@@ -27,6 +27,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import logging
 from collections import defaultdict
 from copy import deepcopy
 
@@ -37,6 +38,8 @@ from aeolus.coda_utils import CODAFile, access_location, NoSuchFieldException
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.extraction import exception
 from aeolus.util import maybe_close
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AccumulatedDataExtractor(object):
@@ -313,19 +316,29 @@ class AccumulatedDataExtractor(object):
 
         data = None
         if ds and ds.groups.get('DATA'):
+            LOGGER.debug("Optimized data file exists and has DATA group.")
             group = ds.groups.get('DATA')
             if group and name in group.variables:
                 data = group.variables[name][:]
+                LOGGER.debug(
+                    "Extracted %s (%s, %s) from the optimized data file.",
+                    name, data.dtype, data.shape
+                )
 
         if data is None:
             try:
                 path = self.locations[name]
                 data = access_location(cf, path)
+                LOGGER.debug(
+                    "Extracted %s (%s, %s) from the original data file.",
+                    field_name, data.dtype, data.shape
+                )
             except NoSuchFieldException:
                 raise exception.InvalidFieldError(name, path)
 
             if name in self.array_fields:
                 data = np.vstack(data)
+
 
         if cache:
             cache[name] = data

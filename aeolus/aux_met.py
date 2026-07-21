@@ -27,6 +27,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
+import logging
 import os.path
 from collections import defaultdict
 from copy import deepcopy
@@ -37,6 +38,8 @@ from scipy.interpolate import interp1d
 
 from aeolus.coda_utils import CODAFile, access_location
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
+
+LOGGER = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
@@ -343,12 +346,23 @@ def adjust_overlap(cf, next_cf, filters):
 
 def access_optimized(cf, ds, field_name, location):
     if ds:
+        LOGGER.debug("Optimized data file exists.")
         group = ds.groups.get('DATA')
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                return variable[:]
-    return access_location(cf, location)
+                data = variable[:]
+                LOGGER.debug(
+                    "Extracted DATA/%s (%s, %s) from the optimized data file.",
+                    field_name, data.dtype, data.shape
+                )
+                return data
+    data = access_location(cf, location)
+    LOGGER.debug(
+        "Extracted DATA/%s (%s, %s) from the original data file.",
+        field_name, data.dtype, data.shape
+    )
+    return data
 
 
 def scale_data(data, scalefactor):

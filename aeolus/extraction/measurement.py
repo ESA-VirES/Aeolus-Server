@@ -26,7 +26,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
-
+import logging
 from collections import defaultdict
 from copy import deepcopy
 
@@ -39,6 +39,8 @@ from aeolus.coda_utils import (
 from aeolus.filtering import make_mask, make_array_mask, combine_mask
 from aeolus.extraction import exception
 from aeolus.util import maybe_close
+
+LOGGER = logging.getLogger(__name__)
 
 
 def check_has_groups(cf):
@@ -724,14 +726,24 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
 
 def optimized_access(cf, ds, group_name, field_name, location):
     if ds:
+        LOGGER.debug("Optimized data file exists.")
         group = ds.groups.get(group_name)
         if group:
             variable = group.variables.get(field_name)
             if variable:
-                return variable[:]
-
+                data = variable[:]
+                LOGGER.debug(
+                    "Extracted %s/%s (%s, %s) from the optimized data file.",
+                    group_name, field_name, data.dtype, data.shape
+                )
+                return data
     try:
-        return access_location(cf, location)
+        data = access_location(cf, location)
+        LOGGER.debug(
+            "Extracted %s/%s (%s, %s) from the original data file.",
+            group_name, field_name, data.dtype, data.shape
+        )
+        return data
     except:
         raise exception.InvalidFieldError(field_name, location)
 
