@@ -53,7 +53,7 @@ class CollectionSelectionSubcommand(Subcommand):
 
         collection_type_names = set(kwargs.get("collection_type_name") or ())
         if collection_type_names:
-            query = query.fileter(
+            query = query.filter(
                 collection_type__name__in=collection_type_names
             )
         collection_type_names = set(kwargs.get("excluded_collection_type_name") or ())
