@@ -34,14 +34,14 @@ from django.utils.timezone import utc
 
 
 class NoSuchFieldException(Exception):
-    code = 'NoSuchField'
+    code = "NoSuchField"
 
     def __init__(self, location):
         self.locator = str(location)
-        super().__init__('No such field %s' % str(location))
+        super().__init__(f"No such field {location}")
 
 
-class CODAFile(object):
+class CODAFile:
     """ Wrapper around the filehandles used in the :mod:`coda` library.
     """
 
@@ -62,12 +62,12 @@ class CODAFile(object):
         return self.fetch(*args)
 
     def fetch(self, *args):
-        """
+        """ Fetch data fro the given CODA location.
         """
         try:
             return coda.fetch(self._handle, *args)
-        except coda.CodacError:
-            raise NoSuchFieldException(args)
+        except coda.CodacError as error:
+            raise NoSuchFieldException(args) from error
 
     def fetch_date(self, *args):
         """ Fetch a value and convert it to a :class:`datetime.datetime` with
@@ -131,7 +131,8 @@ def coda_time_to_datetime(value):
 
 
 def access_location(cf, location):
-    """
+    """ Access the requested location. The location can be a callable
+    or CODA path.
     """
     return location(cf) if callable(location) else cf.fetch(*location)
 
@@ -145,9 +146,9 @@ def check_fields(requested, available, label=None):
 
     if unavailable:
         raise UnknownFieldError(
-            'Unknown %sfield%s: %s' % (
-                label + ' ' if label else '',
-                's' if len(unavailable) > 1 else '',
-                ', '.join(unavailable)
+            "Unknown %sfield%s: %s" % (
+                label + " " if label else "",
+                "s" if len(unavailable) > 1 else "",
+                ", ".join(unavailable)
             )
         )

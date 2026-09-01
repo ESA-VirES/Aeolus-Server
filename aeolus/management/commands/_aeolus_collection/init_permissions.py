@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# Initialize Aeolus collection permissions.
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +24,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=missing-docstring, too-few-public-methods
 
-from os.path import join, dirname
+from django.db import transaction
+from aeolus.models import init_user_collections, create_collection_permissions
+from .._common import Subcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
-ALBEDO_COVERAGE_ID_TEMPLATE = "ADAM_albedo_{year:04d}_{month:02d}"
-ALBEDO_COVERAGE_TYPE_ID = "ADAM_albedo"
-ALBEDO_COLLECTION_ID = "ADAM_albedo"
-ALBEDO_GRID_ID = "ADAM_albedo"
+class InitPermissionsCollectionSubcommand(Subcommand):
+    name = "init_permissions"
+    help = (
+        "Initialize Aeolus collection access permissions"
+        " and create missing user collections."
+    )
+
+    def add_arguments(self, parser):
+        pass
+
+    @transaction.atomic
+    def handle(self, **kwargs):
+        create_collection_permissions()
+        init_user_collections()

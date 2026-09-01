@@ -117,12 +117,12 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             mca_fields = kw['mca_fields'].split(',')
         else:
             mca_fields = []
-        
+
         if kw.get('mle_fields'):
             mle_fields = kw['mle_fields'].split(',')
         else:
             mle_fields = []
-        
+
         if kw.get('mle_sub_fields'):
             mle_sub_fields = kw['mle_sub_fields'].split(',')
         else:
@@ -266,7 +266,7 @@ class MeasurementDataExtractProcessBase(ExtractionProcessBase):
             num_mcas = 0
         elif mca_data:
             num_mcas = ds.dimensions['mca_dim'].size
-        
+
         if mle_data and 'mle_dim' not in ds.dimensions:
             ds.createDimension('mle_dim', None)
             num_mles = 0

@@ -32,6 +32,7 @@
 #pylint: disable=old-style-class,no-init,too-few-public-methods
 
 
+from logging import getLogger
 from django.dispatch import receiver
 from django.db.models import (
     Model, ForeignKey, OneToOneField, CharField, DateTimeField, CASCADE,
@@ -104,7 +105,9 @@ class OptimizedProductDataItem(DataItem):
 #
 
 
-def get_or_create_user_collection_type():
+def get_or_create_user_collection_type(logger=None):
+    if not logger:
+        logger = getLogger(__name__)
     collection_type, created = CollectionType.objects.get_or_create(
         name="user_collection_type"
     )
@@ -112,14 +115,19 @@ def get_or_create_user_collection_type():
         collection_type.allowed_product_types.set(
             ProductType.objects.all()
         )
+        logger.info("collection type %s created", collection_type.name)
+    else:
+        logger.debug("collection type %s exists", collection_type.name)
     return collection_type
 
 
-def get_or_create_user_collection(user):
-    identifier = "user_collection_%s" % user.username
-
+def get_or_create_user_collection(user, logger=None):
+    if not logger:
+        logger = getLogger(__name__)
+    identifier = f"user_collection_{user.username}"
     try:
         collection = Collection.objects.get(identifier=identifier)
+        logger.debug("collection %s exists", identifier)
     except Collection.DoesNotExist:
         collection_type = get_or_create_user_collection_type()
 
@@ -130,10 +138,78 @@ def get_or_create_user_collection(user):
         collection.full_clean()
         collection.save()
 
+        logger.info("collection %s created", identifier)
+
         UserCollectionLink.objects.create(user=user, collection=collection)
 
     return collection
 
+
+def get_user_for_user_collection(collection, prefix="user_collection_"):
+    if collection.identifier.startswith(prefix):
+        username = collection.identifier[len(prefix):]
+        return User.objects.get(username=username)
+    return None
+
+
+def delete_user_collection(user, logger=None):
+    if not logger:
+        logger = getLogger(__name__)
+    identifier = f"user_collection_{user.username}"
+    try:
+        Collection.objects.get(identifier=identifier).delete()
+        logger.info("collection %s removed", identifier)
+    except Collection.DoesNotExist:
+        logger.debug("collection %s does not exist", identifier)
+
+
+def get_or_create_collection_permission(collection, content_type=None, logger=None):
+    if not logger:
+        logger = getLogger(__name__)
+    if not content_type:
+        content_type = ContentType.objects.get_for_model(Collection)
+    permission, created = Permission.objects.get_or_create(
+        codename=f"access_{collection.identifier}",
+        name=f"Can access collection {collection.identifier}",
+        content_type=content_type
+    )
+    if created:
+        logger.info("permission %s created", permission.codename)
+    else:
+        logger.debug("permission %s exists", permission.codename)
+    return permission
+
+
+def delete_collection_permission(collection, logger=None):
+    condename = f"access_{collection.identifier}"
+    try:
+        Permission.objects.get(codename=condename).delete()
+        logger.info("permission %s removed", condename)
+    except Permission.DoesNotExist:
+        logger.debug("permission %s does not exist", condename)
+
+
+def init_user_collections(logger=None):
+    if not logger:
+        logger = getLogger(__name__)
+    content_type = ContentType.objects.get_for_model(Collection)
+    for user in User.objects.all():
+        collection = get_or_create_user_collection(user, logger=logger)
+        user.user_permissions.add(
+            get_or_create_collection_permission(
+                collection, content_type=content_type, logger=logger
+            )
+        )
+
+
+def create_collection_permissions(logger=None):
+    if not logger:
+        logger = getLogger(__name__)
+    content_type = ContentType.objects.get_for_model(Collection)
+    for collection in Collection.objects.all():
+        get_or_create_collection_permission(
+            collection, content_type=content_type, logger=logger
+        )
 
 #
 # Signal receivers
@@ -141,136 +217,31 @@ def get_or_create_user_collection(user):
 
 @receiver(post_migrate)
 def post_migrate_receiver(*args, **kwargs):
-    for user in User.objects.all():
-        get_or_create_user_collection(user)
-
-    # make sure we create the permissions for that collection
-    content_type = ContentType.objects.get_for_model(Collection)
-    for collection in Collection.objects.all():
-        Permission.objects.get_or_create(
-            codename='access_%s' % collection.identifier,
-            name='Can access collection %s' % collection.identifier,
-            content_type=content_type,
-        )
-
-    # default group does not have access to AUX collections
-    group, created = Group.objects.get_or_create(
-        name='aeolus_default'
-    )
-
-    # get permissions for public collections
-    permissions = Permission.objects.filter(
-        codename__in=[
-            'access_ALD_U_N_1B_public',
-            'access_ALD_U_N_2A_public',
-            'access_ALD_U_N_2B_public',
-            'access_ALD_U_N_2C_public',
-            'access_ADAM_albedo'
-        ]
-    )
-    group.permissions.set(permissions)
-    group.save()
-
-    for user in User.objects.all():
-        if not user.groups:
-            user.groups.add(group)
-
-    # privileged group has access to all collections
-    group, _ = Group.objects.get_or_create(
-        name='aeolus_privileged'
-    )
-
-    # get permissions for privileged collections
-    permissions = Permission.objects.filter(
-        codename__in=[
-            'access_ALD_U_N_1B',
-            'access_ALD_U_N_2A',
-            'access_ALD_U_N_2B',
-            'access_ALD_U_N_2C',
-            'access_ADAM_albedo',
-            'access_AUX_ISR_1B',
-            'access_AUX_MET_12',
-            'access_AUX_MRC_1B',
-            'access_AUX_RRC_1B',
-            'access_AUX_ZWC_1B',
-        ]
-    )
-    group.permissions.set(permissions)
-    group.save()
-
-    group, _ = Group.objects.get_or_create(
-        name='aeolus_l1a_access'
-    )
-
-    # get permissions for l1a data
-    permissions = Permission.objects.filter(
-        codename__in=[
-            'access_ALD_U_N_1A',
-        ]
-    )
-    group.permissions.set(permissions)
-    group.save()
-
-    # give each user access to his own user collection
-    for user in User.objects.all():
-        user.user_permissions.add(
-            Permission.objects.get(
-                codename='access_user_collection_%s' % user.username
-            )
-        )
+    create_collection_permissions()
+    init_user_collections()
 
 
 @receiver(post_save)
 def post_save_receiver(sender, instance, created, *args, **kwargs):
     if issubclass(sender, User) and created:
         get_or_create_user_collection(instance)
-        group = Group.objects.get(name='aeolus_default')
-        instance.groups.add(group)
 
     elif issubclass(sender, SocialAccount):
         update_user_groups(instance)
 
     elif issubclass(sender, Collection) and created:
-        # make sure we create the permissions for that collection
-        content_type = ContentType.objects.get_for_model(Collection)
-        perm, _ = Permission.objects.get_or_create(
-            codename='access_%s' % instance.identifier,
-            name='Can access collection %s' % instance.identifier,
-            content_type=content_type,
-        )
+        permission = get_or_create_collection_permission(instance)
 
-        # if it is a user collection give that user the permission to view it
-        if instance.identifier.startswith("user_collection_"):
-            username = instance.identifier[len("user_collection_"):]
-            user = User.objects.get(username=username)
-            user.user_permissions.add(perm)
-
-        # otherwise add it to the according groups
-        else:
-            if instance.identifier.endswith('_public'):
-                group = Group.objects.get(name='aeolus_default')
-                group.permissions.add(perm)
-            elif instance.identifier in ['ALD_U_N_1A']:
-                # Using list for check for possible future new entries
-                group = Group.objects.get(name='aeolus_l1a_access')
-                group.permissions.add(perm)
-            else:
-                group = Group.objects.get(name='aeolus_privileged')
-                group.permissions.add(perm)
+        # if a user collection give that user the permission to view it
+        user = get_user_for_user_collection(instance)
+        if user:
+            user.user_permissions.add(permission)
 
 
 @receiver(pre_delete)
 def pre_delete_receiver(sender, instance, *args, **kwargs):
     if issubclass(sender, User):
-        get_or_create_user_collection(instance).delete()
+        delete_user_collection(instance)
 
-    # make sure we clean up the permissions for that collection
     elif issubclass(sender, Collection):
-        try:
-            Permission.objects.get(
-                codename='access_%s' % instance.identifier,
-                name='Can access collection %s' % instance.identifier,
-            ).delete()
-        except Permission.DoesNotExist:
-            # as we would only delete it, we can safely ignore this error
-            pass
+        delete_collection_permission(instance)

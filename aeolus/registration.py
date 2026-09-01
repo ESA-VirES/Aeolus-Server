@@ -34,16 +34,38 @@ from django.utils.timezone import utc
 from django.contrib.gis.geos import (
     MultiLineString, LineString, MultiPolygon, Polygon
 )
-from eoxserver.backends import models as backends
 from eoxserver.resources.coverages import models as coverages
 from eoxserver.contrib import gdal
 
-from aeolus import models
 from aeolus.coda_utils import CODAFile
 from aeolus import aux
 
+DBL_PRODUCT_TYPES = {
+    "ALD_U_N_1A",
+    "ALD_U_N_1B",
+    "ALD_U_N_2A",
+    "ALD_U_N_2B",
+    "ALD_U_N_2C",
+}
+
+EEF_PRODUCT_TYPES = {
+    "AUX_ISR_1B",
+    "AUX_MET_12",
+    "AUX_MRC_1B",
+    "AUX_RRC_1B",
+    "AUX_ZWC_1B",
+}
+
+
+class DataFormatError(Exception):
+    pass
+
 
 class RegistrationError(Exception):
+    pass
+
+
+class AlreadyRegistered(RegistrationError):
     pass
 
 
@@ -53,54 +75,45 @@ def _get_ground_path(codafile):
     """
 
     product_type = codafile.product_type
-    if product_type == 'ALD_U_N_1A':
+
+    if product_type in ["ALD_U_N_1A", "ALD_U_N_1B"]:
         ground_points = zip(
             codafile.fetch(
-                '/geolocation', -1,
-                'observation_geolocation/geolocation_of_dem_intersection/'
-                'longitude_of_dem_intersection'
+                "/geolocation", -1,
+                "observation_geolocation/geolocation_of_dem_intersection/"
+                "longitude_of_dem_intersection"
             ),
             codafile.fetch(
-                '/geolocation', -1,
-                'observation_geolocation/geolocation_of_dem_intersection/'
-                'latitude_of_dem_intersection'
-            )
-        )
-    if product_type == 'ALD_U_N_1B':
-        ground_points = zip(
-            codafile.fetch(
-                '/geolocation', -1,
-                'observation_geolocation/geolocation_of_dem_intersection/'
-                'longitude_of_dem_intersection'
-            ),
-            codafile.fetch(
-                '/geolocation', -1,
-                'observation_geolocation/geolocation_of_dem_intersection/'
-                'latitude_of_dem_intersection'
+                "/geolocation", -1,
+                "observation_geolocation/geolocation_of_dem_intersection/"
+                "latitude_of_dem_intersection"
             )
         )
 
-    elif product_type == 'ALD_U_N_2A':
+    elif product_type == "ALD_U_N_2A":
         ground_points = zip(
             chain.from_iterable(
                 codafile.fetch(
-                    '/geolocation', -1, 'measurement_geolocation', -1,
-                    'longitude_of_dem_intersection'
+                    "/geolocation", -1, "measurement_geolocation", -1,
+                    "longitude_of_dem_intersection"
                 )
             ),
             chain.from_iterable(
                 codafile.fetch(
-                    '/geolocation', -1, 'measurement_geolocation', -1,
-                    'latitude_of_dem_intersection'
+                    "/geolocation", -1, "measurement_geolocation", -1,
+                    "latitude_of_dem_intersection"
                 )
             )
         )
 
-    elif product_type in ['ALD_U_N_2B', 'ALD_U_N_2C']:
+    elif product_type in ["ALD_U_N_2B", "ALD_U_N_2C"]:
         ground_points = zip(
-            codafile.fetch('/mie_profile', -1, 'profile_lon_average'),
-            codafile.fetch('/mie_profile', -1, 'profile_lat_average')
+            codafile.fetch("/mie_profile", -1, "profile_lon_average"),
+            codafile.fetch("/mie_profile", -1, "profile_lat_average")
         )
+
+    else:
+        raise DataFormatError(f"Unsupported product format {product_type}!")
 
     return _ground_points_to_path(ground_points)
 
@@ -120,7 +133,7 @@ def _ground_points_to_path(ground_points):
 
         last_lon = point[0]
 
-    strips.append(ground_points[last_jump:i])
+    strips.append(ground_points[last_jump:i]) # FIXME: fails for empty ground_points
 
     ground_path = MultiLineString([
         LineString(strip)
@@ -136,10 +149,9 @@ def get_dbl_metadata(codafile):
     ground_path = _get_ground_path(codafile)
 
     return {
-        "identifier": codafile.fetch('mph/product').strip(),
-        "begin_time": codafile.fetch_date('mph/sensing_start'),
-        "end_time": codafile.fetch_date('mph/sensing_stop'),
-        # "footprint": MultiPolygon(Polygon.from_bbox(ground_path.extent)),
+        "identifier": codafile.fetch("mph/product").strip(),
+        "begin_time": codafile.fetch_date("mph/sensing_start"),
+        "end_time": codafile.fetch_date("mph/sensing_stop"),
         "footprint": ground_path,
         "format": "DBL",
         "product_type_name": codafile.product_type,
@@ -160,35 +172,118 @@ def get_eef_metadata(codafile):
             Polygon.from_bbox([-180, -90, 180, 90])
         )
 
-    if codafile.product_type[:7] == 'AUX_MET':
+    if codafile.product_type == "AUX_MET_12":
         metadata = {
-            "identifier": codafile.fetch('/mph/product'),
-            "begin_time": codafile.fetch_date('/mph/sensing_start'),
-            "end_time": codafile.fetch_date('/mph/sensing_stop'),
+            "identifier": codafile.fetch("/mph/product"),
+            "begin_time": codafile.fetch_date("/mph/sensing_start"),
+            "end_time": codafile.fetch_date("/mph/sensing_stop"),
         }
     else:
         metadata = {
             "identifier": codafile.fetch(
-                '/Earth_Explorer_File/Earth_Explorer_Header/Variable_Header'
-                '/Main_Product_Header/Product'
+                "/Earth_Explorer_File/Earth_Explorer_Header/Variable_Header"
+                "/Main_Product_Header/Product"
             ),
             "begin_time": codafile.fetch_date(
-                '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
-                '/Validity_Period/Validity_Start'
+                "/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header"
+                "/Validity_Period/Validity_Start"
             ),
             "end_time": codafile.fetch_date(
-                '/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header'
-                '/Validity_Period/Validity_Stop'
+                "/Earth_Explorer_File/Earth_Explorer_Header/Fixed_Header"
+                "/Validity_Period/Validity_Stop"
             ),
         }
 
-    return dict(
-        footprint=footprint,
-        ground_path=ground_path,
-        format="EEF",
-        product_type_name=codafile.product_type,
+    return {
+        "footprint": footprint,
+        "ground_path": ground_path,
+        "format": "EEF",
+        "product_type_name": codafile.product_type,
         **metadata
-    )
+    }
+
+
+def read_aeolus_product_metadata(filename):
+    """ Read metadata from an Aeolus product file. """
+
+    with CODAFile(filename) as codafile:
+
+        if codafile.product_class != "AEOLUS":
+            raise DataFormatError("Not an Aeolus product!")
+
+        product_type = codafile.product_type
+
+        if product_type in DBL_PRODUCT_TYPES:
+            return get_dbl_metadata(codafile)
+
+        if product_type in EEF_PRODUCT_TYPES:
+            return get_eef_metadata(codafile)
+
+    raise DataFormatError(f"Unsupported Aeolus product type {product_type}!")
+
+
+def simplify_footprint(footprint, simplification_tolerance=None):
+    """ Simplify footprint using the given simplification factor. """
+
+    if not footprint or simplification_tolerance is None:
+        return footprint
+
+    simplified_footprint = footprint.simplify(simplification_tolerance)
+
+    # simplify reduces "Multi"-Geometries to simple ones.
+    # force the same geometry type as the original footprint
+    if simplified_footprint.geom_type != footprint.geom_type:
+        simplified_footprint = type(footprint)(simplified_footprint)
+
+    return simplified_footprint
+
+
+def update_product(product, metadata):
+    """ Update the Product database record. """
+
+    if "product_type_name" in metadata:
+        product_type_name = metadata["product_type_name"]
+        if not product_type_name:
+            if product.product_type:
+                product.product_type = None
+        else:
+            if not product.product_type or product.product_type.name != product_type_name:
+                product.product_type = coverages.ProductType.objects.get(
+                    name=product_type_name
+                )
+
+    if "begin_time" in metadata:
+        product.begin_time = metadata["begin_time"]
+
+    if "end_time" in metadata:
+        product.end_time = metadata["end_time"]
+
+    if "footprint" in metadata:
+        product.footprint = metadata["footprint"]
+
+    product.full_clean()
+    product.save()
+
+    return product
+
+
+def update_product_data_item(product, location, format_):
+    """ Update data item. """
+
+    insert_new_item = True
+    for data_item in list(product.product_data_items.all()):
+        if data_item.location == location and data_item.format == format_:
+            insert_new_item = False
+        else:
+            data_item.delete()
+
+    if insert_new_item:
+        data_item = coverages.ProductDataItem(
+            location=location, format=format_,
+        )
+        data_item.product = product
+        data_item.full_clean()
+        data_item.save()
 
 
 def register_product(filename, overrides,
@@ -197,56 +292,25 @@ def register_product(filename, overrides,
         extracted from the specified file or passed.
     """
 
-    codafile = CODAFile(filename)
-
-    assert codafile.product_class == 'AEOLUS'
-
-    product_type = codafile.product_type
-
-    if product_type.startswith('ALD'):
-        metadata = get_dbl_metadata(codafile)
-    elif product_type.startswith('AUX'):
-        metadata = get_eef_metadata(codafile)
-    else:
-        raise AssertionError('Unsupported product type %r' % product_type)
+    metadata = read_aeolus_product_metadata(filename)
 
     metadata.update(overrides)
 
-    product_type = coverages.ProductType.objects.get(
-        name=metadata.pop('product_type_name')
+    metadata["footprint"] = simplify_footprint(
+        metadata["footprint"],
+        simplification_tolerance=footprint_simplification_tolerance,
     )
 
-    if footprint_simplification_tolerance is not None:
-        footprint = metadata.get('footprint')
-        if footprint:
-            simplified = footprint.simplify(
-                footprint_simplification_tolerance
-            )
-
-            # simplify reduces "Multi"-Geometries to simple ones.
-            # force the same geometry type as the original footprint
-            if simplified.geom_type != footprint.geom_type:
-                simplified = type(footprint)(simplified)
-
-            metadata['footprint'] = simplified
-
-    # Register the product
-    product = coverages.Product()
-    product.identifier = metadata['identifier']
-    product.product_type = product_type
-    for key, value in metadata.items():
-        setattr(product, key, value)
-
-    product.full_clean()
-    product.save()
-
-    # storage, package, format_, location = _get_location_chain([data_file])
-    data_item = coverages.ProductDataItem(
-        location=filename, format=metadata['format'] or ""
+    product = update_product(
+        product=coverages.Product(identifier=metadata["identifier"]),
+        metadata=metadata,
     )
-    data_item.product = product
-    data_item.full_clean()
-    data_item.save()
+
+    update_product_data_item(
+        product=product,
+        location=filename,
+        format_=metadata["format"] or "",
+    )
 
     return product
 
@@ -255,16 +319,17 @@ def register_collection(identifier):
     pass
 
 
-def register_albedo(filename, year, month, replace=False):
-    """
-    """
+def register_albedo(
+    identifier, filename, year, month, coverage_type, grid_name, replace=False,
+):
+
     try:
         ds = gdal.Open(filename)
     except Exception as e:
         raise RegistrationError(
             "Failed to open raster file '%s'. Error was: %s"
             % (filename, e)
-        )
+        ) from e
 
     nadir_location = offnadir_location = None
 
@@ -278,9 +343,9 @@ def register_albedo(filename, year, month, replace=False):
         subdatasets = ds.GetSubDatasets()
 
         for subdataset, _ in subdatasets:
-            if subdataset.endswith('ADAM_albedo_nadir'):
+            if subdataset.endswith("ADAM_albedo_nadir"):
                 nadir_location = subdataset
-            elif subdataset.endswith('ADAM_albedo_offnadir'):
+            elif subdataset.endswith("ADAM_albedo_offnadir"):
                 offnadir_location = subdataset
     else:
         raise RegistrationError(
@@ -305,13 +370,6 @@ def register_albedo(filename, year, month, replace=False):
 
     extent = (-180, -90, 180, 90)
 
-    try:
-        coverage_type = coverages.CoverageType.objects.get(name='ADAM_albedo')
-    except coverages.CoverageType.DoesNotExist:
-        raise RegistrationError('Could not find Albedo range type.')
-
-    identifier = 'ADAM_albedo_%d_%d' % (year, month)
-
     exists = coverages.Coverage.objects.filter(
         identifier=identifier
     ).exists()
@@ -321,15 +379,15 @@ def register_albedo(filename, year, month, replace=False):
                 identifier=identifier
             ).delete()
         else:
-            raise RegistrationError(
-                'Albedo file for %d/%d already registered' % (year, month)
+            raise AlreadyRegistered(
+                "Albedo file for %d/%d already registered" % (year, month)
             )
 
     grid, _ = coverages.Grid.objects.get_or_create(
-        name="Albedo_grid",
-        coordinate_reference_system='EPSG:4326',
-        axis_1_name='x',
-        axis_2_name='y',
+        name=grid_name,
+        coordinate_reference_system="EPSG:4326",
+        axis_1_name="x",
+        axis_2_name="y",
         axis_1_type=0,
         axis_2_type=0,
         axis_1_offset=str(360 / nadir_ds.RasterXSize),
@@ -352,7 +410,7 @@ def register_albedo(filename, year, month, replace=False):
     if nadir_location == offnadir_location:
         coverages.ArrayDataItem.objects.create(
             location=nadir_location,
-            format='image/tiff',
+            format="image/tiff",
             coverage=coverage,
             field_index=0,
             band_count=2,
@@ -361,7 +419,7 @@ def register_albedo(filename, year, month, replace=False):
         for i, path in enumerate((offnadir_location, nadir_location)):
             coverages.ArrayDataItem.objects.create(
                 location=path,
-                format='application/x-netcdf',
+                format="application/x-netcdf",
                 coverage=coverage,
                 field_index=i,
                 band_count=1,

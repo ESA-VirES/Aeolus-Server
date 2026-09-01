@@ -354,7 +354,7 @@ class AccumulatedDataExtractor(object):
     def _join_mask(self, cf, ds, mapping_field, length_field, related_mask,
                    joined_mask, mask_cache):
         ids = self._fetch_array(cf, ds, mapping_field, mask_cache)
-        new_mask = np.zeros((cf.fetch(length_field),), np.bool)
+        new_mask = np.zeros((cf.fetch(length_field),), bool)
 
         filtered = ids[np.nonzero(related_mask)]
 
@@ -380,7 +380,7 @@ class AccumulatedDataExtractor(object):
 
     def _array_to_list(self, data):
         if isinstance(data, np.ndarray):
-            isobject = data.dtype == np.object
+            isobject = data.dtype == object
             data = data.tolist()
             if isobject:
                 data = [

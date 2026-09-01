@@ -1,12 +1,10 @@
 #-------------------------------------------------------------------------------
 #
-# Miscellaneous data files.
+# Aeolus product types management command
 #
-# Project: VirES
 # Authors: Martin Paces <martin.paces@eox.at>
-#
 #-------------------------------------------------------------------------------
-# Copyright (C) 2016-2026 EOX IT Services GmbH
+# Copyright (C) 2026 EOX IT Services GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +24,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-------------------------------------------------------------------------------
+# pylint: disable=missing-docstring, too-few-public-methods
 
-from os.path import join, dirname
+from logging import getLogger
+from ._common import Supercommand
+from ._aeolus_product.list import ListProductSubcommand
+from ._aeolus_product.export import ExportProductSubcommand
+from ._aeolus_product.import_ import ImportProductSubcommand
+from ._aeolus_product.register import RegisterProductSubcommand
+from ._aeolus_product.deregister import DeregisterProductSubcommand
+from ._aeolus_product.optimize import OptimizeProductSubcommand
+from ._aeolus_product.optimized_unlink import OptimizedUnlinkProductSubcommand
+from ._aeolus_product.optimized_stats import OptimizedStatsProductSubcommand
 
-_DIRNAME = dirname(__file__)
 
-ALBEDO_COVERAGE_TYPE = join(_DIRNAME, "albedo_coverage_type.json")
-ALBEDO_COVERAGE_ID_TEMPLATE = "ADAM_albedo_{year:04d}_{month:02d}"
-ALBEDO_COVERAGE_TYPE_ID = "ADAM_albedo"
-ALBEDO_COLLECTION_ID = "ADAM_albedo"
-ALBEDO_GRID_ID = "ADAM_albedo"
+class Command(Supercommand):
+
+    help = "Aeolus product management command"
+
+    commands = {
+        command.name: command(getLogger(f"{__name__}.{command.name}"))
+        for command in [
+            ListProductSubcommand,
+            ImportProductSubcommand,
+            ExportProductSubcommand,
+            RegisterProductSubcommand,
+            DeregisterProductSubcommand,
+            OptimizeProductSubcommand,
+            OptimizedUnlinkProductSubcommand,
+            OptimizedStatsProductSubcommand,
+        ]
+    }

@@ -42,241 +42,186 @@ from aeolus import level_2c
 from aeolus import aux
 from aeolus import aux_met
 
+class OptimizationError(Exception):
+    pass
 
-logger = logging.getLogger(__name__)
+NETCDF_VARIABLE_OPTIONS = {
+    "fletcher32": True,
+    #"compression": "zstd",
+}
+
 
 # range-type -> CODA file locations
-LOCATIONS = {
-    'ALD_U_N_1A': {
-        'OBSERVATION_DATA': level_1a.OBSERVATION_LOCATIONS,
-        'MEASUREMENT_DATA': level_1a.MEASUREMENT_LOCATIONS,
+CODA_LOCATIONS = {
+    "ALD_U_N_1A": {
+        "OBSERVATION_DATA": level_1a.OBSERVATION_LOCATIONS,
+        "MEASUREMENT_DATA": level_1a.MEASUREMENT_LOCATIONS,
     },
-    'ALD_U_N_1B': {
-        'OBSERVATION_DATA': level_1b.OBSERVATION_LOCATIONS,
-        'MEASUREMENT_DATA': level_1b.MEASUREMENT_LOCATIONS,
+    "ALD_U_N_1B": {
+        "OBSERVATION_DATA": level_1b.OBSERVATION_LOCATIONS,
+        "MEASUREMENT_DATA": level_1b.MEASUREMENT_LOCATIONS,
     },
-    'ALD_U_N_2A': {
-        'OBSERVATION_DATA': level_2a.OBSERVATION_LOCATIONS,
-        'MEASUREMENT_DATA': level_2a.MEASUREMENT_LOCATIONS,
+    "ALD_U_N_2A": {
+        "OBSERVATION_DATA": level_2a.OBSERVATION_LOCATIONS,
+        "MEASUREMENT_DATA": level_2a.MEASUREMENT_LOCATIONS,
     },
-    'ALD_U_N_2B': {
-        'DATA': level_2b.locations,
+    "ALD_U_N_2B": {
+        "DATA": level_2b.locations,
     },
-    'ALD_U_N_2C': {
-        'DATA': level_2c.locations,
+    "ALD_U_N_2C": {
+        "DATA": level_2c.locations,
     },
-    'AUX_ISR_1B': {
-        'DATA': aux.AUX_ISR_LOCATIONS,
+    "AUX_ISR_1B": {
+        "DATA": aux.AUX_ISR_LOCATIONS,
     },
-    'AUX_MRC_1B': {
-        'DATA': aux.AUX_MRC_LOCATIONS,
+    "AUX_MRC_1B": {
+        "DATA": aux.AUX_MRC_LOCATIONS,
     },
-    'AUX_RRC_1B': {
-        'DATA': aux.AUX_RRC_LOCATIONS,
+    "AUX_RRC_1B": {
+        "DATA": aux.AUX_RRC_LOCATIONS,
     },
-    'AUX_ZWC_1B': {
-        'DATA': aux.AUX_ZWC_LOCATIONS,
+    "AUX_ZWC_1B": {
+        "DATA": aux.AUX_ZWC_LOCATIONS,
     },
-    'AUX_MET_12': {
-        'DATA': aux_met.LOCATIONS,
+    "AUX_MET_12": {
+        "DATA": aux_met.LOCATIONS,
     }
 }
 
 
-class OptimizationError(Exception):
-    pass
+def get_product_type(filename):
+    """ Read product type from an Aeolus product file. """
+
+    with CODAFile(filename) as codafile:
+
+        if codafile.product_class != "AEOLUS":
+            raise OptimizationError("Not an Aeolus product!")
+
+        return codafile.product_type
 
 
-def create_optimized_file(input_file, product_type_name, output_path, update,
-                          fields=None):
-    """ Creates an optimized netcdf file for the given product
-    """
+def optimize_aeolus_product(input_filename, output_filename, fields=None,
+                            logger=None):
+    """ Convert native Aeolus product to a new optimized NetCDF file. """
 
-    # get the CODA locations for later access
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    product_type = get_product_type(input_filename)
 
     try:
-        location_groups = LOCATIONS[product_type_name]
+        location_groups = CODA_LOCATIONS[product_type]
     except KeyError:
         raise OptimizationError(
-            "Product range type '%s' is not supported" % product_type_name
-        )
+            f"Unsupported Aeolus product type {product_type}!"
+        ) from None
 
-    # check that fields actually exist for that product
+    # verify the requested fields
     if fields is not None:
         for field in fields:
             for locations in location_groups.values():
                 if field in locations:
                     break
             else:
-                raise OptimizationError("Unknown field '%s'" % field)
+                raise OptimizationError(f"Invalid product field {field}!")
 
-    # select correct file mode
-    mode = "w"
-    if os.path.exists(output_path):
-        if update:
-            # 'a' only works when a file exists
-            mode = "a"
-        else:
-            raise OptimizationError(
-                "Output path '%s' already exists" % output_path
-            )
+    logger.debug(
+        "optimizing %s product %s => %s",
+        product_type, input_filename, output_filename,
+    )
 
-    # loop through all locations, access them and save them to the netcdf
+    temporary_filename = os.path.join(
+        os.path.dirname(output_filename),
+        f".{os.path.basename(output_filename)}.tmp"
+    )
+
+    _remove_file(temporary_filename)
 
     try:
-        logger.info(
-            "Starting optimization for file '%s' to generate '%s'"
-            % (input_file, output_path)
-        )
-        with Dataset(output_path, mode, format="NETCDF4") as out_ds:
-            with CODAFile(input_file) as in_cf:
-                gen = _optimize_fields(
-                    product_type_name, location_groups, in_cf, out_ds,
-                    update, fields
+        with CODAFile(input_filename) as in_cf:
+            with Dataset(temporary_filename, "w", format="NETCDF4") as out_ds:
+                _optimize_fields(
+                    location_groups, in_cf, out_ds, fields, logger=logger,
                 )
-                for group_name, name in gen:
-                    yield (group_name, name)
 
-    except:
-        try:
-            logger.error(
-                "Failed to generate optimized file, deleting '%s'" % output_path
-            )
-            os.remove(output_path)
-        except OSError:
-            pass
+        os.rename(temporary_filename, output_filename)
+
+    except Exception as error:
+        logger.error(
+            "Failed to optimize Aeolus product %s! %s",
+            input_filename, error
+        )
         raise
+    finally:
+        _remove_file(temporary_filename)
 
 
-def _optimize_fields(product_type_name, location_groups, in_cf, out_ds, update,
-                     fields=None):
+def _remove_file(filename):
+    try:
+        os.remove(filename)
+    except FileNotFoundError:
+        pass
+
+
+def _optimize_fields(location_groups, in_cf, out_ds, fields, logger):
+
     for group_name, locations in location_groups.items():
-        if group_name in out_ds.groups:
-            if update:
-                group = out_ds.groups[group_name]
-            else:
-                raise OptimizationError('Group %s already exists' % group_name)
-        else:
-            group = out_ds.createGroup(group_name)
+        group = out_ds.createGroup(group_name)
         for name, location in locations.items():
             # if we have a dedicated list of fields to optimize, we skip if the
             # current field is not in that list
             if fields is not None and name not in fields:
                 continue
-            # check of the variable already exists. If mode is `update`, simply
-            # skip over existing ones. If not, fail the generation.
-            # Otherwise just create the variable normally
-            variable = None
-            if name in group.variables:
-                if update and fields is None:
-                    continue
-                elif update and fields is not None:
-                    variable = group.variables[name]
-                else:
-                    raise OptimizationError(
-                        'Variable %s already exists for group %s'
-                        % (name, group_name)
-                    )
+            logger.debug("optimizing field %s/%s", group_name, name)
 
-            logger.info("Optimizing %s/%s" % (group_name, name))
-            yield (group_name, name)
-
-            if product_type_name == 'AUX_MET_12' and len(location) > 3:
-                first = location[:1] + [0] + location[2:]
-                try:
-                    first_values = access_location(in_cf, first)
-                except NoSuchFieldException:
-                    logger.warn('No such field %s' % (name))
-                    continue
-
-                if variable is None:
-                    shape = (
-                        in_cf.get_size(location[0])[0],
-                        first_values.shape[0]
-                    )
-
-                    # make a list of all dimension names and check if
-                    # they, are already available, otherwise create them
-                    dimnames = [
-                        "arr_%d" % v for v in shape
-                    ]
-                    for dimname, size in zip(dimnames, shape):
-                        if dimname not in out_ds.dimensions:
-                            out_ds.createDimension(dimname, size)
-
-                    variable = group.createVariable(name, '%s%i' % (
-                        first_values.dtype.kind,
-                        first_values.dtype.itemsize
-                    ), dimensions=dimnames)
-
-                try:
-                    data = access_location(in_cf, location)
-                    for i, item in enumerate(data):
-                        variable[i] = item
-                except NoSuchFieldException:
-                    logger.warn('No such field %s' % (name))
-                    continue
-
-            else:
-                try:
-                    values = access_location(in_cf, location)
-                except NoSuchFieldException:
-                    logger.warn('No such field %s' % (name))
-                    continue
-
-                # get the correct dimensionality for the values and
-                # reshape if necessary
-                dimensionality = get_dimensionality(values)
-                full_shape = get_full_shape(values)
-                if dimensionality == [1,2]:
-                    values = np.array([x for x in values])
-                elif len(dimensionality) == 3:
-                    init_num = values.shape[0]
-                    values = np.vstack(np.hstack(values))
-                    values = values.reshape(
-                        values.shape[0] // init_num,
-                        init_num,
-                        values.shape[1]
-                    ).swapaxes(0, 1)
-                elif len(dimensionality) == 2:
-                    values = np.vstack(values)
-
-                if variable is None:
-                    # make a list of all dimension names and check if
-                    # they, are already available, otherwise create them
-                    dimnames = [
-                        "arr_%d" % v for v in values.shape
-                    ]
-                    for dimname, size in zip(dimnames, values.shape):
-                        if dimname not in out_ds.dimensions:
-                            out_ds.createDimension(dimname, size)
-
-                    # create a variable and store the data in it
-                    variable = group.createVariable(name, '%s%i' % (
-                        values.dtype.kind,
-                        values.dtype.itemsize
-                    ), dimensions=dimnames)
-
-                if len(dimensionality) in (2, 3):
-                    values = np.hstack(np.hstack(values))
-
-                variable[:] = values.reshape(full_shape)
+            try:
+                _optimize_field(out_ds, in_cf, group, name, location, logger)
+            except Exception as error:
+                logger.error(
+                    "Failed to optimize field %s/%s! %s",
+                    group_name, name, error,
+                )
+                raise
 
 
-def get_full_shape(values):
-    shape = list(values.shape)
-    values_slice = values
-    while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
-        values_slice = values_slice[0]
-        shape.extend(values_slice.shape)
-    return shape
+def _optimize_field(out_ds, in_cf, group, name, location, logger):
+    try:
+        data = access_location(in_cf, location)
+    except NoSuchFieldException:
+        logger.warn(f"No such field {name}!")
+        return
 
-def get_dimensionality(values):
-    """
-    """
-    dims = [len(values.shape)]
-    values_slice = values
-    while hasattr(values_slice, 'dtype') and values_slice.dtype.kind == 'O':
-        values_slice = values_slice[0]
-        dims.append(len(values_slice.shape))
-    return dims
+    data = _stack_nested_arrays(data)
+
+    variable = _create_variable(
+        out_ds=out_ds,
+        group=group,
+        variable_name=name,
+        shape = data.shape,
+        data_type = f"{data.dtype.kind}{data.dtype.itemsize}",
+    )
+    variable[...] = data
+
+
+def _create_variable(out_ds, group, variable_name, shape, data_type):
+    dimensions = [f"arr_{size}" for size in shape]
+    for dimension, size in zip(dimensions, shape):
+        if dimension not in out_ds.dimensions:
+            out_ds.createDimension(dimension, size)
+    return group.createVariable(
+        variable_name, data_type,
+        dimensions=dimensions,
+        **NETCDF_VARIABLE_OPTIONS,
+    )
+
+
+def _stack_nested_arrays(data):
+    if isinstance(data, np.ndarray) and data.dtype.kind == "O":
+        shape = data.shape
+        flat_data = data.ravel(order="C")
+        stacked_data = np.stack(flat_data, axis=0)
+        new_data = stacked_data.reshape(
+            (*shape, *stacked_data.shape[1:]), order="C"
+        )
+        return _stack_nested_arrays(new_data)
+    return data

@@ -706,7 +706,7 @@ def access_measurements(cf, ds, field_name, location, observation_ids,
     # use many "single reads" when only < 90% of measurements are read
     if used_sized < 0.9 and not callable(location):
         data = [
-            access_location(cf, location[:1] + [int(i)] + location[2:])
+            access_location(cf, (*location[:1], int(i), *location[2:]))
             for i in observation_ids
         ]
         data = np.vstack(data)
