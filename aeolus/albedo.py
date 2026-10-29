@@ -100,6 +100,6 @@ def _sample_data_item(year, month, index, lons, lats):
 
         px = int((lon - o_x) / res_x)
         py = int((lat - o_y) / res_y)
-        out_data[i] = band.ReadAsArray(px, py, 1, 1)
+        out_data[i] = band.ReadAsArray(px, py, 1, 1).reshape(())
 
     return out_data
