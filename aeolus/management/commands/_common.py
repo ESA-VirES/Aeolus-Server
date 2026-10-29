@@ -32,8 +32,7 @@ from logging import (
     getLogger, DEBUG, INFO, WARNING,
     Formatter, StreamHandler,
 )
-from datetime import datetime, time, timedelta
-from django.utils.timezone import utc as TZ_UTC
+from datetime import datetime, time, timedelta, timezone
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -160,8 +159,8 @@ def format_datetime(dtobj):
 def naive_to_utc(dt_obj):
     """ Convert naive `datetime.datetime` to UTC time-zone aware one. """
     if dt_obj.tzinfo is None:
-        dt_obj = dt_obj.replace(tzinfo=TZ_UTC)
-    return dt_obj.astimezone(TZ_UTC)
+        dt_obj = dt_obj.replace(tzinfo=timezone.utc)
+    return dt_obj.astimezone(timezone.utc)
 
 
 def parse_duration(value):

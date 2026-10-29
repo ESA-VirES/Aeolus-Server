@@ -27,10 +27,9 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-import datetime
+from datetime import datetime, timezone
 
 import coda
-from django.utils.timezone import utc
 
 
 class NoSuchFieldException(Exception):
@@ -125,9 +124,7 @@ def datetime_to_coda_time(value):
 def coda_time_to_datetime(value):
     """ Translate a coda time value to a :class:`datetime.datetime`.
     """
-    return datetime.datetime(
-        *coda.time_double_to_parts_utc(value), tzinfo=utc
-    )
+    return datetime(*coda.time_double_to_parts_utc(value), tzinfo=timezone.utc)
 
 
 def access_location(cf, location):

@@ -34,7 +34,7 @@ import errno
 import logging
 
 from django.http import HttpResponseRedirect
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -70,7 +70,7 @@ def upload_user_file(request):
             return HttpResponseRedirect(request.path)
     else:
         form = UploadFileForm()
-    return render_to_response('aeolus/upload_user_file.html', {'form': form})
+    return render(request, 'aeolus/upload_user_file.html', {'form': form})
 
 
 def handle_uploaded_file(uploaded_file, user):

@@ -1020,10 +1020,10 @@ test_file = '/mnt/data/AE_OPER_AUX_MRC_1B_20071031T021229_20071031T022829_0002.E
 
 def main():
 
-    from django.utils.timezone import utc
-    import datetime
+    from datetime import datetime, timezone
+
     fields=[u'lat_of_DEM_intersection', u'lon_of_DEM_intersection', u'mie_ground_correction_velocity', u'rayleigh_ground_correction_velocity', u'roll_angle', u'pitch_angle', u'yaw_angle', u'num_of_mie_ground_bins', u'rayleigh_avg_ground_echo_bin_thickness', u'mie_avg_ground_echo_bin_thickness_above_DEM', u'rayleigh_avg_ground_echo_bin_thickness_above_DEM', u'rayleigh_channel_A_ground_SNR_meas', u'mie_DEM_ground_bin', u'ZWC_result_type']
-    filters={'time': {'max': datetime.datetime(2007, 11, 2, 0, 0, 8, tzinfo=utc), 'min': datetime.datetime(2007, 11, 1, 20, 26, 8, tzinfo=utc)}}
+    filters={'time': {'max': datetime(2007, 11, 2, 0, 0, 8, tzinfo=timezone.utc), 'min': datetime(2007, 11, 1, 20, 26, 8, tzinfo=timezone.utc)}}
     next(extract_data("/mnt/data/AE_OPER_AUX_ZWC_1B_20071101T202641_20071102T000841_0001.EEF", filters, fields, "ZWC", True))
 
     # from pprint import pprint
@@ -1090,7 +1090,6 @@ def main():
     # #             print "shape", shape, value.shape
     # #         # print cf.get_size(*path)
     # #         print name, value.shape if not isinstance(value, (int, float)) else 0
-
 
 
 if __name__ == "__main__":

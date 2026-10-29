@@ -28,9 +28,8 @@
 # ------------------------------------------------------------------------------
 
 from itertools import chain
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from django.utils.timezone import utc
 from django.contrib.gis.geos import (
     MultiLineString, LineString, MultiPolygon, Polygon
 )
@@ -362,10 +361,10 @@ def register_albedo(
         )
 
     nadir_ds = gdal.Open(nadir_location)
-    begin_time = datetime(year, month, 1, tzinfo=utc)
+    begin_time = datetime(year, month, 1, tzinfo=timezone.utc)
     end_time = datetime(
         begin_time.year + (begin_time.month // 12),
-        ((begin_time.month % 12) + 1), 1, tzinfo=utc
+        ((begin_time.month % 12) + 1), 1, tzinfo=timezone.utc
     ) - timedelta(milliseconds=1)
 
     extent = (-180, -90, 180, 90)

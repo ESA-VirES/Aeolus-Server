@@ -29,7 +29,7 @@
 
 import os
 import os.path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import tempfile
 from uuid import uuid4
@@ -39,7 +39,6 @@ import msgpack
 from netCDF4 import Dataset, stringtochar
 import numpy
 
-from django.utils.timezone import utc
 from django.contrib.gis.geos import Polygon
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -115,7 +114,7 @@ class AsyncProcessBase(BaseProcess):
         try:
             job = Job.objects.get(identifier=context.identifier)
             job.status = Job.STARTED
-            job.started = datetime.now(utc)
+            job.started = datetime.now(timezone.utc)
             job.save()
             context.logger.info(
                 "Job started after %.3gs waiting.",
@@ -132,7 +131,7 @@ class AsyncProcessBase(BaseProcess):
         try:
             job = Job.objects.get(identifier=context.identifier)
             job.status = Job.SUCCEEDED
-            job.stopped = datetime.now(utc)
+            job.stopped = datetime.now(timezone.utc)
             job.save()
             context.logger.info(
                 "Job finished after %.3gs running.",
@@ -149,7 +148,7 @@ class AsyncProcessBase(BaseProcess):
         try:
             job = Job.objects.get(identifier=context.identifier)
             job.status = Job.FAILED
-            job.stopped = datetime.now(utc)
+            job.stopped = datetime.now(timezone.utc)
             job.save()
             context.logger.info(
                 "Job failed after %.3gs running.",
