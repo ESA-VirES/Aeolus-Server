@@ -325,17 +325,13 @@ def register_product(
                 )
             linked_to_collection.append(collection.identifier)
 
-        print(f"{link_optimized=}")
         if link_optimized:
             optimized_filename = get_optimized_product_filename(
                 collection, product, optimized_directory_template,
             )
-            print(f"{optimized_filename=}")
             if exists(optimized_filename):
-                print(f"optimized EXISTS ")
                 result = set_optimized_data_item(product, optimized_filename)
                 optimized_linked = result.created or result.updated
-                print(f"{result=}")
 
         return Result(
             product=product,
