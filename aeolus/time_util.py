@@ -30,13 +30,11 @@
 
 import math
 import time
-from datetime import datetime, timedelta
-from django.utils.dateparse import utc
+from datetime import datetime, timedelta, timezone
 
 DT_1970 = datetime(1970, 1, 1)
 DT_2000 = datetime(2000, 1, 1)
 
-TZ_UTC = utc
 
 def timedelta_to_iso_duration(tdobj):
     """ Convert `datetime.timedelta` object to ISO-8601 duration string. """
@@ -58,14 +56,14 @@ def datetime_mean(start, stop):
 def naive_to_utc(dt_obj):
     """ Convert naive `datetime.datetime` to UTC time-zone aware one. """
     if dt_obj.tzinfo is None:
-        dt_obj = dt_obj.replace(tzinfo=TZ_UTC)
-    return dt_obj.astimezone(TZ_UTC)
+        dt_obj = dt_obj.replace(tzinfo=timezone.utc)
+    return dt_obj.astimezone(timezone.utc)
 
 
 def utc_to_naive(dt_obj):
     """ Convert naive `datetime.datetime` to UTC time-zone aware one. """
     if dt_obj.tzinfo:
-        dt_obj = dt_obj.astimezone(TZ_UTC).replace(tzinfo=None)
+        dt_obj = dt_obj.astimezone(timezone.utc).replace(tzinfo=None)
     return dt_obj
 
 
